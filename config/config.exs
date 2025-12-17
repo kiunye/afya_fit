@@ -5,8 +5,10 @@
 # is restricted to this project.
 
 # Load .env file if it exists (for development/test)
-if File.exists?(".env") do
-  File.stream!(".env")
+env_path = Path.expand("../.env", __DIR__)
+
+if File.exists?(env_path) do
+  File.stream!(env_path)
   |> Stream.map(&String.trim/1)
   |> Stream.reject(&(&1 == "" or String.starts_with?(&1, "#")))
   |> Stream.map(&String.split(&1, "=", parts: 2))

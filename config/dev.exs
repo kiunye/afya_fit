@@ -1,10 +1,11 @@
 import Config
 
+# Configure your database (matches docker-compose.yml)
 config :afya_fit, AfyaFit.Repo,
-  username: System.get_env("DB_USERNAME") || "postgres",
-  password: System.get_env("DB_PASSWORD") || "postgres",
-  hostname: System.get_env("DB_HOST") || "localhost",
-  database: System.get_env("DB_NAME") || "afyafit_dev",
+  username: "afyafit_dev",
+  password: "afyafit_dev_password",
+  hostname: "localhost",
+  database: "afyafit_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10
@@ -22,7 +23,9 @@ config :afya_fit, AfyaFitWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: System.get_env("SECRET_KEY_BASE") || "KCm/xtVpVU1X0iZs/GSv3CoUSfra/wWPuaCsuNnCAeI+Aguh+ZuASOi/sByUORWj",
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      "KCm/xtVpVU1X0iZs/GSv3CoUSfra/wWPuaCsuNnCAeI+Aguh+ZuASOi/sByUORWj",
   watchers: [
     esbuild: {Esbuild, :install_and_run, [:afya_fit, ~w(--sourcemap=inline --watch)]},
     tailwind: {Tailwind, :install_and_run, [:afya_fit, ~w(--watch)]}
