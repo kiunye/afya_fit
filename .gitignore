@@ -35,7 +35,10 @@ afya_fit-*.tar
 npm-debug.log
 /assets/node_modules/
 
-.cursor/*
+# Cursor IDE files
+.cursor/
+
+.elixir_ls/
 
 # Environment files
 .env
