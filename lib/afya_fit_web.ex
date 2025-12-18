@@ -88,8 +88,8 @@ defmodule AfyaFitWeb do
       import AfyaFitWeb.CoreComponents
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias AfyaFitWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())
