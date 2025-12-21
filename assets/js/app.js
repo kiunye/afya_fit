@@ -46,6 +46,36 @@ liveSocket.connect()
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
 
+// Sidebar toggle functionality
+window.addEventListener("phx:set-theme", (e) => {
+  const theme = e.target.dataset.phxTheme
+  if (theme === "system") {
+    localStorage.removeItem("phx:theme")
+    document.documentElement.removeAttribute("data-theme")
+  } else {
+    localStorage.setItem("phx:theme", theme)
+    document.documentElement.setAttribute("data-theme", theme)
+  }
+})
+
+// Sidebar toggle
+window.addEventListener("toggle-sidebar", () => {
+  const sidebar = document.getElementById("sidebar")
+  if (sidebar) {
+    sidebar.classList.toggle("-translate-x-full")
+  }
+})
+
+// Close sidebar when clicking outside on mobile
+document.addEventListener("click", (e) => {
+  const sidebar = document.getElementById("sidebar")
+  if (sidebar && !sidebar.contains(e.target) && !e.target.closest("[phx-click*='toggle-sidebar']")) {
+    if (window.innerWidth < 1024) {
+      sidebar.classList.add("-translate-x-full")
+    }
+  }
+})
+
 // The lines below enable quality of life phoenix_live_reload
 // development features:
 //
