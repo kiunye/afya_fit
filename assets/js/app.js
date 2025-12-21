@@ -46,16 +46,11 @@ liveSocket.connect()
 // >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
 
-// Sidebar toggle functionality
+// Theme toggle functionality
 window.addEventListener("phx:set-theme", (e) => {
   const theme = e.target.dataset.phxTheme
-  if (theme === "system") {
-    localStorage.removeItem("phx:theme")
-    document.documentElement.removeAttribute("data-theme")
-  } else {
-    localStorage.setItem("phx:theme", theme)
-    document.documentElement.setAttribute("data-theme", theme)
-  }
+  localStorage.setItem("phx:theme", theme)
+  document.documentElement.setAttribute("data-theme", theme)
 })
 
 // Sidebar toggle

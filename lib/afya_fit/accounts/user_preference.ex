@@ -27,6 +27,6 @@ defmodule AfyaFit.Accounts.UserPreference do
       :theme
     ])
     |> validate_required([:user_id])
-    |> validate_inclusion(:theme, ["light", "dark", "auto"])
+    |> validate_inclusion(:theme, ["light", "dark"])
   end
 end
