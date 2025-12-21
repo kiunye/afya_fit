@@ -4,23 +4,184 @@ defmodule AfyaFit.Billing do
   """
   import Ecto.Query, warn: false
   alias AfyaFit.Billing.{Invoice, Subscription}
+  alias AfyaFit.Payments.PaystackClient
   alias AfyaFit.Repo
 
+  @doc """
+  Gets subscription for an organization.
+  """
   def get_subscription_by_organization(organization_id) do
     Repo.get_by(Subscription, organization_id: organization_id)
+    |> Repo.preload(:invoices)
   end
 
-  def create_subscription(attrs \\ %{}) do
-    %Subscription{}
+  @doc """
+  Creates a subscription with Paystack integration.
+  """
+  def create_subscription(organization, plan_type, customer_email, customer_name) do
+    # Create Paystack customer
+    case PaystackClient.create_customer(customer_email, customer_name, "") do
+      {:ok, %Paystack.Response{success: true, data: customer_data}} ->
+        customer_code = customer_data["customer_code"]
+
+        # Create subscription in database
+        now = DateTime.utc_now()
+        period_end = DateTime.add(now, 30, :day)
+
+        attrs = %{
+          organization_id: organization.id,
+          plan_type: plan_type,
+          status: "active",
+          paystack_customer_code: customer_code,
+          current_period_start: now,
+          current_period_end: period_end
+        }
+
+        case Repo.insert(Subscription.changeset(%Subscription{}, attrs)) do
+          {:ok, subscription} ->
+            {:ok, subscription}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+
+      {:ok, %Paystack.Response{success: false, message: message}} ->
+        {:error, "Paystack error: #{message}"}
+
+      {:error, reason} ->
+        {:error, "Failed to create Paystack customer: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
+  Updates subscription status from Paystack webhook.
+  """
+  def update_subscription_from_webhook(subscription_code, webhook_data) do
+    case Repo.get_by(Subscription, paystack_subscription_code: subscription_code) do
+      nil ->
+        {:error, :not_found}
+
+      subscription ->
+        status = Map.get(webhook_data, "status", subscription.status)
+        current_period_start = parse_datetime(webhook_data["current_period_start"])
+        current_period_end = parse_datetime(webhook_data["current_period_end"])
+
+        attrs = %{
+          status: normalize_status(status),
+          paystack_subscription_code: subscription_code,
+          current_period_start: current_period_start || subscription.current_period_start,
+          current_period_end: current_period_end || subscription.current_period_end
+        }
+
+        subscription
+        |> Subscription.changeset(attrs)
+        |> Repo.update()
+    end
+  end
+
+  @doc """
+  Updates a subscription.
+  """
+  def update_subscription(subscription, attrs) do
+    subscription
     |> Subscription.changeset(attrs)
-    |> Repo.insert()
+    |> Repo.update()
   end
 
-  # ...
+  @doc """
+  Cancels a subscription.
+  """
+  def cancel_subscription(subscription) do
+    if subscription.paystack_subscription_code do
+      case PaystackClient.cancel_subscription(subscription.paystack_subscription_code) do
+        {:ok, %Paystack.Response{success: true}} ->
+          attrs = %{
+            status: "cancelled",
+            cancel_at_period_end: true,
+            cancelled_at: DateTime.utc_now()
+          }
 
-  def create_invoice(attrs \\ %{}) do
+          subscription
+          |> Subscription.changeset(attrs)
+          |> Repo.update()
+
+        _ ->
+          # Still mark as cancelled locally even if Paystack call fails
+          attrs = %{
+            status: "cancelled",
+            cancel_at_period_end: true,
+            cancelled_at: DateTime.utc_now()
+          }
+
+          subscription
+          |> Subscription.changeset(attrs)
+          |> Repo.update()
+      end
+    else
+      attrs = %{
+        status: "cancelled",
+        cancel_at_period_end: true,
+        cancelled_at: DateTime.utc_now()
+      }
+
+      subscription
+      |> Subscription.changeset(attrs)
+      |> Repo.update()
+    end
+  end
+
+  @doc """
+  Creates an invoice from Paystack transaction.
+  """
+  def create_invoice_from_transaction(subscription_id, transaction_data) do
+    invoice_number = generate_invoice_number()
+    amount = Decimal.new(transaction_data["amount"] / 100) # Paystack amounts are in kobo/cents
+    currency = transaction_data["currency"] || "NGN"
+
+    attrs = %{
+      subscription_id: subscription_id,
+      invoice_number: invoice_number,
+      amount: amount,
+      currency: currency,
+      status: "paid",
+      paystack_invoice_code: transaction_data["reference"],
+      due_date: Date.utc_today(),
+      paid_at: parse_datetime(transaction_data["paid_at"])
+    }
+
     %Invoice{}
     |> Invoice.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Lists invoices for a subscription.
+  """
+  def list_invoices(subscription_id) do
+    Invoice
+    |> where([i], i.subscription_id == ^subscription_id)
+    |> order_by([i], desc: i.inserted_at)
+    |> Repo.all()
+  end
+
+  defp normalize_status("active"), do: "active"
+  defp normalize_status("cancelled"), do: "cancelled"
+  defp normalize_status("expired"), do: "expired"
+  defp normalize_status("past_due"), do: "past_due"
+  defp normalize_status(_), do: "active"
+
+  defp parse_datetime(nil), do: nil
+  defp parse_datetime(timestamp) when is_integer(timestamp) do
+    DateTime.from_unix!(timestamp)
+  end
+  defp parse_datetime(datetime_string) when is_binary(datetime_string) do
+    case DateTime.from_iso8601(datetime_string) do
+      {:ok, datetime, _} -> datetime
+      _ -> nil
+    end
+  end
+
+  defp generate_invoice_number do
+    "INV-#{Date.utc_today() |> Date.to_string() |> String.replace("-", "")}-#{:rand.uniform(10000)}"
   end
 end

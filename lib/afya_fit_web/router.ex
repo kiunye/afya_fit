@@ -21,6 +21,11 @@ defmodule AfyaFitWeb.Router do
     plug AfyaFitWeb.APIAuth
   end
 
+  # Webhook routes (no authentication required, but should verify signature)
+  pipeline :webhook do
+    plug :accepts, ["json"]
+  end
+
   ## Authentication routes
 
   scope "/", AfyaFitWeb do
@@ -82,7 +87,18 @@ defmodule AfyaFitWeb.Router do
       # Progress tracking
       live "/trainer/progress", TrainerLive.Progress, :index
       live "/trainer/progress/:client_id", TrainerLive.Progress, :client
+
+      # Subscription management
+      live "/trainer/subscription", TrainerLive.Subscription, :index
     end
+  end
+
+  ## Webhook routes (no authentication)
+
+  scope "/webhooks", AfyaFitWeb do
+    pipe_through :webhook
+
+    post "/paystack", PaystackWebhookController, :webhook
   end
 
   ## API routes
@@ -148,6 +164,14 @@ defmodule AfyaFitWeb.Router do
     put "/calendar/events/:id", CalendarController, :update
     delete "/calendar/events/:id", CalendarController, :delete
     get "/calendar/upcoming", CalendarController, :upcoming
+
+    # Billing & Subscriptions
+    get "/subscriptions", SubscriptionController, :show
+    post "/subscriptions", SubscriptionController, :create
+    put "/subscriptions", SubscriptionController, :update
+    delete "/subscriptions", SubscriptionController, :cancel
+    get "/subscriptions/invoices", SubscriptionController, :invoices
+    post "/payments/initialize", PaymentController, :initialize
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

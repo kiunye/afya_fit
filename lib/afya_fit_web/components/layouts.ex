@@ -110,6 +110,9 @@ defmodule AfyaFitWeb.Layouts do
               <.nav_link navigate={~p"/"} label="Home" icon="hero-home" />
             <% end %>
             <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+              <%= if @user.role == "trainer" do %>
+                <.nav_link navigate={~p"/trainer/subscription"} label="Subscription" icon="hero-credit-card" />
+              <% end %>
               <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
             </div>
           </nav>
@@ -124,10 +127,8 @@ defmodule AfyaFitWeb.Layouts do
                   class="h-10 w-10 rounded-full"
                 />
               <% else %>
-                <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
-                  <span class="text-white font-semibold text-sm">
-                    {String.first(@user.first_name)}{String.first(@user.last_name)}
-                  </span>
+                <div class="h-10 w-10 rounded-full flex items-center justify-center">
+                  <.icon name="hero-user-circle" class="w-8 h-8 text-gray-600 dark:text-gray-400" />
                 </div>
               <% end %>
               <div class="flex-1 min-w-0">

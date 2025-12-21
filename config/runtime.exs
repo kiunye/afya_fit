@@ -65,6 +65,19 @@ if config_env() in [:dev, :test] do
     url: [host: host],
     http: [ip: {127, 0, 0, 1}, port: port],
     secret_key_base: secret_key_base
+
+  # Paystack configuration (for official Paystack library)
+  # Read from Docker secrets first, then environment variables
+  # In dev/test, it's optional (can be nil for testing without payments)
+  paystack_secret_key =
+    cond do
+      File.exists?("/run/secrets/paystack_secret_key") ->
+        "/run/secrets/paystack_secret_key" |> File.read!() |> String.trim()
+      System.get_env("PAYSTACK_SECRET_KEY") -> System.get_env("PAYSTACK_SECRET_KEY")
+      true -> nil
+    end
+
+  config :paystack, secret_key: paystack_secret_key
 end
 
 if config_env() == :prod do
@@ -124,6 +137,23 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base
+
+  # Paystack configuration (for official Paystack library)
+  # Read from Docker secrets first, then environment variables
+  paystack_secret_key =
+    cond do
+      File.exists?("/run/secrets/paystack_secret_key") ->
+        "/run/secrets/paystack_secret_key" |> File.read!() |> String.trim()
+      System.get_env("PAYSTACK_SECRET_KEY") -> System.get_env("PAYSTACK_SECRET_KEY")
+      true ->
+        raise """
+        environment variable PAYSTACK_SECRET_KEY or secret file /run/secrets/paystack_secret_key is missing.
+        Please set your Paystack secret key for payment processing.
+        """
+    end
+
+  config :paystack, secret_key: paystack_secret_key
+end
 
   # ## SSL Support
   #

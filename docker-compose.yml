@@ -47,3 +47,5 @@ secrets:
     file: ./secrets/secret_key_base.txt
   database_url:
     file: ./secrets/database_url.txt
+  paystack_secret_key:
+    file: ./secrets/paystack_secret_key.txt
