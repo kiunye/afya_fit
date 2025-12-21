@@ -137,7 +137,10 @@ defmodule AfyaFit.Accounts do
     else
       {encoded_token, user_token} = UserToken.build_email_token(user, "confirm")
       Repo.insert!(user_token)
-      deliver_email(user.email, "Confirmation instructions", confirmation_url_fun.(encoded_token))
+      url = confirmation_url_fun.(encoded_token)
+
+      email = AfyaFitWeb.UserEmail.confirmation(user, url)
+      AfyaFit.Mailer.deliver(email)
     end
   end
 
@@ -181,7 +184,10 @@ defmodule AfyaFit.Accounts do
       when is_function(reset_password_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "reset_password")
     Repo.insert!(user_token)
-    deliver_email(user.email, "Reset password instructions", reset_password_url_fun.(encoded_token))
+    url = reset_password_url_fun.(encoded_token)
+
+    email = AfyaFitWeb.UserEmail.reset_password(user, url)
+    AfyaFit.Mailer.deliver(email)
   end
 
   @doc """
@@ -379,13 +385,16 @@ defmodule AfyaFit.Accounts do
       when is_function(update_email_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "change")
     Repo.insert!(user_token)
-    deliver_email(current_email, "Confirm your new email", update_email_url_fun.(encoded_token))
+    url = update_email_url_fun.(encoded_token)
+
+    email = AfyaFitWeb.UserEmail.change_email(user, url)
+    AfyaFit.Mailer.deliver(email)
   end
 
   defp deliver_email(to, subject, body) do
-    # TODO: Implement email delivery using Swoosh
-    # For now, we'll just return a success tuple
-    # In Phase 7, we'll integrate with Swoosh properly
+    # This is a fallback for backward compatibility
+    # The actual email delivery is handled by the specific email functions
+    # that use AfyaFitWeb.UserEmail module
     {:ok, %{to: to, subject: subject, body: body}}
   end
 end

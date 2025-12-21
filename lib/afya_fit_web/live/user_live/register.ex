@@ -2,6 +2,7 @@ defmodule AfyaFitWeb.UserLive.Register do
   use AfyaFitWeb, :live_view
 
   alias AfyaFit.Accounts
+  alias AfyaFit.Organizations
 
   def render(assigns) do
     ~H"""
@@ -31,8 +32,44 @@ defmodule AfyaFitWeb.UserLive.Register do
           <.input field={@form[:password]} type="password" label="Password" required />
           <.input field={@form[:first_name]} type="text" label="First Name" required />
           <.input field={@form[:last_name]} type="text" label="Last Name" required />
-          <.input field={@form[:role]} type="select" label="Role" options={[{"Trainer", "trainer"}, {"Client", "client"}]} required />
-          <.input field={@form[:organization_id]} type="text" label="Organization ID" required />
+          <.input
+            field={@form[:role]}
+            type="select"
+            label="I am a"
+            options={[{"Trainer", "trainer"}, {"Client", "client"}]}
+            required
+          />
+
+          <%= if @show_organization_fields do %>
+            <.input
+              field={@form[:organization_name]}
+              type="text"
+              label="Organization/Business Name"
+              required
+            />
+            <.input
+              field={@form[:organization_subdomain]}
+              type="text"
+              label="Subdomain"
+              placeholder="your-gym-name"
+              required
+            />
+            <p class="text-sm text-gray-600 mt-1">
+              This will be your unique URL: <span class="font-mono">your-gym-name.afyafit.com</span>
+            </p>
+          <% else %>
+            <.input
+              field={@form[:organization_subdomain]}
+              type="text"
+              label="Organization Subdomain"
+              placeholder="your-trainer-subdomain"
+              required
+            />
+            <p class="text-sm text-gray-600 mt-1">
+              Enter your trainer's organization subdomain to join their account.
+            </p>
+          <% end %>
+
           <div>
             <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
           </div>
@@ -48,21 +85,31 @@ defmodule AfyaFitWeb.UserLive.Register do
     socket =
       socket
       |> assign(:trigger_submit, false)
+      |> assign(:show_organization_fields, false)
       |> assign_form(changeset)
 
     {:ok, socket, temporary_assigns: [form: nil]}
   end
 
   def handle_event("validate", %{"user" => user_params}, socket) do
+    role = user_params["role"]
+    show_org_fields = role == "trainer"
+
     changeset =
-      Accounts.change_user_registration(%Accounts.User{}, user_params)
+      %Accounts.User{}
+      |> Accounts.change_user_registration(user_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign_form(socket, changeset)}
+    socket =
+      socket
+      |> assign(:show_organization_fields, show_org_fields)
+      |> assign_form(changeset)
+
+    {:noreply, socket}
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
-    case Accounts.register_user(user_params) do
+    case register_user_with_organization(user_params) do
       {:ok, user} ->
         {:ok, _} =
           Accounts.deliver_user_confirmation_instructions(
@@ -73,9 +120,61 @@ defmodule AfyaFitWeb.UserLive.Register do
         changeset = Accounts.change_user_registration(user)
         {:noreply, socket |> assign(trigger_submit: true) |> assign_form(changeset)}
 
+      {:error, :organization, changeset, _} ->
+        {:noreply, assign_form(socket, changeset)}
+
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}
     end
+  end
+
+  defp register_user_with_organization(%{"role" => "trainer"} = user_params) do
+    # Trainers create their own organization
+    org_attrs = %{
+      "name" => user_params["organization_name"],
+      "subdomain" => user_params["organization_subdomain"],
+      "plan_type" => "free",
+      "status" => "active"
+    }
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:organization, Organizations.Organization.changeset(%Organizations.Organization{}, org_attrs))
+    |> Ecto.Multi.insert(:user, fn %{organization: org} ->
+      Accounts.User.registration_changeset(
+        %Accounts.User{},
+        Map.put(user_params, "organization_id", org.id)
+      )
+    end)
+    |> AfyaFit.Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
+      {:error, :user, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  defp register_user_with_organization(%{"role" => "client"} = user_params) do
+    # Clients join an existing organization by subdomain
+    subdomain = user_params["organization_subdomain"]
+
+    case Organizations.get_organization_by_subdomain(subdomain) do
+      nil ->
+        changeset =
+          Accounts.User.registration_changeset(%Accounts.User{}, user_params)
+          |> Ecto.Changeset.add_error(:organization_subdomain, "not found")
+
+        {:error, changeset}
+
+      organization ->
+        user_params
+        |> Map.put("organization_id", organization.id)
+        |> Accounts.register_user()
+    end
+  end
+
+  defp register_user_with_organization(user_params) do
+    # Fallback for other roles
+    Accounts.register_user(user_params)
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
