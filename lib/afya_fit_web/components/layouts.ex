@@ -100,13 +100,15 @@ defmodule AfyaFitWeb.Layouts do
 
           <!-- Navigation Menu -->
           <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            <.nav_link navigate={~p"/"} label="Dashboard" icon="hero-home" />
-            <.nav_link navigate="/clients" label="Clients" icon="hero-users" />
-            <.nav_link navigate="/workouts" label="Workouts" icon="hero-bolt" />
-            <.nav_link navigate="/nutrition" label="Nutrition" icon="hero-cake" />
-            <.nav_link navigate="/progress" label="Progress" icon="hero-chart-bar" />
-            <.nav_link navigate="/tasks" label="Tasks" icon="hero-check-circle" />
-            <.nav_link navigate="/calendar" label="Calendar" icon="hero-calendar" />
+            <%= if @user.role == "trainer" do %>
+              <.nav_link navigate={~p"/trainer/dashboard"} label="Dashboard" icon="hero-home" />
+              <.nav_link navigate={~p"/trainer/clients"} label="Clients" icon="hero-users" />
+              <.nav_link navigate={~p"/trainer/workouts"} label="Workouts" icon="hero-bolt" />
+              <.nav_link navigate={~p"/trainer/nutrition"} label="Nutrition" icon="hero-cake" />
+              <.nav_link navigate={~p"/trainer/progress"} label="Progress" icon="hero-chart-bar" />
+            <% else %>
+              <.nav_link navigate={~p"/"} label="Home" icon="hero-home" />
+            <% end %>
             <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
               <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
             </div>

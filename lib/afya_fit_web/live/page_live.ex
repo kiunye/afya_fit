@@ -13,7 +13,12 @@ defmodule AfyaFitWeb.PageLive do
   end
 
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    user = socket.assigns.current_scope.user
+
+    if user && user.role == "trainer" do
+      {:ok, push_navigate(socket, to: ~p"/trainer/dashboard")}
+    else
+      {:ok, socket}
+    end
   end
 end
-

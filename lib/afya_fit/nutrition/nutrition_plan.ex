@@ -40,6 +40,6 @@ defmodule AfyaFit.Nutrition.NutritionPlan do
       :is_template,
       :deleted_at
     ])
-    |> validate_required([:organization_id, :trainer_id, :client_id, :name, :start_date])
+    |> validate_required([:organization_id, :trainer_id, :name])
   end
 end

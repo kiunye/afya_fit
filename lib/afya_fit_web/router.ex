@@ -59,6 +59,29 @@ defmodule AfyaFitWeb.Router do
       on_mount: [{AfyaFitWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm_email/:token", UserLive.Settings, :confirm_email
+
+      # Trainer routes
+      live "/trainer/dashboard", TrainerLive.Dashboard, :index
+      live "/trainer/clients", TrainerLive.Clients, :index
+      live "/trainer/clients/new", TrainerLive.Clients, :new
+      live "/trainer/clients/:id", TrainerLive.Clients, :show
+      live "/trainer/clients/:id/edit", TrainerLive.Clients, :edit
+
+      # Workout plans
+      live "/trainer/workouts", TrainerLive.Workouts, :index
+      live "/trainer/workouts/new", TrainerLive.Workouts, :new
+      live "/trainer/workouts/:id", TrainerLive.Workouts, :show
+      live "/trainer/workouts/:id/edit", TrainerLive.Workouts, :edit
+
+      # Nutrition plans
+      live "/trainer/nutrition", TrainerLive.Nutrition, :index
+      live "/trainer/nutrition/new", TrainerLive.Nutrition, :new
+      live "/trainer/nutrition/:id", TrainerLive.Nutrition, :show
+      live "/trainer/nutrition/:id/edit", TrainerLive.Nutrition, :edit
+
+      # Progress tracking
+      live "/trainer/progress", TrainerLive.Progress, :index
+      live "/trainer/progress/:client_id", TrainerLive.Progress, :client
     end
   end
 
