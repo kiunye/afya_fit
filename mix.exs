@@ -87,7 +87,11 @@ defmodule AfyaFit.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
-      "assets.build": ["compile", "tailwind afya_fit", "esbuild afya_fit"],
+      "assets.build": [
+        "compile",
+        "tailwind afya_fit",
+        "esbuild afya_fit"
+      ],
       "assets.deploy": [
         "tailwind afya_fit --minify",
         "esbuild afya_fit --minify",

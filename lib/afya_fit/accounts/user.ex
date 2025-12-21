@@ -49,7 +49,7 @@ defmodule AfyaFit.Accounts.User do
     |> cast(attrs, [:email, :password, :role, :first_name, :last_name, :phone, :avatar_url, :timezone, :organization_id])
     |> validate_email()
     |> validate_password(opts)
-    |> validate_required([:email, :password, :role, :first_name, :last_name, :organization_id])
+    |> validate_required([:email, :role, :first_name, :last_name, :organization_id])
     |> validate_inclusion(:role, ["trainer", "client", "admin"])
   end
 

@@ -76,12 +76,14 @@ defmodule AfyaFitWeb.Layouts do
                 <img
                   src={@logo_url}
                   alt={@org_name}
-                  class="h-8 w-8 rounded"
+                  class="h-8 w-8 rounded object-contain"
                 />
               <% else %>
-                <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <span class="text-white font-bold text-sm">AF</span>
-                </div>
+                <img
+                  src={~p"/images/afya-fit-logo.png"}
+                  alt="Afya Fit"
+                  class="h-8 w-8 rounded object-contain"
+                />
               <% end %>
               <span class="text-lg font-bold text-gray-900 dark:text-white">
                 {@org_name}
@@ -89,7 +91,8 @@ defmodule AfyaFitWeb.Layouts do
             </a>
             <button
               class="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              onclick="window.dispatchEvent(new Event('toggle-sidebar'))"
+              onclick="window.toggleSidebar && window.toggleSidebar()"
+              data-sidebar-toggle
             >
               <.icon name="hero-x-mark" class="w-5 h-5" />
             </button>
@@ -154,7 +157,8 @@ defmodule AfyaFitWeb.Layouts do
           <button
             type="button"
             class="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden"
-            onclick="window.dispatchEvent(new Event('toggle-sidebar'))"
+            onclick="window.toggleSidebar && window.toggleSidebar()"
+            data-sidebar-toggle
           >
             <.icon name="hero-bars-3" class="h-6 w-6" />
           </button>
@@ -190,9 +194,11 @@ defmodule AfyaFitWeb.Layouts do
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="flex h-16 items-center justify-between">
             <a href={~p"/"} class="flex items-center gap-2">
-              <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <span class="text-white font-bold text-sm">AF</span>
-              </div>
+              <img
+                src={~p"/images/afya-fit-logo.png"}
+                alt="Afya Fit"
+                class="h-8 w-8 rounded object-contain"
+              />
               <span class="text-xl font-bold text-gray-900 dark:text-white">Afya Fit</span>
             </a>
             <div class="flex items-center gap-4">
