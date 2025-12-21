@@ -158,3 +158,4 @@ defmodule AfyaFitWeb.UserLive.Settings do
     assign(socket, password_form: to_form(Accounts.change_user_password(user), as: "user"))
   end
 end
+

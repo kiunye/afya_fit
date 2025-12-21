@@ -381,7 +381,7 @@ defmodule AfyaFit.Accounts do
       {:ok, %{to: ..., body: ...}}
 
   """
-  def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
+  def deliver_user_update_email_instructions(%User{} = user, _current_email, update_email_url_fun)
       when is_function(update_email_url_fun, 1) do
     {encoded_token, user_token} = UserToken.build_email_token(user, "change")
     Repo.insert!(user_token)
@@ -391,10 +391,4 @@ defmodule AfyaFit.Accounts do
     AfyaFit.Mailer.deliver(email)
   end
 
-  defp deliver_email(to, subject, body) do
-    # This is a fallback for backward compatibility
-    # The actual email delivery is handled by the specific email functions
-    # that use AfyaFitWeb.UserEmail module
-    {:ok, %{to: to, subject: subject, body: body}}
-  end
 end

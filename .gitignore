@@ -45,3 +45,6 @@ npm-debug.log
 
 # Docker secrets
 /secrets/*.txt
+
+# Local-only docs (Postman test plans, notes, etc.)
+/docs/*.local.md

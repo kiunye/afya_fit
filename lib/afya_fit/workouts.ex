@@ -75,6 +75,12 @@ defmodule AfyaFit.Workouts do
     Repo.all(ClientWorkout)
   end
 
+  def list_client_workouts_by_client(client_id) do
+    ClientWorkout
+    |> where([cw], cw.client_id == ^client_id)
+    |> Repo.all()
+  end
+
   def get_client_workout!(id), do: Repo.get!(ClientWorkout, id)
 
   def create_client_workout(attrs \\ %{}) do
@@ -87,6 +93,10 @@ defmodule AfyaFit.Workouts do
     client_workout
     |> ClientWorkout.changeset(attrs)
     |> Repo.update()
+  end
+
+  def delete_client_workout(%ClientWorkout{} = client_workout) do
+    Repo.delete(client_workout)
   end
 
   # WORKOUT EXERCISES (Junction)

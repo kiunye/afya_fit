@@ -17,6 +17,10 @@ defmodule AfyaFitWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :api_auth do
+    plug AfyaFitWeb.APIAuth
+  end
+
   ## Authentication routes
 
   scope "/", AfyaFitWeb do
@@ -58,10 +62,70 @@ defmodule AfyaFitWeb.Router do
     end
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", AfyaFitWeb do
-  #   pipe_through :api
-  # end
+  ## API routes
+
+  scope "/api/v1", AfyaFitWeb.API do
+    pipe_through [:api, :api_auth]
+
+    # Clients
+    get "/clients", ClientController, :index
+    post "/clients", ClientController, :create
+    get "/clients/:id", ClientController, :show
+    put "/clients/:id", ClientController, :update
+    delete "/clients/:id", ClientController, :delete
+    post "/clients/:id/invite", ClientController, :invite
+    get "/clients/:id/progress", ProgressController, :index
+
+    # Workout Plans
+    get "/workout-plans", WorkoutPlanController, :index
+    post "/workout-plans", WorkoutPlanController, :create
+    get "/workout-plans/templates", WorkoutPlanController, :templates
+    get "/workout-plans/:id", WorkoutPlanController, :show
+    put "/workout-plans/:id", WorkoutPlanController, :update
+    delete "/workout-plans/:id", WorkoutPlanController, :delete
+    post "/workout-plans/:id/duplicate", WorkoutPlanController, :duplicate
+
+    # Client Workouts
+    get "/clients/:client_id/workouts", ClientWorkoutController, :index
+    post "/clients/:client_id/workouts", ClientWorkoutController, :create
+    put "/client-workouts/:id", ClientWorkoutController, :update
+    delete "/client-workouts/:id", ClientWorkoutController, :delete
+    post "/client-workouts/:id/complete", ClientWorkoutController, :complete
+
+    # Nutrition Plans
+    get "/nutrition-plans", NutritionPlanController, :index
+    post "/nutrition-plans", NutritionPlanController, :create
+    get "/nutrition-plans/:id", NutritionPlanController, :show
+    put "/nutrition-plans/:id", NutritionPlanController, :update
+    delete "/nutrition-plans/:id", NutritionPlanController, :delete
+    get "/clients/:client_id/nutrition", NutritionPlanController, :client_nutrition
+
+    # Progress Tracking
+    get "/clients/:client_id/progress", ProgressController, :index
+    post "/clients/:client_id/progress", ProgressController, :create
+    get "/progress/:id", ProgressController, :show
+    put "/progress/:id", ProgressController, :update
+    delete "/progress/:id", ProgressController, :delete
+    get "/clients/:client_id/progress/analytics", ProgressController, :analytics
+
+    # Tasks
+    get "/tasks", TaskController, :index
+    post "/tasks", TaskController, :create
+    post "/tasks/bulk", TaskController, :bulk
+    get "/tasks/:id", TaskController, :show
+    put "/tasks/:id", TaskController, :update
+    delete "/tasks/:id", TaskController, :delete
+    post "/tasks/:id/complete", TaskController, :complete
+    get "/clients/:client_id/tasks", TaskController, :client_tasks
+
+    # Calendar
+    get "/calendar/events", CalendarController, :index
+    post "/calendar/events", CalendarController, :create
+    get "/calendar/events/:id", CalendarController, :show
+    put "/calendar/events/:id", CalendarController, :update
+    delete "/calendar/events/:id", CalendarController, :delete
+    get "/calendar/upcoming", CalendarController, :upcoming
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:afya_fit, :dev_routes) do

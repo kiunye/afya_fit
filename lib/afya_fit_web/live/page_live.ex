@@ -16,3 +16,4 @@ defmodule AfyaFitWeb.PageLive do
     {:ok, socket}
   end
 end
+

@@ -19,3 +19,4 @@ defmodule AfyaFitWeb.UserLive.ConfirmInstructions do
     {:ok, socket}
   end
 end
+

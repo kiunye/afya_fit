@@ -54,8 +54,11 @@ defmodule AfyaFitWeb.Layouts do
   end
 
   defp authenticated_layout(assigns, user, organization) do
-    logo_url = get_logo_url(organization)
-    org_name = if organization, do: organization.name, else: "Afya Fit"
+    assigns =
+      assigns
+      |> assign(:user, user)
+      |> assign(:logo_url, get_logo_url(organization))
+      |> assign(:org_name, if(organization, do: organization.name, else: "Afya Fit"))
 
     ~H"""
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -69,10 +72,10 @@ defmodule AfyaFitWeb.Layouts do
           <!-- Logo/Branding -->
           <div class="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
             <a href={~p"/"} class="flex items-center gap-3">
-              <%= if logo_url do %>
+              <%= if @logo_url do %>
                 <img
-                  src={logo_url}
-                  alt={org_name}
+                  src={@logo_url}
+                  alt={@org_name}
                   class="h-8 w-8 rounded"
                 />
               <% else %>
@@ -81,7 +84,7 @@ defmodule AfyaFitWeb.Layouts do
                 </div>
               <% end %>
               <span class="text-lg font-bold text-gray-900 dark:text-white">
-                {org_name}
+                {@org_name}
               </span>
             </a>
             <button
@@ -95,12 +98,12 @@ defmodule AfyaFitWeb.Layouts do
           <!-- Navigation Menu -->
           <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             <.nav_link navigate={~p"/"} label="Dashboard" icon="hero-home" />
-            <.nav_link navigate={~p"/clients"} label="Clients" icon="hero-users" />
-            <.nav_link navigate={~p"/workouts"} label="Workouts" icon="hero-bolt" />
-            <.nav_link navigate={~p"/nutrition"} label="Nutrition" icon="hero-cake" />
-            <.nav_link navigate={~p"/progress"} label="Progress" icon="hero-chart-bar" />
-            <.nav_link navigate={~p"/tasks"} label="Tasks" icon="hero-check-circle" />
-            <.nav_link navigate={~p"/calendar"} label="Calendar" icon="hero-calendar" />
+            <.nav_link navigate="/clients" label="Clients" icon="hero-users" />
+            <.nav_link navigate="/workouts" label="Workouts" icon="hero-bolt" />
+            <.nav_link navigate="/nutrition" label="Nutrition" icon="hero-cake" />
+            <.nav_link navigate="/progress" label="Progress" icon="hero-chart-bar" />
+            <.nav_link navigate="/tasks" label="Tasks" icon="hero-check-circle" />
+            <.nav_link navigate="/calendar" label="Calendar" icon="hero-calendar" />
             <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
               <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
             </div>
@@ -109,24 +112,24 @@ defmodule AfyaFitWeb.Layouts do
           <!-- User Profile Footer -->
           <div class="p-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-3 mb-3">
-              <%= if user.avatar_url do %>
+              <%= if @user.avatar_url do %>
                 <img
-                  src={user.avatar_url}
-                  alt={"#{user.first_name} #{user.last_name}"}
+                  src={@user.avatar_url}
+                  alt={"#{@user.first_name} #{@user.last_name}"}
                   class="h-10 w-10 rounded-full"
                 />
               <% else %>
                 <div class="h-10 w-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                   <span class="text-white font-semibold text-sm">
-                    {String.first(user.first_name)}{String.first(user.last_name)}
+                    {String.first(@user.first_name)}{String.first(@user.last_name)}
                   </span>
                 </div>
               <% end %>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user.first_name} {user.last_name}
+                  {@user.first_name} {@user.last_name}
                 </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{@user.email}</p>
               </div>
             </div>
             <form action={~p"/users/log_out"} method="post" class="w-full">

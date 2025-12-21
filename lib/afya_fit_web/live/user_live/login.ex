@@ -44,3 +44,4 @@ defmodule AfyaFitWeb.UserLive.Login do
     {:ok, assign(socket, form: form), temporary_assigns: [form: form]}
   end
 end
+
