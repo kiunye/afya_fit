@@ -248,3 +248,4 @@ defmodule AfyaFitWeb.UserAuth do
   defp signed_in_path(_conn), do: ~p"/"
 end
 
+

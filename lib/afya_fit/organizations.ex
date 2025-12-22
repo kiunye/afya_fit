@@ -5,6 +5,7 @@ defmodule AfyaFit.Organizations do
 
   import Ecto.Query, warn: false
   alias AfyaFit.Organizations.Organization
+  alias AfyaFit.Accounts.User
   alias AfyaFit.Repo
 
   def list_organizations do
@@ -35,5 +36,30 @@ defmodule AfyaFit.Organizations do
 
   def get_organization_by_subdomain(subdomain) do
     Repo.get_by(Organization, subdomain: subdomain)
+  end
+
+  @doc """
+  Gets the organization owner/admin user.
+  Returns an admin if available, otherwise returns a trainer.
+  """
+  def get_organization_owner(%Organization{} = organization) do
+    # First try to find an admin
+    admin =
+      User
+      |> where([u], u.organization_id == ^organization.id)
+      |> where([u], u.role == "admin")
+      |> where([u], is_nil(u.deleted_at))
+      |> Repo.first()
+
+    if admin do
+      admin
+    else
+      # Fallback to a trainer
+      User
+      |> where([u], u.organization_id == ^organization.id)
+      |> where([u], u.role == "trainer")
+      |> where([u], is_nil(u.deleted_at))
+      |> Repo.first()
+    end
   end
 end

@@ -37,3 +37,4 @@ defmodule AfyaFitWeb.UserAuthController do
   end
 end
 
+

@@ -175,3 +175,4 @@ defmodule AfyaFit.Accounts.UserToken do
   defp days_for_context("reset_password"), do: @email_validity_in_days
 end
 
+

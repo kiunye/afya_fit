@@ -4,3 +4,4 @@ defmodule AfyaFitWeb.UserAuthHTML do
   embed_templates "user_auth_html/*"
 end
 
+

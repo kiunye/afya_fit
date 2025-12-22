@@ -12,8 +12,7 @@ defmodule AfyaFit.Application do
       AfyaFit.Repo,
       {DNSCluster, query: Application.get_env(:afya_fit, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: AfyaFit.PubSub},
-      # Start a worker by calling: AfyaFit.Worker.start_link(arg)
-      # {AfyaFit.Worker, arg},
+      {Oban, Application.get_env(:afya_fit, Oban)},
       # Start to serve requests, typically the last entry
       AfyaFitWeb.Endpoint
     ]

@@ -20,3 +20,4 @@ defmodule AfyaFitWeb.UserLive.ConfirmInstructions do
   end
 end
 
+

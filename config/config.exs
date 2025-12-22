@@ -74,6 +74,23 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+# Configure Oban (background job processing)
+config :afya_fit, Oban,
+  engine: Oban.Engines.Basic,
+  queues: [default: 10, emails: 10, tasks: 10],
+  repo: AfyaFit.Repo,
+  plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       # Generate recurring tasks daily at 2 AM
+       {"0 2 * * *", AfyaFit.Workers.TaskAutomationWorker},
+       # Send task reminders daily at 8 AM
+       {"0 8 * * *", AfyaFit.Workers.TaskReminderWorker},
+       # Check subscription renewals daily at 9 AM
+       {"0 9 * * *", AfyaFit.Workers.SubscriptionReminderWorker}
+     ]}
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

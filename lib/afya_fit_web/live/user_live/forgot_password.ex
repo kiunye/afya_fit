@@ -52,3 +52,4 @@ defmodule AfyaFitWeb.UserLive.ForgotPassword do
   end
 end
 
+
