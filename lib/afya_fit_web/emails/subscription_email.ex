@@ -4,11 +4,12 @@ defmodule AfyaFitWeb.SubscriptionEmail do
   @from {"Afya Fit", "noreply@afyafit.com"}
 
   def renewal_reminder(user, subscription, days) do
-    days_text = case days do
-      :seven_days -> "7 days"
-      :three_days -> "3 days"
-      _ -> "#{days} days"
-    end
+    days_text =
+      case days do
+        :seven_days -> "7 days"
+        :three_days -> "3 days"
+        _ -> "#{days} days"
+      end
 
     new()
     |> to({user.first_name <> " " <> user.last_name, user.email})
@@ -24,7 +25,8 @@ defmodule AfyaFitWeb.SubscriptionEmail do
       |> DateTime.to_date()
       |> Date.to_string()
 
-    urgency_class = if days == :three_days, do: "color: #dc2626; font-weight: bold;", else: "color: #f59e0b;"
+    urgency_class =
+      if days == :three_days, do: "color: #dc2626; font-weight: bold;", else: "color: #f59e0b;"
 
     """
     <!DOCTYPE html>
@@ -81,11 +83,12 @@ defmodule AfyaFitWeb.SubscriptionEmail do
       |> DateTime.to_date()
       |> Date.to_string()
 
-    days_text = case days do
-      :seven_days -> "7 days"
-      :three_days -> "3 days"
-      _ -> "#{days} days"
-    end
+    days_text =
+      case days do
+        :seven_days -> "7 days"
+        :three_days -> "3 days"
+        _ -> "#{days} days"
+      end
 
     """
     Subscription Renewal Reminder

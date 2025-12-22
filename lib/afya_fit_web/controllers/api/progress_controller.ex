@@ -1,8 +1,7 @@
 defmodule AfyaFitWeb.API.ProgressController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Tracking
-  alias AfyaFit.Clients
+  alias AfyaFit.{Clients, Tracking}
 
   # Authentication is handled in router pipeline
 
@@ -135,7 +134,9 @@ defmodule AfyaFitWeb.API.ProgressController do
     sorted = Enum.sort_by(entries, & &1.entry_date, {:asc, Date})
 
     case sorted do
-      [] -> nil
+      [] ->
+        nil
+
       [first | _] = all ->
         last = List.last(all)
         if first.weight && last.weight, do: last.weight - first.weight, else: nil
@@ -146,9 +147,12 @@ defmodule AfyaFitWeb.API.ProgressController do
     sorted = Enum.sort_by(entries, & &1.entry_date, {:asc, Date})
 
     case sorted do
-      [] -> nil
+      [] ->
+        nil
+
       [first | _] = all ->
         last = List.last(all)
+
         if first.body_fat_percentage && last.body_fat_percentage,
           do: last.body_fat_percentage - first.body_fat_percentage,
           else: nil

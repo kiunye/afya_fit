@@ -16,7 +16,13 @@ defmodule AfyaFitWeb.UserLive.Login do
           </:subtitle>
         </.header>
 
-        <.form for={@form} id="login_form" action={~p"/users/log_in"} phx-update="ignore" class="space-y-4">
+        <.form
+          for={@form}
+          id="login_form"
+          action={~p"/users/log_in"}
+          phx-update="ignore"
+          class="space-y-4"
+        >
           <.input field={@form[:email]} type="email" label="Email" required />
           <.input field={@form[:password]} type="password" label="Password" required />
 
@@ -44,5 +50,3 @@ defmodule AfyaFitWeb.UserLive.Login do
     {:ok, assign(socket, form: form), temporary_assigns: [form: form]}
   end
 end
-
-

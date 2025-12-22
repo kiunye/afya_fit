@@ -6,9 +6,9 @@ defmodule AfyaFit.Workers.SubscriptionReminderWorker do
   use Oban.Worker, queue: :tasks, max_attempts: 3
 
   import Ecto.Query
-  alias AfyaFit.Repo
   alias AfyaFit.Billing.Subscription
   alias AfyaFit.Organizations
+  alias AfyaFit.Repo
   alias AfyaFit.Workers.EmailWorker
 
   @impl Oban.Worker

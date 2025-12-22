@@ -4,7 +4,7 @@ defmodule AfyaFitWeb.Router do
   import AfyaFitWeb.UserAuth
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug :accepts, ["html", "json"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {AfyaFitWeb.Layouts, :root}
@@ -103,8 +103,21 @@ defmodule AfyaFitWeb.Router do
 
   ## API routes
 
+  # Public API routes (no auth required)
+  scope "/api/v1", AfyaFitWeb.API do
+    pipe_through :api
+
+    # Authentication
+    post "/auth/login", AuthController, :create
+    post "/auth/register", AuthController, :register
+  end
+
+  # Authenticated API routes
   scope "/api/v1", AfyaFitWeb.API do
     pipe_through [:api, :api_auth]
+
+    # Get current user
+    get "/auth/me", AuthController, :show
 
     # Clients
     get "/clients", ClientController, :index

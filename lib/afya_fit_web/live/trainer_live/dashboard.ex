@@ -33,8 +33,8 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
             Welcome back! Here's an overview of your fitness business.
           </p>
         </div>
-
-        <!-- Stats Grid -->
+        
+    <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <.stat_card
             title="Active Clients"
@@ -67,8 +67,8 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
             color="indigo"
           />
         </div>
-
-        <!-- Quick Actions -->
+        
+    <!-- Quick Actions -->
         <div class="mb-8">
           <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -76,34 +76,30 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
               navigate={~p"/trainer/clients/new"}
               class="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <.icon name="hero-user-plus" class="w-5 h-5 mr-2" />
-              Add Client
+              <.icon name="hero-user-plus" class="w-5 h-5 mr-2" /> Add Client
             </.link>
             <.link
               navigate={~p"/trainer/workouts/new"}
               class="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
             >
-              <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" />
-              Create Workout Plan
+              <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Workout Plan
             </.link>
             <.link
               navigate={~p"/trainer/nutrition/new"}
               class="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
-              <.icon name="hero-clipboard-document-list" class="w-5 h-5 mr-2" />
-              Create Nutrition Plan
+              <.icon name="hero-clipboard-document-list" class="w-5 h-5 mr-2" /> Create Nutrition Plan
             </.link>
             <.link
               navigate={~p"/trainer/clients"}
               class="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
             >
-              <.icon name="hero-users" class="w-5 h-5 mr-2" />
-              View All Clients
+              <.icon name="hero-users" class="w-5 h-5 mr-2" /> View All Clients
             </.link>
           </div>
         </div>
-
-        <!-- Recent Activity -->
+        
+    <!-- Recent Activity -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Recent Clients -->
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -133,8 +129,8 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
               <% end %>
             </div>
           </div>
-
-          <!-- Recent Workouts -->
+          
+    <!-- Recent Workouts -->
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
               Recent Workout Plans

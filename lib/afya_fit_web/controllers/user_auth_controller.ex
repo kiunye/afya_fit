@@ -16,17 +16,45 @@ defmodule AfyaFitWeb.UserAuthController do
   def create(conn, %{"user" => user_params}) do
     %{"email" => email, "password" => password} = user_params
 
-    if user = Accounts.get_user_by_email_and_password(email, password) do
-      conn
-      |> put_flash(:info, "Welcome back!")
-      |> UserAuth.log_in_user(user, user_params)
-    else
-      # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-      form = to_form(%{"email" => email}, as: "user")
-      conn
-      |> put_flash(:error, "Invalid email or password")
-      |> put_flash(:email, email)
-      |> render(:new, form: form)
+    case Accounts.get_user_by_email_and_password(email, password) do
+      nil ->
+        # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+        if json_content_type?(conn) do
+          conn
+          |> put_status(:unauthorized)
+          |> put_view(AfyaFitWeb.ErrorJSON)
+          |> render(:"401")
+        else
+          form = to_form(%{"email" => email}, as: "user")
+
+          conn
+          |> put_flash(:error, "Invalid email or password")
+          |> put_flash(:email, email)
+          |> render(:new, form: form)
+        end
+
+      user ->
+        if json_content_type?(conn) do
+          # Return JSON response for API requests
+          token = Accounts.generate_user_session_token(user)
+
+          conn
+          |> put_status(:ok)
+          |> put_view(AfyaFitWeb.API.AuthView)
+          |> render(:show, user: user, token: token)
+        else
+          # HTML response for web requests
+          conn
+          |> put_flash(:info, "Welcome back!")
+          |> UserAuth.log_in_user(user, user_params)
+        end
+    end
+  end
+
+  defp json_content_type?(conn) do
+    case get_req_header(conn, "accept") do
+      [accept_header] -> String.contains?(accept_header, "application/json")
+      _ -> false
     end
   end
 
@@ -36,5 +64,3 @@ defmodule AfyaFitWeb.UserAuthController do
     |> UserAuth.log_out_user()
   end
 end
-
-

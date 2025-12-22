@@ -26,8 +26,18 @@ defmodule AfyaFitWeb.UserLive.Settings do
             </div>
           </.form>
 
-          <.form for={@password_form} id="password_form" phx-submit="update_password" phx-change="validate_password">
-            <input type="hidden" name="user[email]" value={@password_form[:email].value} id="hidden_user_email" />
+          <.form
+            for={@password_form}
+            id="password_form"
+            phx-submit="update_password"
+            phx-change="validate_password"
+          >
+            <input
+              type="hidden"
+              name="user[email]"
+              value={@password_form[:email].value}
+              id="hidden_user_email"
+            />
             <.input field={@password_form[:password]} type="password" label="New password" required />
             <.input
               field={@password_form[:password_confirmation]}
@@ -158,5 +168,3 @@ defmodule AfyaFitWeb.UserLive.Settings do
     assign(socket, password_form: to_form(Accounts.change_user_password(user), as: "user"))
   end
 end
-
-

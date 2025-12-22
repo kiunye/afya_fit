@@ -13,6 +13,10 @@ defmodule AfyaFitWeb.API.ErrorView do
     %{error: "Forbidden"}
   end
 
+  def render("406.json", _assigns) do
+    %{error: "Not Acceptable - The requested format is not supported"}
+  end
+
   def render("422.json", %{changeset: changeset}) do
     %{errors: translate_errors(changeset)}
   end

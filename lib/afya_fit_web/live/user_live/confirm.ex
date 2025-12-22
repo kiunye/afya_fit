@@ -43,5 +43,3 @@ defmodule AfyaFitWeb.UserLive.Confirm do
     end
   end
 end
-
-

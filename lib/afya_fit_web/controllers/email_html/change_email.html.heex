@@ -1,15 +1,17 @@
 <h1>Confirm Your New Email Address</h1>
 
-<p>Hi <%= @user.first_name %>,</p>
+<p>Hi {@user.first_name},</p>
 
-<p>You requested to change your email address. Please confirm your new email by clicking the button below:</p>
+<p>
+  You requested to change your email address. Please confirm your new email by clicking the button below:
+</p>
 
 <p style="text-align: center;">
   <a href={@url} class="button">Confirm New Email</a>
 </p>
 
 <p>Or copy and paste this link into your browser:</p>
-<p><a href={@url} class="link"><%= @url %></a></p>
+<p><a href={@url} class="link">{@url}</a></p>
 
 <p>This link will expire in 24 hours.</p>
 

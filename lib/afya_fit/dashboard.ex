@@ -3,7 +3,7 @@ defmodule AfyaFit.Dashboard do
   Dashboard context for aggregating statistics and overview data.
   """
   import Ecto.Query, warn: false
-  alias AfyaFit.{Clients, Workouts, Nutrition, Tasks, Schedule}
+  alias AfyaFit.{Clients, Nutrition, Schedule, Tasks, Workouts}
 
   @doc """
   Gets dashboard statistics for a trainer.

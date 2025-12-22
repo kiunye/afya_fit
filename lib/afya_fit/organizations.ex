@@ -4,8 +4,8 @@ defmodule AfyaFit.Organizations do
   """
 
   import Ecto.Query, warn: false
-  alias AfyaFit.Organizations.Organization
   alias AfyaFit.Accounts.User
+  alias AfyaFit.Organizations.Organization
   alias AfyaFit.Repo
 
   def list_organizations do
@@ -49,7 +49,7 @@ defmodule AfyaFit.Organizations do
       |> where([u], u.organization_id == ^organization.id)
       |> where([u], u.role == "admin")
       |> where([u], is_nil(u.deleted_at))
-      |> Repo.first()
+      |> Repo.one()
 
     if admin do
       admin
@@ -59,7 +59,7 @@ defmodule AfyaFit.Organizations do
       |> where([u], u.organization_id == ^organization.id)
       |> where([u], u.role == "trainer")
       |> where([u], is_nil(u.deleted_at))
-      |> Repo.first()
+      |> Repo.one()
     end
   end
 end

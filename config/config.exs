@@ -74,6 +74,10 @@ config :logger, :default_formatter,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+config :mime, :types, %{
+  "application/xml" => ["xml"]
+}
+
 # Configure Oban (background job processing)
 config :afya_fit, Oban,
   engine: Oban.Engines.Basic,

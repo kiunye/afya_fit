@@ -83,5 +83,3 @@ defmodule AfyaFitWeb.UserLive.ResetPassword do
     assign(socket, form: form)
   end
 end
-
-

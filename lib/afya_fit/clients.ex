@@ -3,8 +3,8 @@ defmodule AfyaFit.Clients do
   The Clients context for managing trainer-client relationships.
   """
   import Ecto.Query, warn: false
+  alias AfyaFit.Accounts.{TrainerClient, User}
   alias AfyaFit.Repo
-  alias AfyaFit.Accounts.{User, TrainerClient}
 
   @doc """
   Lists all clients for a given trainer.
@@ -100,7 +100,9 @@ defmodule AfyaFit.Clients do
 
     query =
       case Map.get(filters, :status) do
-        nil -> query
+        nil ->
+          query
+
         "active" ->
           # Only clients with active trainer relationships
           query
@@ -108,7 +110,8 @@ defmodule AfyaFit.Clients do
           |> where([u, tc], tc.status == "active")
           |> distinct([u], true)
 
-        _ -> query
+        _ ->
+          query
       end
 
     Repo.all(query)

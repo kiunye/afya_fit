@@ -55,20 +55,28 @@ defmodule AfyaFit.Workers.TaskAutomationWorker do
     interval == 1
   end
 
-  defp should_generate_weekly?(%TaskRecurrence{frequency: "weekly", days_of_week: days_of_week}, today) do
+  defp should_generate_daily?(_recurrence, _today), do: false
+
+  defp should_generate_weekly?(
+         %TaskRecurrence{frequency: "weekly", days_of_week: days_of_week},
+         today
+       ) do
     # Check if today is one of the specified days of week
     # days_of_week is an array of integers (0 = Sunday, 6 = Saturday)
     day_of_week = Date.day_of_week(today, :sunday) - 1
     days_of_week && day_of_week in days_of_week
   end
 
-  defp should_generate_monthly?(%TaskRecurrence{frequency: "monthly", day_of_month: day_of_month}, today) do
+  defp should_generate_weekly?(_recurrence, _today), do: false
+
+  defp should_generate_monthly?(
+         %TaskRecurrence{frequency: "monthly", day_of_month: day_of_month},
+         today
+       ) do
     # Check if today matches the day of month
     day_of_month && today.day == day_of_month
   end
 
-  defp should_generate_daily?(_recurrence, _today), do: false
-  defp should_generate_weekly?(_recurrence, _today), do: false
   defp should_generate_monthly?(_recurrence, _today), do: false
 
   defp create_task_instance(%Task{} = original_task, due_date) do

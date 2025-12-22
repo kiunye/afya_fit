@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.TrainerLive.Progress do
   use AfyaFitWeb, :live_view
 
-  alias AfyaFit.{Tracking, Clients}
+  alias AfyaFit.{Clients, Tracking}
 
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
@@ -28,7 +28,9 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
 
     case socket.assigns.live_action do
       :index ->
-        clients = Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+        clients =
+          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+
         {:noreply, assign(socket, :clients, clients)}
 
       :client ->
@@ -55,7 +57,6 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :client -> %>
             <.progress_client
               client={@client}
@@ -137,8 +138,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
           navigate={~p"/trainer/progress"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Progress
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Progress
         </.link>
         <div class="flex justify-between items-center">
           <div>
@@ -150,7 +150,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
         </div>
       </div>
 
-      <!-- Analytics Summary -->
+    <!-- Analytics Summary -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
           <div class="flex items-center">
@@ -201,7 +201,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
         <% end %>
       </div>
 
-      <!-- Progress Entries List -->
+    <!-- Progress Entries List -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Progress Entries</h2>
@@ -258,7 +258,9 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
 
     weight_change =
       case sorted do
-        [] -> nil
+        [] ->
+          nil
+
         [first | _] = all ->
           last = List.last(all)
           if first.weight && last.weight, do: Decimal.sub(last.weight, first.weight), else: nil
@@ -266,9 +268,12 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
 
     body_fat_change =
       case sorted do
-        [] -> nil
+        [] ->
+          nil
+
         [first | _] = all ->
           last = List.last(all)
+
           if first.body_fat_percentage && last.body_fat_percentage,
             do: Decimal.sub(last.body_fat_percentage, first.body_fat_percentage),
             else: nil

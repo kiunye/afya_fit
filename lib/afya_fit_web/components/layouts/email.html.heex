@@ -75,11 +75,11 @@
         <div class="logo">Afya Fit</div>
       </div>
       <div class="content">
-        <%= render_slot(@inner_block) %>
+        {render_slot(@inner_block)}
       </div>
       <div class="footer">
         <p>If you didn't request this email, you can safely ignore it.</p>
-        <p>&copy; <%= DateTime.utc_now().year %> Afya Fit. All rights reserved.</p>
+        <p>&copy; {DateTime.utc_now().year} Afya Fit. All rights reserved.</p>
       </div>
     </div>
   </body>

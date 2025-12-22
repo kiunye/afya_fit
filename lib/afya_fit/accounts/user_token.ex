@@ -19,6 +19,15 @@ defmodule AfyaFit.Accounts.UserToken do
     timestamps(type: :utc_datetime, updated_at: false)
   end
 
+  @type t :: %__MODULE__{
+          id: binary(),
+          token: binary(),
+          context: String.t(),
+          sent_to: String.t() | nil,
+          user_id: binary(),
+          inserted_at: DateTime.t()
+        }
+
   @doc """
   Generates a token that will be stored in a signed place,
   such as session or cookie. As they are signed, those
@@ -35,14 +44,16 @@ defmodule AfyaFit.Accounts.UserToken do
   sessions to be expired. The token generated can only be
   used once, as it is deleted after being used.
   """
-  @spec build_session_token(AfyaFit.Accounts.User.t()) :: {String.t(), %UserToken{}}
+  @spec build_session_token(AfyaFit.Accounts.User.t()) :: {String.t(), t()}
   def build_session_token(user) do
     token = :crypto.strong_rand_bytes(32)
-    {Base.url_encode64(token, padding: false), %UserToken{
-        token: token,
-        context: "session",
-        user_id: user.id
-      }}
+
+    {Base.url_encode64(token, padding: false),
+     %UserToken{
+       token: token,
+       context: "session",
+       user_id: user.id
+     }}
   end
 
   @doc """
@@ -90,12 +101,13 @@ defmodule AfyaFit.Accounts.UserToken do
     token = :crypto.strong_rand_bytes(32)
     hashed_token = :crypto.hash(:sha256, token)
 
-    {Base.url_encode64(token, padding: false), %UserToken{
-        token: hashed_token,
-        context: context,
-        sent_to: sent_to,
-        user_id: user.id
-      }}
+    {Base.url_encode64(token, padding: false),
+     %UserToken{
+       token: hashed_token,
+       context: context,
+       sent_to: sent_to,
+       user_id: user.id
+     }}
   end
 
   @doc """
@@ -174,5 +186,3 @@ defmodule AfyaFit.Accounts.UserToken do
   defp days_for_context("confirm"), do: @email_validity_in_days
   defp days_for_context("reset_password"), do: @email_validity_in_days
 end
-
-

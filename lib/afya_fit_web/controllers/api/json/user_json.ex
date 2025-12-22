@@ -7,8 +7,13 @@ defmodule AfyaFitWeb.API.JSON.UserJSON do
     %{data: for(user <- users, do: data(user))}
   end
 
-  def show(%{user: user}) do
-    %{data: data(user)}
+  def show(assigns) do
+    user = assigns.user
+
+    case Map.get(assigns, :token) do
+      nil -> %{data: data(user)}
+      token -> %{data: data(user), token: token}
+    end
   end
 
   defp data(%{id: id} = user) do

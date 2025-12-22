@@ -15,7 +15,13 @@ defmodule AfyaFit.Workers.EmailWorker do
   alias AfyaFit.Mailer
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"email_module" => email_module, "email_function" => email_function, "args" => args}}) do
+  def perform(%Oban.Job{
+        args: %{
+          "email_module" => email_module,
+          "email_function" => email_function,
+          "args" => args
+        }
+      }) do
     # Convert atom strings back to atoms (e.g., ":seven_days" string -> :seven_days atom)
     processed_args = process_args(args)
 
@@ -41,6 +47,7 @@ defmodule AfyaFit.Workers.EmailWorker do
     case arg do
       ":" <> atom_name ->
         String.to_existing_atom(atom_name)
+
       _ ->
         # Try as regular atom string
         String.to_existing_atom(arg)
@@ -60,19 +67,38 @@ defmodule AfyaFit.Workers.EmailWorker do
 
   # Convert ISO8601 datetime strings back to DateTime structs
   defp convert_datetime_strings(map) do
-    datetime_fields = ["due_date", "current_period_end", "current_period_start", "completed_at", "inserted_at", "updated_at"]
+    datetime_fields = [
+      "due_date",
+      "current_period_end",
+      "current_period_start",
+      "completed_at",
+      "inserted_at",
+      "updated_at"
+    ]
 
     Enum.reduce(datetime_fields, map, fn field, acc ->
-      case Map.get(acc, field) do
-        nil -> acc
-        value when is_binary(value) ->
-          case DateTime.from_iso8601(value) do
-            {:ok, datetime, _} -> Map.put(acc, field, datetime)
-            _ -> acc
-          end
-        _ -> acc
-      end
+      convert_datetime_field(acc, field)
     end)
+  end
+
+  defp convert_datetime_field(acc, field) do
+    case Map.get(acc, field) do
+      nil ->
+        acc
+
+      value when is_binary(value) ->
+        convert_datetime_value(acc, field, value)
+
+      _ ->
+        acc
+    end
+  end
+
+  defp convert_datetime_value(acc, field, value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, datetime, _} -> Map.put(acc, field, datetime)
+      _ -> acc
+    end
   end
 
   # Convert atom string values back to atoms
@@ -81,20 +107,25 @@ defmodule AfyaFit.Workers.EmailWorker do
 
     Enum.reduce(atom_fields, map, fn field, acc ->
       case Map.get(acc, field) do
-        nil -> acc
+        nil ->
+          acc
+
         ":" <> atom_name ->
           try do
             Map.put(acc, field, String.to_existing_atom(atom_name))
           rescue
             ArgumentError -> acc
           end
+
         value when is_binary(value) ->
           try do
             Map.put(acc, field, String.to_existing_atom(value))
           rescue
             ArgumentError -> acc
           end
-        _ -> acc
+
+        _ ->
+          acc
       end
     end)
   end

@@ -120,4 +120,3 @@ defmodule AfyaFitWeb.TaskEmail do
     """
   end
 end
-

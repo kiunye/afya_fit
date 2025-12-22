@@ -110,16 +110,19 @@ defmodule AfyaFitWeb.UserAuth do
   end
 
   defp ensure_user_token(conn) do
-    if token = get_session(conn, :user_token) do
-      {token, conn}
-    else
-      conn = fetch_cookies(conn, signed: [@remember_me_cookie])
+    case get_session(conn, :user_token) do
+      nil ->
+        conn = fetch_cookies(conn, signed: [@remember_me_cookie])
+        token = conn.cookies[@remember_me_cookie]
 
-      if token = conn.cookies[@remember_me_cookie] do
-        {token, put_token_in_session(conn, token)}
-      else
-        {nil, conn}
-      end
+        if token do
+          {token, put_token_in_session(conn, token)}
+        else
+          {nil, conn}
+        end
+
+      token ->
+        {token, conn}
     end
   end
 
@@ -247,5 +250,3 @@ defmodule AfyaFitWeb.UserAuth do
 
   defp signed_in_path(_conn), do: ~p"/"
 end
-
-

@@ -67,21 +67,18 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :new -> %>
             <.workouts_new
               form={@form}
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :show -> %>
             <.workouts_show
               workout_plan={@workout_plan}
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :edit -> %>
             <.workouts_edit
               form={@form}
@@ -113,8 +110,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           navigate={~p"/trainer/workouts/new"}
           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
         >
-          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" />
-          New Workout Plan
+          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" /> New Workout Plan
         </.link>
       </div>
 
@@ -131,8 +127,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
             navigate={~p"/trainer/workouts/new"}
             class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
           >
-            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" />
-            Create Workout Plan
+            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Workout Plan
           </.link>
         </div>
       <% else %>
@@ -195,8 +190,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           navigate={~p"/trainer/workouts"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Workout Plans
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plans
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Workout Plan</h1>
       </div>
@@ -289,8 +283,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           navigate={~p"/trainer/workouts"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Workout Plans
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plans
         </.link>
         <div class="flex justify-between items-center">
           <div>
@@ -355,8 +348,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           navigate={~p"/trainer/workouts/#{@workout_plan.id}"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Workout Plan
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plan
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Workout Plan</h1>
       </div>

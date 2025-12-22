@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.TrainerLive.Nutrition do
   use AfyaFitWeb, :live_view
 
-  alias AfyaFit.{Nutrition, Clients}
+  alias AfyaFit.{Clients, Nutrition}
   alias AfyaFit.Nutrition.NutritionPlan
 
   def mount(_params, _session, socket) do
@@ -38,7 +38,8 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           end)
           |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
 
-        clients = Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+        clients =
+          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
 
         {:noreply,
          socket
@@ -46,7 +47,9 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
          |> assign(:clients, clients)}
 
       :new ->
-        clients = Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+        clients =
+          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+
         changeset = NutritionPlan.changeset(%NutritionPlan{}, %{})
         form = to_form(changeset, as: "nutrition_plan")
         {:noreply, assign(socket, :form, form) |> assign(:clients, clients)}
@@ -56,10 +59,13 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
         {:noreply, assign(socket, :nutrition_plan, nutrition_plan)}
 
       :edit ->
-        clients = Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+        clients =
+          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
+
         nutrition_plan = Nutrition.get_nutrition_plan!(params["id"])
         changeset = NutritionPlan.changeset(nutrition_plan, %{})
         form = to_form(changeset, as: "nutrition_plan")
+
         {:noreply,
          socket
          |> assign(:nutrition_plan, nutrition_plan)
@@ -79,7 +85,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :new -> %>
             <.nutrition_new
               form={@form}
@@ -87,14 +92,12 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :show -> %>
             <.nutrition_show
               nutrition_plan={@nutrition_plan}
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :edit -> %>
             <.nutrition_edit
               form={@form}
@@ -127,8 +130,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           navigate={~p"/trainer/nutrition/new"}
           class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
-          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" />
-          New Nutrition Plan
+          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" /> New Nutrition Plan
         </.link>
       </div>
 
@@ -145,8 +147,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
             navigate={~p"/trainer/nutrition/new"}
             class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
           >
-            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" />
-            Create Nutrition Plan
+            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Nutrition Plan
           </.link>
         </div>
       <% else %>
@@ -169,7 +170,10 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
                     <div class="flex justify-between">
                       <span>Duration:</span>
                       <span class="font-medium">
-                        {Calendar.strftime(plan.start_date, "%b %d")} - {Calendar.strftime(plan.end_date, "%b %d")}
+                        {Calendar.strftime(plan.start_date, "%b %d")} - {Calendar.strftime(
+                          plan.end_date,
+                          "%b %d"
+                        )}
                       </span>
                     </div>
                   <% end %>
@@ -210,8 +214,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           navigate={~p"/trainer/nutrition"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Nutrition Plans
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plans
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Nutrition Plan</h1>
       </div>
@@ -306,8 +309,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           navigate={~p"/trainer/nutrition"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Nutrition Plans
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plans
         </.link>
         <div class="flex justify-between items-center">
           <div>
@@ -377,8 +379,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           navigate={~p"/trainer/nutrition/#{@nutrition_plan.id}"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Nutrition Plan
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plan
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Nutrition Plan</h1>
       </div>

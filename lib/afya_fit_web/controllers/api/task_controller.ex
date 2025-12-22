@@ -1,8 +1,7 @@
 defmodule AfyaFitWeb.API.TaskController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Tasks
-  alias AfyaFit.Clients
+  alias AfyaFit.{Clients, Tasks}
 
   # Authentication is handled in router pipeline
 
@@ -193,7 +192,9 @@ defmodule AfyaFitWeb.API.TaskController do
   end
 
   defp format_result({:ok, task}), do: %{status: "success", id: task.id}
-  defp format_result({:error, changeset}), do: %{status: "error", errors: translate_errors(changeset)}
+
+  defp format_result({:error, changeset}),
+    do: %{status: "error", errors: translate_errors(changeset)}
 
   defp translate_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->

@@ -1,9 +1,7 @@
 defmodule AfyaFitWeb.API.ClientWorkoutController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Workouts
-  alias AfyaFit.Clients
-  alias AfyaFit.Repo
+  alias AfyaFit.{Clients, Repo, Workouts}
 
   # Authentication is handled in router pipeline
 

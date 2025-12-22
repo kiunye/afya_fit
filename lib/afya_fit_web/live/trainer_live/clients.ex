@@ -60,21 +60,18 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :new -> %>
             <.clients_new
               form={@form}
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :show -> %>
             <.clients_show
               client={@client}
               current_scope={@current_scope}
               live_action={@live_action}
             />
-
           <% :edit -> %>
             <.clients_edit
               form={@form}
@@ -102,8 +99,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           navigate={~p"/trainer/clients/new"}
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
-          <.icon name="hero-user-plus" class="w-5 h-5 inline mr-2" />
-          Add Client
+          <.icon name="hero-user-plus" class="w-5 h-5 inline mr-2" /> Add Client
         </.link>
       </div>
 
@@ -118,8 +114,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
             navigate={~p"/trainer/clients/new"}
             class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            <.icon name="hero-user-plus" class="w-5 h-5 mr-2" />
-            Add Client
+            <.icon name="hero-user-plus" class="w-5 h-5 mr-2" /> Add Client
           </.link>
         </div>
       <% else %>
@@ -202,8 +197,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           navigate={~p"/trainer/clients"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Clients
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Clients
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Add New Client</h1>
         <p class="mt-2 text-gray-600 dark:text-gray-400">
@@ -282,8 +276,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           navigate={~p"/trainer/clients"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Clients
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Clients
         </.link>
         <div class="flex justify-between items-center">
           <div>
@@ -359,8 +352,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           navigate={~p"/trainer/clients/#{@client.id}"}
           class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" />
-          Back to Client
+          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Client
         </.link>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Client</h1>
       </div>

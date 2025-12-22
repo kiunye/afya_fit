@@ -135,7 +135,8 @@ defmodule AfyaFit.Billing do
   """
   def create_invoice_from_transaction(subscription_id, transaction_data) do
     invoice_number = generate_invoice_number()
-    amount = Decimal.new(transaction_data["amount"] / 100) # Paystack amounts are in kobo/cents
+    # Paystack amounts are in kobo/cents
+    amount = Decimal.new(transaction_data["amount"] / 100)
     currency = transaction_data["currency"] || "NGN"
 
     attrs = %{
@@ -171,9 +172,11 @@ defmodule AfyaFit.Billing do
   defp normalize_status(_), do: "active"
 
   defp parse_datetime(nil), do: nil
+
   defp parse_datetime(timestamp) when is_integer(timestamp) do
     DateTime.from_unix!(timestamp)
   end
+
   defp parse_datetime(datetime_string) when is_binary(datetime_string) do
     case DateTime.from_iso8601(datetime_string) do
       {:ok, datetime, _} -> datetime

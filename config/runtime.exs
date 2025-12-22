@@ -31,13 +31,19 @@ if config_env() in [:dev, :test] do
     cond do
       File.exists?("/run/secrets/db_password") ->
         "/run/secrets/db_password" |> File.read!() |> String.trim()
-      System.get_env("DB_PASSWORD") -> System.get_env("DB_PASSWORD")
-      true -> "postgres"
+
+      System.get_env("DB_PASSWORD") ->
+        System.get_env("DB_PASSWORD")
+
+      true ->
+        "postgres"
     end
 
   db_username = System.get_env("DB_USERNAME") || "postgres"
   db_host = System.get_env("DB_HOST") || "localhost"
-  db_name = System.get_env("DB_NAME") || (if config_env() == :dev, do: "afyafit_dev", else: "afyafit_test")
+
+  db_name =
+    System.get_env("DB_NAME") || if config_env() == :dev, do: "afyafit_dev", else: "afyafit_test"
 
   config :afya_fit, AfyaFit.Repo,
     username: db_username,
@@ -51,15 +57,23 @@ if config_env() in [:dev, :test] do
     cond do
       File.exists?("/run/secrets/secret_key_base") ->
         "/run/secrets/secret_key_base" |> File.read!() |> String.trim()
-      System.get_env("SECRET_KEY_BASE") -> System.get_env("SECRET_KEY_BASE")
+
+      System.get_env("SECRET_KEY_BASE") ->
+        System.get_env("SECRET_KEY_BASE")
+
       config_env() == :dev ->
         "KCm/xtVpVU1X0iZs/GSv3CoUSfra/wWPuaCsuNnCAeI+Aguh+ZuASOi/sByUORWj"
+
       true ->
         "iC7C26RybH5Ibl/ng+j6QfurTgxHZjWWqdXe5GbrsWRu4gAVOs12Y+2I9GHJA6Bw"
     end
 
   host = System.get_env("PHX_HOST") || "localhost"
-  port = String.to_integer(System.get_env("PORT") || (if config_env() == :dev, do: "4000", else: "4002"))
+
+  port =
+    String.to_integer(
+      System.get_env("PORT") || if(config_env() == :dev, do: "4000", else: "4002")
+    )
 
   config :afya_fit, AfyaFitWeb.Endpoint,
     url: [host: host],
@@ -73,8 +87,12 @@ if config_env() in [:dev, :test] do
     cond do
       File.exists?("/run/secrets/paystack_secret_key") ->
         "/run/secrets/paystack_secret_key" |> File.read!() |> String.trim()
-      System.get_env("PAYSTACK_SECRET_KEY") -> System.get_env("PAYSTACK_SECRET_KEY")
-      true -> nil
+
+      System.get_env("PAYSTACK_SECRET_KEY") ->
+        System.get_env("PAYSTACK_SECRET_KEY")
+
+      true ->
+        nil
     end
 
   config :paystack, secret_key: paystack_secret_key
@@ -86,7 +104,10 @@ if config_env() == :prod do
     cond do
       File.exists?("/run/secrets/database_url") ->
         "/run/secrets/database_url" |> File.read!() |> String.trim()
-      System.get_env("DATABASE_URL") -> System.get_env("DATABASE_URL")
+
+      System.get_env("DATABASE_URL") ->
+        System.get_env("DATABASE_URL")
+
       true ->
         raise """
         environment variable DATABASE_URL or secret file /run/secrets/database_url is missing.
@@ -113,7 +134,10 @@ if config_env() == :prod do
     cond do
       File.exists?("/run/secrets/secret_key_base") ->
         "/run/secrets/secret_key_base" |> File.read!() |> String.trim()
-      System.get_env("SECRET_KEY_BASE") -> System.get_env("SECRET_KEY_BASE")
+
+      System.get_env("SECRET_KEY_BASE") ->
+        System.get_env("SECRET_KEY_BASE")
+
       true ->
         raise """
         environment variable SECRET_KEY_BASE or secret file /run/secrets/secret_key_base is missing.
@@ -144,7 +168,10 @@ if config_env() == :prod do
     cond do
       File.exists?("/run/secrets/paystack_secret_key") ->
         "/run/secrets/paystack_secret_key" |> File.read!() |> String.trim()
-      System.get_env("PAYSTACK_SECRET_KEY") -> System.get_env("PAYSTACK_SECRET_KEY")
+
+      System.get_env("PAYSTACK_SECRET_KEY") ->
+        System.get_env("PAYSTACK_SECRET_KEY")
+
       true ->
         raise """
         environment variable PAYSTACK_SECRET_KEY or secret file /run/secrets/paystack_secret_key is missing.
@@ -155,53 +182,52 @@ if config_env() == :prod do
   config :paystack, secret_key: paystack_secret_key
 end
 
-  # ## SSL Support
-  #
-  # To get SSL working, you will need to add the `https` key
-  # to your endpoint configuration:
-  #
-  #     config :afya_fit, AfyaFitWeb.Endpoint,
-  #       https: [
-  #         ...,
-  #         port: 443,
-  #         cipher_suite: :strong,
-  #         keyfile: System.get_env("SOME_APP_SSL_KEY_PATH"),
-  #         certfile: System.get_env("SOME_APP_SSL_CERT_PATH")
-  #       ]
-  #
-  # The `cipher_suite` is set to `:strong` to support only the
-  # latest and more secure SSL ciphers. This means old browsers
-  # and clients may not be supported. You can set it to
-  # `:compatible` for wider support.
-  #
-  # `:keyfile` and `:certfile` expect an absolute path to the key
-  # and cert in disk or a relative path inside priv, for example
-  # "priv/ssl/server.key". For all supported SSL configuration
-  # options, see https://hexdocs.pm/plug/Plug.SSL.html#configure/1
-  #
-  # We also recommend setting `force_ssl` in your config/prod.exs,
-  # ensuring no data is ever sent via http, always redirecting to https:
-  #
-  #     config :afya_fit, AfyaFitWeb.Endpoint,
-  #       force_ssl: [hsts: true]
-  #
-  # Check `Plug.SSL` for all available options in `force_ssl`.
+# ## SSL Support
+#
+# To get SSL working, you will need to add the `https` key
+# to your endpoint configuration:
+#
+#     config :afya_fit, AfyaFitWeb.Endpoint,
+#       https: [
+#         ...,
+#         port: 443,
+#         cipher_suite: :strong,
+#         keyfile: System.get_env("SOME_APP_SSL_KEY_PATH"),
+#         certfile: System.get_env("SOME_APP_SSL_CERT_PATH")
+#       ]
+#
+# The `cipher_suite` is set to `:strong` to support only the
+# latest and more secure SSL ciphers. This means old browsers
+# and clients may not be supported. You can set it to
+# `:compatible` for wider support.
+#
+# `:keyfile` and `:certfile` expect an absolute path to the key
+# and cert in disk or a relative path inside priv, for example
+# "priv/ssl/server.key". For all supported SSL configuration
+# options, see https://hexdocs.pm/plug/Plug.SSL.html#configure/1
+#
+# We also recommend setting `force_ssl` in your config/prod.exs,
+# ensuring no data is ever sent via http, always redirecting to https:
+#
+#     config :afya_fit, AfyaFitWeb.Endpoint,
+#       force_ssl: [hsts: true]
+#
+# Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # ## Configuring the mailer
-  #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
-  #
-  #     config :afya_fit, AfyaFit.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
-end
+# ## Configuring the mailer
+#
+# In production you need to configure the mailer to use a different adapter.
+# Here is an example configuration for Mailgun:
+#
+#     config :afya_fit, AfyaFit.Mailer,
+#       adapter: Swoosh.Adapters.Mailgun,
+#       api_key: System.get_env("MAILGUN_API_KEY"),
+#       domain: System.get_env("MAILGUN_DOMAIN")
+#
+# Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
+# and Finch out-of-the-box. This configuration is typically done at
+# compile-time in your config/prod.exs:
+#
+#     config :swoosh, :api_client, Swoosh.ApiClient.Req
+#
+# See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.

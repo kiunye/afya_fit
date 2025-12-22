@@ -109,6 +109,7 @@ defmodule AfyaFit.Accounts do
           from t in UserToken,
             where: t.token == ^decoded_token and t.context == "session"
         )
+
         :ok
 
       :error ->
@@ -161,12 +162,12 @@ defmodule AfyaFit.Accounts do
   end
 
   defp confirm_user_multi(user) do
-        Ecto.Multi.new()
-        |> Ecto.Multi.update(:user, User.confirm_changeset(user))
-        |> Ecto.Multi.delete_all(
-          :tokens,
-          (from t in UserToken, where: t.user_id == ^user.id and t.context == "confirm")
-        )
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:user, User.confirm_changeset(user))
+    |> Ecto.Multi.delete_all(
+      :tokens,
+      from(t in UserToken, where: t.user_id == ^user.id and t.context == "confirm")
+    )
   end
 
   ## Password reset
@@ -390,5 +391,4 @@ defmodule AfyaFit.Accounts do
     email = AfyaFitWeb.UserEmail.change_email(user, url)
     AfyaFit.Mailer.deliver(email)
   end
-
 end

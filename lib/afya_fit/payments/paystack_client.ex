@@ -84,7 +84,8 @@ defmodule AfyaFit.Payments.PaystackClient do
       plan: plan_code
     }
 
-    attrs = if authorization_code, do: Map.put(attrs, :authorization, authorization_code), else: attrs
+    attrs =
+      if authorization_code, do: Map.put(attrs, :authorization, authorization_code), else: attrs
 
     Paystack.Subscription.create(attrs)
   end

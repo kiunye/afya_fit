@@ -140,11 +140,13 @@ defmodule AfyaFitWeb.API.CalendarController do
   end
 
   defp parse_date(nil), do: nil
+
   defp parse_date(date_string) when is_binary(date_string) do
     case Date.from_iso8601(date_string) do
       {:ok, date} -> DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
       {:error, _} -> nil
     end
   end
+
   defp parse_date(_), do: nil
 end

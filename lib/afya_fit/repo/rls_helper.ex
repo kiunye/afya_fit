@@ -21,6 +21,8 @@ defmodule AfyaFit.Repo.RLSHelper do
       end)
   """
 
+  alias Ecto.Adapters.SQL
+
   @doc """
   Sets the organization context for RLS policies.
 
@@ -45,7 +47,7 @@ defmodule AfyaFit.Repo.RLSHelper do
   def set_organization_id(conn_or_repo, organization_id) when is_binary(organization_id) do
     repo = get_repo(conn_or_repo)
 
-    Ecto.Adapters.SQL.query!(
+    SQL.query!(
       repo,
       "SET LOCAL app.current_organization_id = $1",
       [organization_id]
@@ -63,7 +65,7 @@ defmodule AfyaFit.Repo.RLSHelper do
   def set_user_role(conn_or_repo, role) when is_binary(role) do
     repo = get_repo(conn_or_repo)
 
-    Ecto.Adapters.SQL.query!(
+    SQL.query!(
       repo,
       "SET LOCAL app.current_user_role = $1",
       [role]
@@ -80,8 +82,8 @@ defmodule AfyaFit.Repo.RLSHelper do
   def clear_context(conn_or_repo) do
     repo = get_repo(conn_or_repo)
 
-    Ecto.Adapters.SQL.query!(repo, "RESET app.current_organization_id", [])
-    Ecto.Adapters.SQL.query!(repo, "RESET app.current_user_role", [])
+    SQL.query!(repo, "RESET app.current_organization_id", [])
+    SQL.query!(repo, "RESET app.current_user_role", [])
   end
 
   # Helper to extract repo from conn or use directly

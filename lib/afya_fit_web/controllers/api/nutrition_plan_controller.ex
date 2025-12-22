@@ -1,8 +1,7 @@
 defmodule AfyaFitWeb.API.NutritionPlanController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Nutrition
-  alias AfyaFit.Clients
+  alias AfyaFit.{Clients, Nutrition}
 
   # Authentication is handled in router pipeline
 

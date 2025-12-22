@@ -11,7 +11,13 @@
       </:subtitle>
     </.header>
 
-    <.form for={@form} id="login_form" action={~p"/users/log_in"} phx-update="ignore" class="mt-8 space-y-6">
+    <.form
+      for={@form}
+      id="login_form"
+      action={~p"/users/log_in"}
+      phx-update="ignore"
+      class="mt-8 space-y-6"
+    >
       <.input field={@form[:email]} type="email" label="Email" required />
       <.input field={@form[:password]} type="password" label="Password" required />
 

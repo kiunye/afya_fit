@@ -46,7 +46,17 @@ defmodule AfyaFit.Accounts.User do
   """
   def registration_changeset(user, attrs, opts \\ []) do
     user
-    |> cast(attrs, [:email, :password, :role, :first_name, :last_name, :phone, :avatar_url, :timezone, :organization_id])
+    |> cast(attrs, [
+      :email,
+      :password,
+      :role,
+      :first_name,
+      :last_name,
+      :phone,
+      :avatar_url,
+      :timezone,
+      :organization_id
+    ])
     |> validate_email()
     |> validate_password(opts)
     |> validate_required([:email, :role, :first_name, :last_name, :organization_id])

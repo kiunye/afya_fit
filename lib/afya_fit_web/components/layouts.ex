@@ -35,7 +35,9 @@ defmodule AfyaFitWeb.Layouts do
 
   def app(assigns) do
     user = if assigns.current_scope, do: assigns.current_scope.user, else: nil
-    organization = if user && Ecto.assoc_loaded?(user.organization), do: user.organization, else: nil
+
+    organization =
+      if user && Ecto.assoc_loaded?(user.organization), do: user.organization, else: nil
 
     if user do
       authenticated_layout(assigns, user, organization)
@@ -45,6 +47,7 @@ defmodule AfyaFitWeb.Layouts do
   end
 
   defp get_logo_url(nil), do: nil
+
   defp get_logo_url(organization) do
     if organization.branding_config && is_map(organization.branding_config) do
       Map.get(organization.branding_config, "logo_url")
@@ -97,8 +100,8 @@ defmodule AfyaFitWeb.Layouts do
               <.icon name="hero-x-mark" class="w-5 h-5" />
             </button>
           </div>
-
-          <!-- Navigation Menu -->
+          
+    <!-- Navigation Menu -->
           <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             <%= if @user.role == "trainer" do %>
               <.nav_link navigate={~p"/trainer/dashboard"} label="Dashboard" icon="hero-home" />
@@ -111,13 +114,17 @@ defmodule AfyaFitWeb.Layouts do
             <% end %>
             <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
               <%= if @user.role == "trainer" do %>
-                <.nav_link navigate={~p"/trainer/subscription"} label="Subscription" icon="hero-credit-card" />
+                <.nav_link
+                  navigate={~p"/trainer/subscription"}
+                  label="Subscription"
+                  icon="hero-credit-card"
+                />
               <% end %>
               <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
             </div>
           </nav>
-
-          <!-- User Profile Footer -->
+          
+    <!-- User Profile Footer -->
           <div class="p-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-3 mb-3">
               <%= if @user.avatar_url do %>
@@ -145,15 +152,14 @@ defmodule AfyaFitWeb.Layouts do
                 type="submit"
                 class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
               >
-                <.icon name="hero-arrow-right-on-rectangle" class="w-4 h-4" />
-                Sign out
+                <.icon name="hero-arrow-right-on-rectangle" class="w-4 h-4" /> Sign out
               </button>
             </form>
           </div>
         </div>
       </aside>
-
-      <!-- Main Content Area -->
+      
+    <!-- Main Content Area -->
       <div class="lg:pl-64">
         <!-- Top Bar -->
         <header class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
@@ -175,8 +181,8 @@ defmodule AfyaFitWeb.Layouts do
             </div>
           </div>
         </header>
-
-        <!-- Page Content -->
+        
+    <!-- Page Content -->
         <main class="py-8">
           <div class="px-4 sm:px-6 lg:px-8">
             {render_slot(@inner_block)}
@@ -226,8 +232,8 @@ defmodule AfyaFitWeb.Layouts do
           </div>
         </div>
       </header>
-
-      <!-- Main Content -->
+      
+    <!-- Main Content -->
       <main class="flex-1">
         {render_slot(@inner_block)}
       </main>
@@ -248,8 +254,8 @@ defmodule AfyaFitWeb.Layouts do
       href={@navigate}
       class={[
         "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-        @active &&
-          "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400" ||
+        (@active &&
+           "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400") ||
           "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       ]}
     >

@@ -138,7 +138,10 @@ defmodule AfyaFitWeb.UserLive.Register do
     }
 
     Ecto.Multi.new()
-    |> Ecto.Multi.insert(:organization, Organizations.Organization.changeset(%Organizations.Organization{}, org_attrs))
+    |> Ecto.Multi.insert(
+      :organization,
+      Organizations.Organization.changeset(%Organizations.Organization{}, org_attrs)
+    )
     |> Ecto.Multi.insert(:user, fn %{organization: org} ->
       Accounts.User.registration_changeset(
         %Accounts.User{},

@@ -48,12 +48,10 @@ defmodule AfyaFitWeb.TrainerLive.Subscription do
                   {format_plan_type(@subscription.plan_type)}
                 </p>
               </div>
-              <span
-                class={[
-                  "px-3 py-1 rounded-full text-sm font-medium",
-                  status_color(@subscription.status)
-                ]}
-              >
+              <span class={[
+                "px-3 py-1 rounded-full text-sm font-medium",
+                status_color(@subscription.status)
+              ]}>
                 {String.capitalize(@subscription.status)}
               </span>
             </div>
@@ -62,7 +60,10 @@ defmodule AfyaFitWeb.TrainerLive.Subscription do
               <div>
                 <p class="text-sm text-gray-500 dark:text-gray-400">Current Period</p>
                 <p class="text-lg font-medium text-gray-900 dark:text-white">
-                  {Calendar.strftime(@subscription.current_period_start, "%B %d, %Y")} - {Calendar.strftime(@subscription.current_period_end, "%B %d, %Y")}
+                  {Calendar.strftime(@subscription.current_period_start, "%B %d, %Y")} - {Calendar.strftime(
+                    @subscription.current_period_end,
+                    "%B %d, %Y"
+                  )}
                 </p>
               </div>
               <%= if @subscription.cancel_at_period_end do %>
@@ -84,8 +85,8 @@ defmodule AfyaFitWeb.TrainerLive.Subscription do
               </button>
             <% end %>
           </div>
-
-          <!-- Invoices -->
+          
+    <!-- Invoices -->
           <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Invoices</h2>
             <%= if Enum.empty?(@invoices) do %>
@@ -119,12 +120,10 @@ defmodule AfyaFitWeb.TrainerLive.Subscription do
                           {format_amount(invoice.amount)} {invoice.currency}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                          <span
-                            class={[
-                              "px-2 py-1 rounded-full text-xs font-medium",
-                              invoice_status_color(invoice.status)
-                            ]}
-                          >
+                          <span class={[
+                            "px-2 py-1 rounded-full text-xs font-medium",
+                            invoice_status_color(invoice.status)
+                          ]}>
                             {String.capitalize(invoice.status)}
                           </span>
                         </td>
@@ -188,16 +187,30 @@ defmodule AfyaFitWeb.TrainerLive.Subscription do
   defp format_plan_type("enterprise"), do: "Enterprise Plan"
   defp format_plan_type(_), do: "Unknown Plan"
 
-  defp status_color("active"), do: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+  defp status_color("active"),
+    do: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+
   defp status_color("cancelled"), do: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-  defp status_color("expired"), do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
-  defp status_color("past_due"), do: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+
+  defp status_color("expired"),
+    do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+
+  defp status_color("past_due"),
+    do: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+
   defp status_color(_), do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
 
-  defp invoice_status_color("paid"), do: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-  defp invoice_status_color("pending"), do: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-  defp invoice_status_color("failed"), do: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-  defp invoice_status_color(_), do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+  defp invoice_status_color("paid"),
+    do: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+
+  defp invoice_status_color("pending"),
+    do: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+
+  defp invoice_status_color("failed"),
+    do: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+
+  defp invoice_status_color(_),
+    do: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
 
   defp format_amount(%Decimal{} = amount) do
     Decimal.to_float(amount) |> :erlang.float_to_binary(decimals: 2)

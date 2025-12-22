@@ -51,5 +51,3 @@ defmodule AfyaFitWeb.UserLive.ForgotPassword do
      |> assign(form: to_form(%{}, as: "user"))}
   end
 end
-
-
