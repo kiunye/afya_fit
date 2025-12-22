@@ -48,4 +48,3 @@ npm-debug.log
 
 # Local-only docs (Postman test plans, notes, etc.)
 /docs/*.local.md
-afya_fit/*
