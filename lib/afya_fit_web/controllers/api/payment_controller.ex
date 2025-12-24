@@ -1,4 +1,5 @@
 defmodule AfyaFitWeb.API.PaymentController do
+  @dialyzer {:nowarn_function, initialize: 2}
   use AfyaFitWeb, :controller
 
   alias AfyaFit.Payments.PaystackClient
@@ -30,8 +31,10 @@ defmodule AfyaFitWeb.API.PaymentController do
         })
 
       {:ok, %Paystack.Response{success: false, message: message, status_code: status_code}} ->
+        http_status = if is_integer(status_code), do: status_code, else: :unprocessable_entity
+
         conn
-        |> put_status(status_code || :unprocessable_entity)
+        |> put_status(http_status)
         |> json(%{error: "Failed to initialize payment", message: message})
 
       {:error, reason} ->

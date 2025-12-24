@@ -27,6 +27,26 @@ defmodule AfyaFit.Accounts.User do
     timestamps(type: :utc_datetime)
   end
 
+  @type t :: %__MODULE__{
+          id: binary(),
+          email: String.t(),
+          password: String.t() | nil,
+          password_hash: String.t(),
+          role: String.t(),
+          first_name: String.t() | nil,
+          last_name: String.t() | nil,
+          phone: String.t() | nil,
+          avatar_url: String.t() | nil,
+          timezone: String.t(),
+          email_verified: boolean(),
+          email_verified_at: DateTime.t() | nil,
+          last_login_at: DateTime.t() | nil,
+          deleted_at: DateTime.t() | nil,
+          organization_id: binary(),
+          inserted_at: DateTime.t(),
+          updated_at: DateTime.t()
+        }
+
   @doc """
   A user changeset for registration.
 

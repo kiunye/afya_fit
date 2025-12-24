@@ -1,8 +1,8 @@
 defmodule AfyaFitWeb.API.ClientController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Clients
   alias AfyaFit.Accounts
+  alias AfyaFit.Clients
 
   # Authentication is handled in router pipeline
 

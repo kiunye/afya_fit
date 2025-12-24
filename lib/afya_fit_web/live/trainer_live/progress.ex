@@ -149,7 +149,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
           </div>
         </div>
       </div>
-
+      
     <!-- Analytics Summary -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
@@ -200,7 +200,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
           </div>
         <% end %>
       </div>
-
+      
     <!-- Progress Entries List -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">

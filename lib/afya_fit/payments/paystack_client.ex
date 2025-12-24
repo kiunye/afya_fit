@@ -27,14 +27,18 @@ defmodule AfyaFit.Payments.PaystackClient do
   Initializes a payment transaction.
 
   Returns `{:ok, Paystack.Response{}}` with authorization_url, access_code, and reference.
+
+  Amount should be in Kenyan Shillings (KES). Paystack requires amounts in cents
+  (smallest currency unit), so we multiply by 100 to convert shillings to cents.
   """
   def initialize_transaction(email, amount, reference \\ nil, metadata \\ %{}) do
-    # Amount should be in kobo/cents (smallest currency unit)
-    amount_kobo = if is_integer(amount), do: amount, else: trunc(amount * 100)
+    # Paystack requires amounts in cents (100 cents = 1 KES shilling)
+    amount_cents = if is_integer(amount), do: amount * 100, else: trunc(amount * 100)
 
     attrs = %{
       email: email,
-      amount: Integer.to_string(amount_kobo),
+      amount: Integer.to_string(amount_cents),
+      currency: "KES",
       metadata: metadata
     }
 
@@ -56,14 +60,17 @@ defmodule AfyaFit.Payments.PaystackClient do
   Creates a subscription plan.
 
   Returns `{:ok, Paystack.Response{}}` on success.
+
+  Amount should be in Kenyan Shillings (KES). Paystack requires amounts in cents
+  (smallest currency unit), so we multiply by 100 to convert shillings to cents.
   """
-  def create_plan(name, amount, interval, currency \\ "NGN", description \\ nil) do
-    # Amount should be in kobo/cents
-    amount_kobo = if is_integer(amount), do: amount, else: trunc(amount * 100)
+  def create_plan(name, amount, interval, currency \\ "KES", description \\ nil) do
+    # Paystack requires amounts in cents (100 cents = 1 KES shilling)
+    amount_cents = if is_integer(amount), do: amount * 100, else: trunc(amount * 100)
 
     attrs = %{
       name: name,
-      amount: Integer.to_string(amount_kobo),
+      amount: Integer.to_string(amount_cents),
       interval: interval,
       currency: currency
     }

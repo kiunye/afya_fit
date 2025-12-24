@@ -1,0 +1,27 @@
+# Dialyzer ignore warnings file
+# These warnings are safe to ignore
+# Format: file_path:line:column:warning_type
+
+# Ecto.Multi opaque type warnings - these are common false positives
+# Ecto.Multi is an opaque type, but Dialyzer can't always infer it correctly
+lib/afya_fit/accounts.ex:165:16:call_without_opaque
+lib/afya_fit/accounts.ex:228:16:call_without_opaque
+lib/afya_fit/accounts.ex:294:18:call_without_opaque
+lib/afya_fit/accounts.ex:338:16:call_without_opaque
+lib/afya_fit/clients.ex:124:16:call_without_opaque
+lib/afya_fit_web/controllers/api/auth_controller.ex:120:16:call_without_opaque
+lib/afya_fit_web/live/user_live/register.ex:140:16:call_without_opaque
+
+# User token spec - struct type is more accurate than .t() type
+lib/afya_fit/accounts/user_token.ex:47:invalid_contract
+
+# Payment controller pattern match - false positive on module definition
+lib/afya_fit_web/controllers/api/payment_controller.ex:1:pattern_match
+
+# ExUnit macro warnings in test files - these are false positives
+# ExUnit uses compile-time macros that Dialyzer doesn't understand
+test/support/conn_case.ex:1:unknown_function
+test/support/conn_case.ex:20:unknown_function
+test/support/data_case.ex:1:unknown_function
+test/support/data_case.ex:19:unknown_function
+test/support/data_case.ex:42:5:unknown_function

@@ -11,7 +11,7 @@ defmodule AfyaFit.Billing.Invoice do
 
     field :invoice_number, :string
     field :amount, :decimal
-    field :currency, :string, default: "NGN"
+    field :currency, :string, default: "KES"
     field :status, :string, default: "pending"
     field :paystack_invoice_code, :string
     field :due_date, :date

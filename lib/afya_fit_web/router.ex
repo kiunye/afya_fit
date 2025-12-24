@@ -153,7 +153,6 @@ defmodule AfyaFitWeb.Router do
     get "/clients/:client_id/nutrition", NutritionPlanController, :client_nutrition
 
     # Progress Tracking
-    get "/clients/:client_id/progress", ProgressController, :index
     post "/clients/:client_id/progress", ProgressController, :create
     get "/progress/:id", ProgressController, :show
     put "/progress/:id", ProgressController, :update

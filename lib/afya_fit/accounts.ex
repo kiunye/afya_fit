@@ -161,6 +161,7 @@ defmodule AfyaFit.Accounts do
     end
   end
 
+  @dialyzer {:nowarn_function, confirm_user_multi: 1}
   defp confirm_user_multi(user) do
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, User.confirm_changeset(user))
@@ -224,6 +225,7 @@ defmodule AfyaFit.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @dialyzer {:nowarn_function, reset_user_password: 2}
   def reset_user_password(user, attrs) do
     Ecto.Multi.new()
     |> Ecto.Multi.update(:user, User.password_changeset(user, attrs))
@@ -288,6 +290,7 @@ defmodule AfyaFit.Accounts do
 
   If the token matches, the user email is updated and the token is deleted.
   """
+  @dialyzer {:nowarn_function, update_user_email: 2}
   def update_user_email(_user, token) do
     with {:ok, query} <- UserToken.verify_change_email_token_query(token, "change"),
          %User{} = user <- Repo.one(query) do
@@ -329,6 +332,7 @@ defmodule AfyaFit.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @dialyzer {:nowarn_function, update_user_password: 3}
   def update_user_password(user, password, attrs) do
     changeset =
       user

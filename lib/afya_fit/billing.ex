@@ -132,12 +132,24 @@ defmodule AfyaFit.Billing do
 
   @doc """
   Creates an invoice from Paystack transaction.
+
+  Paystack returns amounts in cents (smallest currency unit for KES).
+  We divide by 100 to convert cents back to shillings for storage.
   """
   def create_invoice_from_transaction(subscription_id, transaction_data) do
     invoice_number = generate_invoice_number()
-    # Paystack amounts are in kobo/cents
-    amount = Decimal.new(transaction_data["amount"] / 100)
-    currency = transaction_data["currency"] || "NGN"
+    # Paystack amounts are in cents (100 cents = 1 KES shilling)
+    amount_cents = transaction_data["amount"]
+
+    amount =
+      case amount_cents do
+        amount when is_integer(amount) -> Decimal.new(amount) |> Decimal.div(100)
+        amount when is_float(amount) -> Decimal.from_float(amount / 100)
+        amount when is_binary(amount) -> Decimal.new(amount) |> Decimal.div(100)
+        _ -> Decimal.new(0)
+      end
+
+    currency = transaction_data["currency"] || "KES"
 
     attrs = %{
       subscription_id: subscription_id,

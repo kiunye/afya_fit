@@ -1,8 +1,8 @@
 defmodule AfyaFitWeb.TrainerLive.Clients do
   use AfyaFitWeb, :live_view
 
-  alias AfyaFit.Clients
   alias AfyaFit.Accounts.User
+  alias AfyaFit.Clients
 
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user

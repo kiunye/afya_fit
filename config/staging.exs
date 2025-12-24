@@ -8,8 +8,7 @@ config :logger, level: :info
 
 # Staging database configuration
 # Will be overridden by runtime.exs with environment variables or secrets
-config :afya_fit, AfyaFit.Repo,
-  pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+config :afya_fit, AfyaFit.Repo, pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
 
 # Staging endpoint configuration
 config :afya_fit, AfyaFitWeb.Endpoint,

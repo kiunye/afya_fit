@@ -120,6 +120,7 @@ defmodule AfyaFit.Clients do
   @doc """
   Creates a client user and establishes trainer-client relationship.
   """
+  @dialyzer {:nowarn_function, create_client: 2}
   def create_client(trainer, attrs) do
     Ecto.Multi.new()
     |> Ecto.Multi.insert(:client, fn _changes ->

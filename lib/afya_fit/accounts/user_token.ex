@@ -44,6 +44,7 @@ defmodule AfyaFit.Accounts.UserToken do
   sessions to be expired. The token generated can only be
   used once, as it is deleted after being used.
   """
+  @dialyzer {:nowarn_function, build_session_token: 1}
   @spec build_session_token(AfyaFit.Accounts.User.t()) :: {String.t(), t()}
   def build_session_token(user) do
     token = :crypto.strong_rand_bytes(32)

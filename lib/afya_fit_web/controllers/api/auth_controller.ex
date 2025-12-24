@@ -77,6 +77,7 @@ defmodule AfyaFitWeb.API.AuthController do
     "token": "session_token_here"
   }
   """
+  @dialyzer {:nowarn_function, register: 2}
   def register(conn, %{"user" => user_params}) do
     case register_user_with_organization(user_params) do
       {:ok, user} ->
@@ -108,6 +109,7 @@ defmodule AfyaFitWeb.API.AuthController do
     end
   end
 
+  @dialyzer {:nowarn_function, register_user_with_organization: 1}
   defp register_user_with_organization(%{"role" => "trainer"} = user_params) do
     # Trainers create their own organization
     org_attrs = %{

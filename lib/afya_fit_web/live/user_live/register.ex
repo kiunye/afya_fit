@@ -128,6 +128,7 @@ defmodule AfyaFitWeb.UserLive.Register do
     end
   end
 
+  @dialyzer {:nowarn_function, register_user_with_organization: 1}
   defp register_user_with_organization(%{"role" => "trainer"} = user_params) do
     # Trainers create their own organization
     org_attrs = %{

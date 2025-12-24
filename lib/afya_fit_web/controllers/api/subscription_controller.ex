@@ -54,17 +54,11 @@ defmodule AfyaFitWeb.API.SubscriptionController do
           }
         })
 
-      {:error, changeset} ->
+      {:error, error} ->
         conn
         |> put_status(:unprocessable_entity)
         |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: changeset)
-
-      {:error, message} when is_binary(message) ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: %{errors: [message]})
+        |> render(:"422", changeset: format_error(error))
     end
   end
 
@@ -158,4 +152,8 @@ defmodule AfyaFitWeb.API.SubscriptionController do
         })
     end
   end
+
+  defp format_error(%Ecto.Changeset{} = changeset), do: changeset
+  defp format_error(message) when is_binary(message), do: %{errors: [message]}
+  defp format_error(error), do: %{errors: [inspect(error)]}
 end
