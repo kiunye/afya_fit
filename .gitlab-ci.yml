@@ -100,7 +100,7 @@ build:release:
 
 build:docker:
   stage: build
-  image: docker:24-alpine
+  image: docker:24
   services: [docker:24-dind]
   before_script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
