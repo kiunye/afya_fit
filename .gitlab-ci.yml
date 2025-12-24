@@ -11,6 +11,7 @@ variables:
   POSTGRES_PASSWORD: postgres
   POSTGRES_HOST: postgres
   MIX_ENV: test
+  DB_HOST: postgres 
   SECRET_DETECTION_ENABLED: "true"
 
 cache:
