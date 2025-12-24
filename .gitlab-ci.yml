@@ -212,10 +212,3 @@ deploy:production:
 # Security scanning
 include:
   - template: Security/Secret-Detection.gitlab-ci.yml
-
-secret_detection:
-  stage: secret-detection
-  only:
-    - merge_requests
-    - main
-    - develop
