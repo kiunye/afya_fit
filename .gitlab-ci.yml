@@ -21,7 +21,7 @@ cache:
 
 .base_test:
   &base_test
-  image: hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine
+  image: hexpm/elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}-alpine
   before_script:
     - apk add --no-cache git build-base
     - mix local.hex --force
@@ -81,7 +81,7 @@ test:unit:
   only: *branches
 
 build:release:
-  image: hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine
+  image: hexpm/elixir:${ELIXIR_VERSION}-otp-${OTP_VERSION}-alpine
   stage: build
   before_script:
     - apk add --no-cache git build-base
