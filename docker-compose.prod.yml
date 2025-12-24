@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: afyafit_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
+    secrets:
+      - postgres_user
+      - postgres_password
+      - postgres_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_db)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - afyafit_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: afyafit_redis_prod
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - afyafit_network
+
+  app:
+    image: ${CI_REGISTRY_IMAGE:-afyafit}:${CI_COMMIT_REF_SLUG:-latest}
+    container_name: afyafit_app_prod
+    restart: unless-stopped
+    environment:
+      PHX_SERVER: "true"
+      PHX_HOST: ${PHX_HOST:-afyafit.com}
+      PORT: "4000"
+      DATABASE_URL_FILE: /run/secrets/database_url
+      SECRET_KEY_BASE_FILE: /run/secrets/secret_key_base
+      PAYSTACK_SECRET_KEY_FILE: /run/secrets/paystack_secret_key
+      POOL_SIZE: ${POOL_SIZE:-10}
+    secrets:
+      - database_url
+      - secret_key_base
+      - paystack_secret_key
+    ports:
+      - "${PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+    networks:
+      - afyafit_network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+secrets:
+  postgres_user:
+    file: ./secrets/prod/postgres_user.txt
+  postgres_password:
+    file: ./secrets/prod/postgres_password.txt
+  postgres_db:
+    file: ./secrets/prod/postgres_db.txt
+  database_url:
+    file: ./secrets/prod/database_url.txt
+  secret_key_base:
+    file: ./secrets/prod/secret_key_base.txt
+  paystack_secret_key:
+    file: ./secrets/prod/paystack_secret_key.txt
+
+networks:
+  afyafit_network:
+    driver: bridge
+

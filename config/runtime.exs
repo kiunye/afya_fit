@@ -98,7 +98,7 @@ if config_env() in [:dev, :test] do
   config :paystack, secret_key: paystack_secret_key
 end
 
-if config_env() == :prod do
+if config_env() in [:prod, :staging] do
   # Read from Docker secrets first, then environment variables
   database_url =
     cond do

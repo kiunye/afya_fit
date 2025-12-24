@@ -1,0 +1,100 @@
+# Staging environment docker-compose
+# Usage: docker-compose -f docker-compose.staging.yml up -d
+# This is similar to production but with staging-specific settings
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: afyafit_postgres_staging
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER_FILE: /run/secrets/postgres_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      POSTGRES_DB_FILE: /run/secrets/postgres_db
+    secrets:
+      - postgres_user
+      - postgres_password
+      - postgres_db
+    volumes:
+      - postgres_data_staging:/var/lib/postgresql/data
+      - ./backups:/backups:rw
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$(cat /run/secrets/postgres_user) -d $$(cat /run/secrets/postgres_db)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - afyafit_network_staging
+
+  redis:
+    image: redis:7-alpine
+    container_name: afyafit_redis_staging
+    restart: unless-stopped
+    volumes:
+      - redis_data_staging:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - afyafit_network_staging
+
+  app:
+    image: ${CI_REGISTRY_IMAGE:-afyafit}:${CI_COMMIT_REF_SLUG:-latest}
+    container_name: afyafit_app_staging
+    restart: unless-stopped
+    environment:
+      PHX_SERVER: "true"
+      PHX_HOST: ${PHX_HOST:-staging.afyafit.com}
+      PORT: "4000"
+      MIX_ENV: "staging"
+      DATABASE_URL_FILE: /run/secrets/database_url
+      SECRET_KEY_BASE_FILE: /run/secrets/secret_key_base
+      PAYSTACK_SECRET_KEY_FILE: /run/secrets/paystack_secret_key
+      POOL_SIZE: ${POOL_SIZE:-10}
+    secrets:
+      - database_url
+      - secret_key_base
+      - paystack_secret_key
+    ports:
+      - "${PORT:-4001}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/"]
+      interval: 30s
+      timeout: 3s
+      start_period: 40s
+      retries: 3
+    networks:
+      - afyafit_network_staging
+
+volumes:
+  postgres_data_staging:
+    driver: local
+  redis_data_staging:
+    driver: local
+
+secrets:
+  postgres_user:
+    file: ./secrets/staging/postgres_user.txt
+  postgres_password:
+    file: ./secrets/staging/postgres_password.txt
+  postgres_db:
+    file: ./secrets/staging/postgres_db.txt
+  database_url:
+    file: ./secrets/staging/database_url.txt
+  secret_key_base:
+    file: ./secrets/staging/secret_key_base.txt
+  paystack_secret_key:
+    file: ./secrets/staging/paystack_secret_key.txt
+
+networks:
+  afyafit_network_staging:
+    driver: bridge
+
