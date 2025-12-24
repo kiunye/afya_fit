@@ -1,5 +1,5 @@
 # Build stage
-FROM hexpm/elixir:1.18.4-erlang-28.0.2-ubuntu-jammy-20231004 AS builder
+FROM hexpm/elixir:1.15-erlang-26.0.1-alpine-3.23.2 AS builder
 
 # Install build dependencies
 RUN apt-get update -qq && \
