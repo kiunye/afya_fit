@@ -1,26 +1,27 @@
 # ----------  build stage  ----------
   FROM hexpm/elixir:1.15-erlang-26.0.1-alpine-3.23.2 AS builder
 
-  # alpine packages (NOT apt-get)
   RUN apk add --no-cache git build-base nodejs npm
   
   WORKDIR /app
   
-  # install elixir tools
-  RUN mix local.hex --force && \
-      mix local.rebar --force
+  # elixir tools
+  RUN mix local.hex --force && mix local.rebar --force
   
-  # dependencies
+  # copy dependency files first (layer caching)
   COPY mix.exs mix.lock ./
   COPY config config
   RUN mix deps.get --only prod && mix deps.compile
   
-  # source & assets
+  # copy source **including assets/**
   COPY . .
+  
+  # install npm packages (required before mix can call tailwind/esbuild)
+  RUN cd assets && npm ci
+  
+  # now build assets & compile
   RUN mix assets.deploy
   RUN mix compile
-  
-  # release
   RUN mix release
   
   # ----------  runtime stage  ----------
