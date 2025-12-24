@@ -61,7 +61,13 @@ test:unit:
   services: [postgres:15-alpine]
   before_script:
     - !reference [.base_test, before_script]
-    - sleep 5
+    - |
+      apk add --no-cache postgresql-client
+      until pg_isready -h postgres -U postgres; do
+        echo "Waiting for PostgreSQL to be ready..."
+        sleep 2
+      done
+      echo "PostgreSQL is ready!"
     - mix ecto.create --quiet || mix ecto.create
     - mix ecto.migrate --quiet || mix ecto.migrate
   script: mix test
