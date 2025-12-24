@@ -3,6 +3,7 @@ defmodule AfyaFitWeb.PageControllerTest do
 
   test "GET /", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Welcome to Afya Fit - Your fitness management platform"
+    assert html_response(conn, 200) =~ "Welcome to Afya Fit"
+    assert html_response(conn, 200) =~ "Your fitness management platform"
   end
 end

@@ -14,6 +14,12 @@ variables:
   DB_HOST: postgres 
   SECRET_DETECTION_ENABLED: "true"
 
+artifacts:
+  reports:
+    junit: test-results.xml
+  paths: [test-results.xml, coverage/]
+  expire_in: 1 week
+
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
