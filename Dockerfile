@@ -2,24 +2,24 @@
   FROM hexpm/elixir:1.15-erlang-26.0.1-alpine-3.23.2 AS builder
 
   RUN apk add --no-cache git build-base nodejs npm
-  
   WORKDIR /app
   
-  # elixir tools
+  # elixir tooling
   RUN mix local.hex --force && mix local.rebar --force
   
-  # copy dependency files first (layer caching)
+  # 1. elixir deps (layer cache)
   COPY mix.exs mix.lock ./
   COPY config config
   RUN mix deps.get --only prod && mix deps.compile
   
-  # copy source **including assets/**
+  # 2. copy *entire* project – guarantees package-lock.json is present
   COPY . .
   
-  # install npm packages (required before mix can call tailwind/esbuild)
-  RUN cd assets && npm ci
+  # 3. install npm packages (with visible log on failure)
+  RUN cd assets && \
+      (npm ci --verbose || (cat /root/.npm/_logs/*-debug-*.log && exit 1))
   
-  # now build assets & compile
+  # 4. finish build
   RUN mix assets.deploy
   RUN mix compile
   RUN mix release
