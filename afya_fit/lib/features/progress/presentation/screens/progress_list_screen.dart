@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:afya_fit/features/progress/providers/progress_provider.dart';
+import 'package:afya_fit/features/progress/presentation/screens/progress_entry_form_screen.dart';
+import 'package:afya_fit/features/auth/providers/user_provider.dart';
 import 'package:intl/intl.dart';
 
 class ProgressListScreen extends HookConsumerWidget {
@@ -13,7 +15,8 @@ class ProgressListScreen extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final progressAsync = ref.watch(progressEntriesProvider(clientId));
+    // Use empty string for clientId if not provided (for customers viewing their own progress)
+    final progressAsync = ref.watch(progressEntriesProvider(clientId.isEmpty ? '' : clientId));
 
     return Scaffold(
       appBar: AppBar(
@@ -38,7 +41,9 @@ class ProgressListScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Start tracking your client\'s progress',
+                    clientId.isEmpty 
+                        ? 'Start tracking your progress'
+                        : 'Start tracking your client\'s progress',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -79,15 +84,31 @@ class ProgressListScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Add progress entry feature coming soon'),
-            ),
+      floatingActionButton: Builder(
+        builder: (context) {
+          final userAsync = ref.watch(currentUserProvider);
+          return userAsync.when(
+            data: (user) {
+              // Only show FAB for clients (customers) viewing their own progress
+              if (clientId.isEmpty && user?.role == 'client') {
+                return FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ProgressEntryFormScreen(),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.add),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }

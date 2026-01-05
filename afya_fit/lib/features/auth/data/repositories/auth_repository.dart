@@ -37,7 +37,25 @@ class AuthRepository {
   }
 
   Future<UserModel?> getCurrentUser() async {
-    // TODO: Implement get current user endpoint
-    return null;
+    try {
+      final response = await _apiClient.getCurrentUser();
+      
+      // The API returns: { "data": { ...user... } }
+      Map<String, dynamic>? userData;
+      
+      if (response.containsKey('data')) {
+        userData = response['data'] as Map<String, dynamic>?;
+      } else if (response.containsKey('user')) {
+        userData = response['user'] as Map<String, dynamic>?;
+      }
+      
+      if (userData != null) {
+        return UserModel.fromJson(userData);
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 }

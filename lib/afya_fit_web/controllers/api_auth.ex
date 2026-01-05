@@ -80,4 +80,20 @@ defmodule AfyaFitWeb.APIAuth do
       |> halt()
     end
   end
+
+  @doc """
+  Requires that the current user is an admin. Use this in pipelines.
+  """
+  def require_admin(conn, _opts) do
+    user = conn.assigns[:current_user]
+
+    if user && user.role == "admin" do
+      conn
+    else
+      conn
+      |> put_status(:forbidden)
+      |> json(%{error: "Admin access required"})
+      |> halt()
+    end
+  end
 end

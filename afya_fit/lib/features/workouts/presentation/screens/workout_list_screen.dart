@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:afya_fit/features/workouts/providers/workout_provider.dart';
+import 'package:afya_fit/features/workouts/presentation/screens/workout_form_screen.dart';
+import 'package:afya_fit/features/workouts/presentation/screens/workout_detail_screen.dart';
 
 class WorkoutListScreen extends HookConsumerWidget {
   const WorkoutListScreen({super.key});
@@ -75,8 +77,11 @@ class WorkoutListScreen extends HookConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Create workout feature coming soon')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const WorkoutFormScreen(),
+            ),
           );
         },
         child: const Icon(Icons.add),
@@ -101,7 +106,12 @@ class _WorkoutCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to workout details
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => WorkoutDetailScreen(workoutId: workout['id'] as String),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

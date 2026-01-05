@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:afya_fit/features/nutrition/providers/nutrition_provider.dart';
+import 'package:afya_fit/features/nutrition/presentation/screens/nutrition_form_screen.dart';
+import 'package:afya_fit/features/nutrition/presentation/screens/nutrition_detail_screen.dart';
 
 class NutritionListScreen extends HookConsumerWidget {
   const NutritionListScreen({super.key});
@@ -75,9 +77,10 @@ class NutritionListScreen extends HookConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Create nutrition plan feature coming soon'),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const NutritionFormScreen(),
             ),
           );
         },
@@ -102,7 +105,12 @@ class _NutritionCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          // TODO: Navigate to nutrition plan details
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => NutritionDetailScreen(nutritionPlanId: plan['id'] as String),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

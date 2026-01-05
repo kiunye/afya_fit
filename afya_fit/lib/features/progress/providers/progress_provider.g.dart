@@ -114,7 +114,7 @@ final class ProgressEntriesProvider
   }
 }
 
-String _$progressEntriesHash() => r'27b1ac0cbb7a8bb24682729bef3ad1aeca3354be';
+String _$progressEntriesHash() => r'e710746bd5341cb878d828f541f9f174738acf11';
 
 final class ProgressEntriesFamily extends $Family
     with

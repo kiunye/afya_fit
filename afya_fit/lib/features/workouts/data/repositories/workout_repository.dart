@@ -11,6 +11,12 @@ class WorkoutRepository {
     return List<Map<String, dynamic>>.from(response['data'] ?? []);
   }
 
+  // Get current user's assigned workouts (for clients)
+  Future<List<Map<String, dynamic>>> getMyWorkouts() async {
+    final response = await _apiClient.get(ApiConstants.meWorkouts);
+    return List<Map<String, dynamic>>.from(response['data'] ?? []);
+  }
+
   Future<Map<String, dynamic>> getWorkoutPlan(String id) async {
     return await _apiClient.get(ApiConstants.workoutPlan(id));
   }

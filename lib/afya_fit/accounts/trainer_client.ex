@@ -23,7 +23,8 @@ defmodule AfyaFit.Accounts.TrainerClient do
     |> validate_required([:trainer_id, :client_id, :status, :started_at])
     |> validate_inclusion(:status, ["active", "paused", "archived"])
     |> unique_constraint([:trainer_id, :client_id])
-    |> check_constraint(:trainer_cannot_be_client,
+    |> check_constraint(:trainer_id,
+      name: :trainer_cannot_be_client,
       message: "trainer and client cannot be the same"
     )
   end

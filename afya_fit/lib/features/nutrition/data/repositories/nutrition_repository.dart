@@ -11,6 +11,12 @@ class NutritionRepository {
     return List<Map<String, dynamic>>.from(response['data'] ?? []);
   }
 
+  // Get current user's assigned nutrition plans (for clients)
+  Future<List<Map<String, dynamic>>> getMyNutrition() async {
+    final response = await _apiClient.get(ApiConstants.meNutrition);
+    return List<Map<String, dynamic>>.from(response['data'] ?? []);
+  }
+
   Future<Map<String, dynamic>> getNutritionPlan(String id) async {
     return await _apiClient.get(ApiConstants.nutritionPlan(id));
   }

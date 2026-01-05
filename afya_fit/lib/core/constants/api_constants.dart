@@ -23,6 +23,7 @@ class ApiConstants {
   // API Endpoints
   static const String login = '/auth/login';
   static const String register = '/auth/register';
+  static const String me = '/auth/me';
 
   // Client endpoints
   static String clients() => '/clients';
@@ -64,4 +65,12 @@ class ApiConstants {
   static String subscriptions() => '/subscriptions';
   static String subscriptionInvoices() => '/subscriptions/invoices';
   static String paymentInitialize() => '/payments/initialize';
+
+  // Client-friendly /me/* endpoints
+  static const String meWorkouts = '/me/workouts';
+  static const String meNutrition = '/me/nutrition';
+  static const String meProgress = '/me/progress';
+  static const String meSubscription = '/me/subscription';
+  static const String meSubscriptionReminders = '/me/subscription/reminders';
+  static const String meTasks = '/me/tasks';
 }

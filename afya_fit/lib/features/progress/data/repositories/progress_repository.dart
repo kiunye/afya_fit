@@ -13,6 +13,22 @@ class ProgressRepository {
     return List<Map<String, dynamic>>.from(response['data'] ?? []);
   }
 
+  // Get current user's progress entries (for clients)
+  Future<List<Map<String, dynamic>>> getMyProgress() async {
+    final response = await _apiClient.get(ApiConstants.meProgress);
+    return List<Map<String, dynamic>>.from(response['data'] ?? []);
+  }
+
+  // Create progress entry for current user (for clients)
+  Future<Map<String, dynamic>> createMyProgressEntry(
+    Map<String, dynamic> progressData,
+  ) async {
+    return await _apiClient.post(
+      ApiConstants.meProgress,
+      body: {'progress_entry': progressData},
+    );
+  }
+
   Future<Map<String, dynamic>> getProgressEntry(String id) async {
     return await _apiClient.get(ApiConstants.progress(id));
   }

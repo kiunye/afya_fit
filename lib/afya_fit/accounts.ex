@@ -60,6 +60,15 @@ defmodule AfyaFit.Accounts do
   """
   def get_user!(id), do: Repo.get!(User, id)
 
+  @doc """
+  Lists users in an organization by role.
+  """
+  def list_organization_users(organization_id, role) do
+    User
+    |> where([u], u.organization_id == ^organization_id and u.role == ^role)
+    |> Repo.all()
+  end
+
   ## User registration
 
   @doc """

@@ -64,3 +64,7 @@ defmodule AfyaFitWeb.UserAuthController do
     |> UserAuth.log_out_user()
   end
 end
+
+
+
+

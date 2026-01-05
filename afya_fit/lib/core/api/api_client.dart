@@ -136,6 +136,11 @@ class ApiClient {
     }
   }
 
+  // Get current user
+  Future<Map<String, dynamic>> getCurrentUser() async {
+    return await get(ApiConstants.me);
+  }
+
   // Login and store token
   Future<Map<String, dynamic>> login(String email, String password) async {
     final response = await _client.post(

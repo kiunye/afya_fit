@@ -21,6 +21,10 @@ defmodule AfyaFitWeb.Router do
     plug AfyaFitWeb.APIAuth
   end
 
+  pipeline :require_admin do
+    plug AfyaFitWeb.APIAuth, :require_admin
+  end
+
   # Webhook routes (no authentication required, but should verify signature)
   pipeline :webhook do
     plug :accepts, ["json"]
@@ -90,6 +94,9 @@ defmodule AfyaFitWeb.Router do
 
       # Subscription management
       live "/trainer/subscription", TrainerLive.Subscription, :index
+
+      # Admin routes
+      live "/admin/dashboard", AdminLive.Dashboard, :index
     end
   end
 
@@ -118,6 +125,15 @@ defmodule AfyaFitWeb.Router do
 
     # Get current user
     get "/auth/me", AuthController, :show
+
+    # Client-friendly /me/* endpoints
+    get "/me/workouts", MeController, :workouts
+    get "/me/nutrition", MeController, :nutrition
+    get "/me/progress", MeController, :progress
+    post "/me/progress", MeController, :create_progress
+    get "/me/subscription", MeController, :subscription
+    put "/me/subscription/reminders", MeController, :update_subscription_reminders
+    get "/me/tasks", MeController, :tasks
 
     # Clients
     get "/clients", ClientController, :index
@@ -184,6 +200,16 @@ defmodule AfyaFitWeb.Router do
     delete "/subscriptions", SubscriptionController, :cancel
     get "/subscriptions/invoices", SubscriptionController, :invoices
     post "/payments/initialize", PaymentController, :initialize
+
+  end
+
+  # Admin routes with role check
+  scope "/api/v1/admin", AfyaFitWeb.API do
+    pipe_through [:api, :api_auth, :require_admin]
+
+    get "/trainers", AdminController, :trainers
+    get "/clients", AdminController, :clients
+    get "/subscription", AdminController, :subscription
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

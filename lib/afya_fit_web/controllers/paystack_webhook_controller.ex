@@ -52,11 +52,26 @@ defmodule AfyaFitWeb.PaystackWebhookController do
       "current_period_end" => data["current_period_end"]
     }
 
+    # Try organization subscription first
     case Billing.update_subscription_from_webhook(subscription_code, webhook_data) do
       {:ok, _subscription} ->
         conn
         |> put_status(:ok)
         |> json(%{status: "processed"})
+
+      {:error, :not_found} ->
+        # Try client subscription
+        case Billing.update_client_subscription_from_webhook(subscription_code, webhook_data) do
+          {:ok, _subscription} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "processed"})
+
+          {:error, _reason} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "error"})
+        end
 
       {:error, _reason} ->
         conn
@@ -72,11 +87,26 @@ defmodule AfyaFitWeb.PaystackWebhookController do
       "status" => "cancelled"
     }
 
+    # Try organization subscription first
     case Billing.update_subscription_from_webhook(subscription_code, webhook_data) do
       {:ok, _subscription} ->
         conn
         |> put_status(:ok)
         |> json(%{status: "processed"})
+
+      {:error, :not_found} ->
+        # Try client subscription
+        case Billing.update_client_subscription_from_webhook(subscription_code, webhook_data) do
+          {:ok, _subscription} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "processed"})
+
+          {:error, _reason} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "error"})
+        end
 
       {:error, _reason} ->
         conn
@@ -99,11 +129,26 @@ defmodule AfyaFitWeb.PaystackWebhookController do
       "status" => "past_due"
     }
 
+    # Try organization subscription first
     case Billing.update_subscription_from_webhook(subscription_code, webhook_data) do
       {:ok, _subscription} ->
         conn
         |> put_status(:ok)
         |> json(%{status: "processed"})
+
+      {:error, :not_found} ->
+        # Try client subscription
+        case Billing.update_client_subscription_from_webhook(subscription_code, webhook_data) do
+          {:ok, _subscription} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "processed"})
+
+          {:error, _reason} ->
+            conn
+            |> put_status(:ok)
+            |> json(%{status: "error"})
+        end
 
       {:error, _reason} ->
         conn

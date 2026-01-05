@@ -169,4 +169,16 @@ defmodule AfyaFit.Clients do
       %TrainerClient{status: status} -> status in ["active", "paused"]
     end
   end
+
+  @doc """
+  Gets nutrition plans assigned to a client.
+  """
+  def get_client_nutrition_plans(client_id) do
+    alias AfyaFit.Nutrition.NutritionPlan
+
+    NutritionPlan
+    |> where([np], np.client_id == ^client_id)
+    |> where([np], is_nil(np.deleted_at))
+    |> Repo.all()
+  end
 end

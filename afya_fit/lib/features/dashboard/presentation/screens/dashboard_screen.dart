@@ -311,14 +311,11 @@ class _QuickActions extends StatelessWidget {
           },
         ),
         _ActionButton(
-          label: 'Add Client',
-          icon: Icons.person_add,
+          label: 'View Clients',
+          icon: Icons.people,
           color: Colors.blue,
           onTap: () {
-            // TODO: Navigate to add client
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Add client feature coming soon')),
-            );
+            Navigator.pushNamed(context, AppRouter.clients);
           },
         ),
       ],

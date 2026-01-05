@@ -95,4 +95,81 @@ final class WorkoutPlansProvider
   }
 }
 
-String _$workoutPlansHash() => r'19a8888970696671add502167ba53f6dae3a371b';
+String _$workoutPlansHash() => r'b88e5f3b6485dcaf335c044722b0ffc58827b172';
+
+@ProviderFor(workoutPlan)
+const workoutPlanProvider = WorkoutPlanFamily._();
+
+final class WorkoutPlanProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<Map<String, dynamic>>,
+          Map<String, dynamic>,
+          FutureOr<Map<String, dynamic>>
+        >
+    with
+        $FutureModifier<Map<String, dynamic>>,
+        $FutureProvider<Map<String, dynamic>> {
+  const WorkoutPlanProvider._({
+    required WorkoutPlanFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'workoutPlanProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$workoutPlanHash();
+
+  @override
+  String toString() {
+    return r'workoutPlanProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<Map<String, dynamic>> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<Map<String, dynamic>> create(Ref ref) {
+    final argument = this.argument as String;
+    return workoutPlan(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is WorkoutPlanProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$workoutPlanHash() => r'657eb93429fb3c5132f758e3f2b08781950f518e';
+
+final class WorkoutPlanFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<Map<String, dynamic>>, String> {
+  const WorkoutPlanFamily._()
+    : super(
+        retry: null,
+        name: r'workoutPlanProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  WorkoutPlanProvider call(String id) =>
+      WorkoutPlanProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'workoutPlanProvider';
+}

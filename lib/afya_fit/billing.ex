@@ -3,7 +3,7 @@ defmodule AfyaFit.Billing do
   The Billing context.
   """
   import Ecto.Query, warn: false
-  alias AfyaFit.Billing.{Invoice, Subscription}
+  alias AfyaFit.Billing.{ClientSubscription, Invoice, Subscription}
   alias AfyaFit.Payments.PaystackClient
   alias AfyaFit.Repo
 
@@ -198,5 +198,156 @@ defmodule AfyaFit.Billing do
 
   defp generate_invoice_number do
     "INV-#{Date.utc_today() |> Date.to_string() |> String.replace("-", "")}-#{:rand.uniform(10000)}"
+  end
+
+  # Client Subscription Functions
+
+  @doc """
+  Gets client subscription for a user.
+  """
+  def get_client_subscription_by_client(client_id) do
+    Repo.get_by(ClientSubscription, client_id: client_id)
+  end
+
+  @doc """
+  Creates a client subscription with Paystack integration.
+  """
+  def create_client_subscription(client, organization, plan_type, customer_email, customer_name) do
+    # Create Paystack customer
+    case PaystackClient.create_customer(customer_email, customer_name, "") do
+      {:ok, %Paystack.Response{success: true, data: customer_data}} ->
+        customer_code = customer_data["customer_code"]
+
+        # Calculate period end based on plan type
+        now = DateTime.utc_now()
+        period_end =
+          case plan_type do
+            "monthly" -> DateTime.add(now, 30, :day)
+            "quarterly" -> DateTime.add(now, 90, :day)
+            "yearly" -> DateTime.add(now, 365, :day)
+            _ -> DateTime.add(now, 30, :day)
+          end
+
+        attrs = %{
+          client_id: client.id,
+          organization_id: organization.id,
+          plan_type: plan_type,
+          status: "active",
+          paystack_customer_code: customer_code,
+          current_period_start: now,
+          current_period_end: period_end,
+          reminder_preferences: %{
+            "enabled" => true,
+            "days_before_expiry" => [7, 3, 1]
+          }
+        }
+
+        case Repo.insert(ClientSubscription.changeset(%ClientSubscription{}, attrs)) do
+          {:ok, subscription} ->
+            {:ok, subscription}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+
+      {:ok, %Paystack.Response{success: false, message: message}} ->
+        {:error, "Paystack error: #{message}"}
+
+      {:error, reason} ->
+        {:error, "Failed to create Paystack customer: #{inspect(reason)}"}
+    end
+  end
+
+  @doc """
+  Updates client subscription from Paystack webhook.
+  """
+  def update_client_subscription_from_webhook(subscription_code, webhook_data) do
+    case Repo.get_by(ClientSubscription, paystack_subscription_code: subscription_code) do
+      nil ->
+        {:error, :not_found}
+
+      subscription ->
+        status = Map.get(webhook_data, "status", subscription.status)
+        current_period_start = parse_datetime(webhook_data["current_period_start"])
+        current_period_end = parse_datetime(webhook_data["current_period_end"])
+
+        attrs = %{
+          status: normalize_status(status),
+          paystack_subscription_code: subscription_code,
+          current_period_start: current_period_start || subscription.current_period_start,
+          current_period_end: current_period_end || subscription.current_period_end
+        }
+
+        subscription
+        |> ClientSubscription.changeset(attrs)
+        |> Repo.update()
+    end
+  end
+
+  @doc """
+  Updates client subscription reminder preferences.
+  """
+  def update_client_subscription_reminders(subscription, reminder_prefs) do
+    attrs = %{reminder_preferences: reminder_prefs}
+
+    subscription
+    |> ClientSubscription.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Cancels a client subscription.
+  """
+  def cancel_client_subscription(subscription) do
+    if subscription.paystack_subscription_code do
+      case PaystackClient.cancel_subscription(subscription.paystack_subscription_code) do
+        {:ok, %Paystack.Response{success: true}} ->
+          attrs = %{
+            status: "cancelled",
+            cancel_at_period_end: true,
+            cancelled_at: DateTime.utc_now()
+          }
+
+          subscription
+          |> ClientSubscription.changeset(attrs)
+          |> Repo.update()
+
+        _ ->
+          # Still mark as cancelled locally even if Paystack call fails
+          attrs = %{
+            status: "cancelled",
+            cancel_at_period_end: true,
+            cancelled_at: DateTime.utc_now()
+          }
+
+          subscription
+          |> ClientSubscription.changeset(attrs)
+          |> Repo.update()
+      end
+    else
+      attrs = %{
+        status: "cancelled",
+        cancel_at_period_end: true,
+        cancelled_at: DateTime.utc_now()
+      }
+
+      subscription
+      |> ClientSubscription.changeset(attrs)
+      |> Repo.update()
+    end
+  end
+
+  @doc """
+  Lists client subscriptions expiring soon (for reminder emails).
+  """
+  def list_expiring_client_subscriptions(days_ahead) do
+    cutoff_date = DateTime.add(DateTime.utc_now(), days_ahead, :day)
+
+    ClientSubscription
+    |> where([cs], cs.status == "active")
+    |> where([cs], cs.current_period_end <= ^cutoff_date)
+    |> where([cs], cs.current_period_end >= ^DateTime.utc_now())
+    |> preload([:client, :organization])
+    |> Repo.all()
   end
 end

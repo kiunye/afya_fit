@@ -24,7 +24,7 @@ class AfyaFitApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
       home: const AuthGuard(
-        child: DashboardScreen(),
+        child: DashboardScreen(), // Fallback, will be replaced by role-based routing
       ),
       onGenerateRoute: AppRouter.generateRoute,
       debugShowCheckedModeBanner: false,
