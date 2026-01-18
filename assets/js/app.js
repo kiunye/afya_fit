@@ -50,13 +50,51 @@ const SidebarHook = {
   }
 }
 
+// Particles hook for floating particle effects
+const ParticlesHook = {
+  mounted() {
+    const particles = this.el.querySelectorAll('.particle')
+    const container = this.el
+    
+    particles.forEach((particle, index) => {
+      // Random starting position
+      const startX = Math.random() * 100
+      const startY = Math.random() * 100
+      
+      // Random horizontal drift
+      const driftX = (Math.random() - 0.5) * 200
+      
+      // Random duration between 10-20 seconds
+      const duration = 10 + Math.random() * 10
+      
+      // Random delay
+      const delay = Math.random() * 5
+      
+      // Set initial position
+      particle.style.left = `${startX}%`
+      particle.style.bottom = `${startY}%`
+      
+      // Set CSS custom properties for animation
+      particle.style.setProperty('--particle-x', `${driftX}px`)
+      particle.style.setProperty('--particle-duration', `${duration}s`)
+      particle.style.setProperty('--particle-delay', `${delay}s`)
+    })
+  },
+  
+  updated() {
+    // Re-initialize particles on update
+    this.mounted()
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
   hooks: {
     ...colocatedHooks,
-    Sidebar: SidebarHook
+    Sidebar: SidebarHook,
+    Particles: ParticlesHook
   },
 })
 

@@ -37,7 +37,9 @@ defmodule AfyaFitWeb.API.MeController do
         plan.organization_id == current_user.organization_id
       end)
 
-    render(conn, :index, nutrition_plans: nutrition_plans)
+    conn
+    |> put_view(AfyaFitWeb.API.MeView)
+    |> render(:index, nutrition_plans: nutrition_plans)
   end
 
   @doc """
@@ -47,7 +49,9 @@ defmodule AfyaFitWeb.API.MeController do
     current_user = conn.assigns.current_user
     progress_entries = Tracking.list_progress_entries(current_user.id)
 
-    render(conn, :index, progress_entries: progress_entries)
+    conn
+    |> put_view(AfyaFitWeb.API.MeView)
+    |> render(:index, progress_entries: progress_entries)
   end
 
   @doc """
@@ -79,6 +83,7 @@ defmodule AfyaFitWeb.API.MeController do
       {:ok, progress_entry} ->
         conn
         |> put_status(:created)
+        |> put_view(AfyaFitWeb.API.MeView)
         |> render(:show, progress_entry: progress_entry)
 
       {:error, changeset} ->
@@ -139,7 +144,9 @@ defmodule AfyaFitWeb.API.MeController do
     current_user = conn.assigns.current_user
     tasks = AfyaFit.Tasks.list_tasks(current_user.id)
 
-    render(conn, :index, tasks: tasks)
+    conn
+    |> put_view(AfyaFitWeb.API.MeView)
+    |> render(:index, tasks: tasks)
   end
 
   defp format_client_workout(%{id: id} = cw) do

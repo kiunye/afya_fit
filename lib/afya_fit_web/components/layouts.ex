@@ -31,6 +31,8 @@ defmodule AfyaFitWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
+  attr :is_homepage, :boolean, default: false, doc: "whether this is the homepage"
+
   slot :inner_block, required: true
 
   def app(assigns) do
@@ -100,7 +102,7 @@ defmodule AfyaFitWeb.Layouts do
               <.icon name="hero-x-mark" class="w-5 h-5" />
             </button>
           </div>
-          
+
     <!-- Navigation Menu -->
           <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
             <%= if @user.role == "trainer" do %>
@@ -123,7 +125,7 @@ defmodule AfyaFitWeb.Layouts do
               <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
             </div>
           </nav>
-          
+
     <!-- User Profile Footer -->
           <div class="p-4 border-t border-gray-200 dark:border-gray-700">
             <div class="flex items-center gap-3 mb-3">
@@ -158,7 +160,7 @@ defmodule AfyaFitWeb.Layouts do
           </div>
         </div>
       </aside>
-      
+
     <!-- Main Content Area -->
       <div class="lg:pl-64">
         <!-- Top Bar -->
@@ -181,7 +183,7 @@ defmodule AfyaFitWeb.Layouts do
             </div>
           </div>
         </header>
-        
+
     <!-- Page Content -->
         <main class="py-8">
           <div class="px-4 sm:px-6 lg:px-8">
@@ -196,10 +198,20 @@ defmodule AfyaFitWeb.Layouts do
   end
 
   defp unauthenticated_layout(assigns) do
+    is_homepage = Map.get(assigns, :is_homepage, false)
+
     ~H"""
-    <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div class={[
+      "min-h-screen",
+      @is_homepage && "bg-gradient-to-br from-black via-slate-950 to-black",
+      !@is_homepage && "bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+    ]}>
       <!-- Simple Header for Unauthenticated Users -->
-      <header class="bg-white dark:bg-gray-800 shadow-sm">
+      <header class={[
+        "sticky top-0 z-50 transition-all duration-300",
+        @is_homepage && "bg-white/5 backdrop-blur-md border-b border-white/10",
+        !@is_homepage && "bg-white dark:bg-gray-800 shadow-sm"
+      ]}>
         <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div class="flex h-16 items-center justify-between">
             <a href={~p"/"} class="flex items-center gap-2">
@@ -208,21 +220,35 @@ defmodule AfyaFitWeb.Layouts do
                 alt="Afya Fit"
                 class="h-8 w-8 rounded object-contain"
               />
-              <span class="text-xl font-bold text-gray-900 dark:text-white">Afya Fit</span>
+              <span class={[
+                "text-xl font-bold",
+                @is_homepage && "text-white",
+                !@is_homepage && "text-gray-900 dark:text-white"
+              ]}>Afya Fit</span>
             </a>
             <div class="flex items-center gap-4">
-              <.theme_toggle />
+              <%= unless @is_homepage do %>
+                <.theme_toggle />
+              <% end %>
               <%= if !assigns.current_scope || !assigns.current_scope.user do %>
                 <div class="flex items-center gap-2">
                   <.link
                     navigate={~p"/users/log_in"}
-                    class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    class={[
+                      "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                      @is_homepage && "text-white hover:text-gray-200",
+                      !@is_homepage && "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                    ]}
                   >
                     Sign in
                   </.link>
                   <.link
                     navigate={~p"/users/register"}
-                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
+                    class={[
+                      "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                      @is_homepage && "text-white bg-white/10 hover:bg-white/20 border border-white/20",
+                      !@is_homepage && "text-white bg-blue-600 hover:bg-blue-700"
+                    ]}
                   >
                     Get started
                   </.link>
@@ -232,7 +258,7 @@ defmodule AfyaFitWeb.Layouts do
           </div>
         </div>
       </header>
-      
+
     <!-- Main Content -->
       <main class="flex-1">
         {render_slot(@inner_block)}
