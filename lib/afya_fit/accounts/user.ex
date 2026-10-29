@@ -201,6 +201,6 @@ defmodule AfyaFit.Accounts.User do
     |> validate_length(:email, max: 160)
     |> unsafe_validate_unique(:email, AfyaFit.Repo)
     |> unique_constraint(:email)
-    |> validate_inclusion(:role, ["trainer", "client", "admin"])
+    |> validate_inclusion(:role, ["trainer", "client", "admin", "org_admin"])
   end
 end
