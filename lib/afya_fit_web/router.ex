@@ -92,8 +92,10 @@ defmodule AfyaFitWeb.Router do
       live "/trainer/progress", TrainerLive.Progress, :index
       live "/trainer/progress/:client_id", TrainerLive.Progress, :client
 
-      # Subscription management
-      live "/trainer/subscription", TrainerLive.Subscription, :index
+      # Organization admin: team and billing
+      live "/team", TeamLive, :index
+      live "/billing", BillingLive, :index
+      live "/trainer/subscription", BillingLive, :index
 
       # Admin routes
       live "/admin/dashboard", AdminLive.Dashboard, :index
