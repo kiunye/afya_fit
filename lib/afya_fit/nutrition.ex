@@ -52,6 +52,11 @@ defmodule AfyaFit.Nutrition do
 
   def get_nutrition_plan!(id), do: Repo.get!(NutritionPlan, id)
 
+  @doc "Gets a nutrition plan with its client, or `nil`."
+  def get_nutrition_plan(id) do
+    NutritionPlan |> Repo.get(id) |> Repo.preload(:client)
+  end
+
   def create_nutrition_plan(attrs \\ %{}) do
     %NutritionPlan{}
     |> NutritionPlan.changeset(attrs)
