@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.API.MeController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Billing, Clients, Tracking, Workouts}
+  alias AfyaFit.{Authorization, Billing, Clients, Tracking, Workouts}
 
   # Authentication is handled in router pipeline
 

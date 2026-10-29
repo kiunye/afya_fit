@@ -7,8 +7,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
 
   import AfyaFitWeb.SignComponents
 
-  alias AfyaFit.{Accounts, Authorization, Clients, Tracking}
-  alias AfyaFit.Accounts.User
+  alias AfyaFit.{Authorization, Clients, Tracking}
   alias AfyaFitWeb.Access
 
   @impl true
@@ -43,7 +42,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
   defp apply_action(socket, :client, %{"client_id" => client_id}) do
     scope = socket.assigns.current_scope
 
-    case fetch_client(scope, client_id) do
+    case Clients.fetch_for(scope, :read, client_id) do
       {:ok, client} ->
         entries = Tracking.list_progress_entries(client.id)
 
@@ -55,21 +54,8 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
         |> assign(:empty?, entries == [])
         |> stream(:entries, Enum.sort_by(entries, & &1.entry_date, {:desc, Date}), reset: true)
 
-      {:denied, denied} ->
-        assign(socket, :denied, denied)
-    end
-  end
-
-  defp fetch_client(scope, id) do
-    case Accounts.get_user(id) do
-      %User{role: "client"} = client ->
-        case Authorization.authorize(scope, :read, client) do
-          :ok -> {:ok, client}
-          error -> {:denied, Access.denial(scope, error)}
-        end
-
-      _ ->
-        {:denied, Access.denial(scope, {:error, :not_found})}
+      error ->
+        assign(socket, :denied, Access.denial(scope, error))
     end
   end
 

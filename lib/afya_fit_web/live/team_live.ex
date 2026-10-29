@@ -148,7 +148,7 @@ defmodule AfyaFitWeb.TeamLive do
          )}
 
       error ->
-        {:noreply, deny(socket, error)}
+        {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
@@ -174,7 +174,7 @@ defmodule AfyaFitWeb.TeamLive do
         {:noreply, assign(socket, :form, to_form(changeset, as: "trainer"))}
 
       error ->
-        {:noreply, deny(socket, error)}
+        {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
@@ -202,15 +202,7 @@ defmodule AfyaFitWeb.TeamLive do
          |> load()}
 
       error ->
-        {:noreply, socket |> assign(:confirm_remove, nil) |> deny(error)}
-    end
-  end
-
-  defp deny(socket, error) do
-    case Access.denial(socket.assigns.current_scope, error) do
-      {:read_only, _} -> put_flash(socket, :error, "Paused until payment clears.")
-      {:upgrade, _} -> put_flash(socket, :error, "That needs a higher plan.")
-      {_kind, message} -> put_flash(socket, :error, message)
+        {:noreply, socket |> assign(:confirm_remove, nil) |> Access.flash_denial(error)}
     end
   end
 end

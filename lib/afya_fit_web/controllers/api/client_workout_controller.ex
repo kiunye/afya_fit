@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.API.ClientWorkoutController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Repo, Workouts}
+  alias AfyaFit.{Authorization, Clients, Repo, Workouts}
 
   # Authentication is handled in router pipeline
 
@@ -13,7 +13,7 @@ defmodule AfyaFitWeb.API.ClientWorkoutController do
   def index(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, _client} <- fetch_client(scope, client_id),
+    with {:ok, _client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :list, :client_workout) do
       client_workouts =
         client_id
@@ -32,7 +32,7 @@ defmodule AfyaFitWeb.API.ClientWorkoutController do
       |> Map.put("client_id", client_id)
       |> Map.put("assigned_by", scope.user.id)
 
-    with {:ok, _client} <- fetch_client(scope, client_id),
+    with {:ok, _client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :create, :client_workout),
          :ok <- authorize_plan(scope, attrs["workout_plan_id"]),
          {:ok, client_workout} <- Workouts.create_client_workout(attrs) do
@@ -70,15 +70,6 @@ defmodule AfyaFitWeb.API.ClientWorkoutController do
          {:ok, client_workout} <- Workouts.update_client_workout(client_workout, attrs) do
       client_workout = Repo.preload(client_workout, [:workout_plan, :client])
       json(conn, %{data: format_client_workout(client_workout)})
-    end
-  end
-
-  # The client whose workouts are requested must be reachable by the requester.
-  defp fetch_client(scope, client_id) do
-    client = Accounts.get_user!(client_id)
-
-    with :ok <- Authorization.authorize(scope, :read, client) do
-      if client.role == "client", do: {:ok, client}, else: {:error, :not_found}
     end
   end
 

@@ -256,8 +256,6 @@ defmodule AfyaFitWeb.Layouts do
   defp plan_label(%Scope{tier: tier}), do: String.capitalize("#{tier} plan")
 
   defp unauthenticated_layout(assigns) do
-    is_homepage = Map.get(assigns, :is_homepage, false)
-
     ~H"""
     <div class={[
       "min-h-screen",

@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.API.NutritionPlanController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Nutrition}
+  alias AfyaFit.{Authorization, Clients, Nutrition}
   alias AfyaFit.Authorization.Scope
 
   # Authentication is handled in router pipeline
@@ -64,9 +64,8 @@ defmodule AfyaFitWeb.API.NutritionPlanController do
 
   def client_nutrition(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
-    client = Accounts.get_user!(client_id)
 
-    with :ok <- Authorization.authorize(scope, :read, client) do
+    with {:ok, client} <- Clients.fetch_for(scope, :read, client_id) do
       render(conn, :index, nutrition_plans: Nutrition.list_client_nutrition_plans(client))
     end
   end

@@ -6,7 +6,6 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
 
   import AfyaFitWeb.SignComponents
 
-  alias AfyaFit.Accounts
   alias AfyaFit.Accounts.User
   alias AfyaFit.Authorization
   alias AfyaFit.Authorization.Entitlements
@@ -67,7 +66,10 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   end
 
   defp apply_action(socket, action, %{"id" => id}) when action in [:show, :edit] do
-    with {:ok, client} <- fetch_client(socket, if(action == :show, do: :read, else: :update), id) do
+    scope = socket.assigns.current_scope
+
+    with {:ok, client} <-
+           Clients.fetch_for(scope, if(action == :show, do: :read, else: :update), id) do
       socket = assign(socket, :client, client)
 
       if action == :edit,
@@ -79,7 +81,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
             Authorization.can?(socket.assigns.current_scope, :manage, :subscription)
           )
     else
-      {:denied, denied} -> assign(socket, :denied, denied)
+      error -> assign(socket, :denied, Access.denial(scope, error))
     end
   end
 
@@ -95,21 +97,6 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
 
   defp maybe_open_limit(socket, _params), do: socket
 
-  defp fetch_client(socket, action, id) do
-    scope = socket.assigns.current_scope
-
-    case Accounts.get_user(id) do
-      %User{role: "client"} = client ->
-        case Authorization.authorize(scope, action, client) do
-          :ok -> {:ok, client}
-          error -> {:denied, Access.denial(scope, error)}
-        end
-
-      _ ->
-        {:denied, {:not_found, "That client is not here, or belongs to another organisation."}}
-    end
-  end
-
   # What the "Add client" action does right now: :ok, :limit (opens the dialog)
   # or :paused (read-only account, stays visible but unavailable).
   defp add_state(scope) do
@@ -121,11 +108,11 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     end
   end
 
+  # A plan limit opens the dialog; every other denial is a flash.
   defp deny(socket, error) do
     case Access.denial(socket.assigns.current_scope, error) do
       {:upgrade, details} -> assign(socket, :limit, details)
-      {:read_only, _} -> put_flash(socket, :error, "Paused until payment clears.")
-      {_kind, message} -> put_flash(socket, :error, message)
+      _other -> Access.flash_denial(socket, error)
     end
   end
 

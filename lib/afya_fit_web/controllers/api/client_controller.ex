@@ -1,7 +1,6 @@
 defmodule AfyaFitWeb.API.ClientController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.Accounts
   alias AfyaFit.Authorization
   alias AfyaFit.Clients
 
@@ -59,16 +58,6 @@ defmodule AfyaFitWeb.API.ClientController do
     end
   end
 
-  defp fetch_client(conn, action, id) do
-    client = Accounts.get_user!(id)
-
-    with :ok <- Authorization.authorize(conn.assigns.current_scope, action, client),
-         :ok <- ensure_client(client) do
-      {:ok, client}
-    end
-  end
-
-  # The user lookup is by id only; non-client users are not addressable here.
-  defp ensure_client(%{role: "client"}), do: :ok
-  defp ensure_client(_user), do: {:error, :not_found}
+  defp fetch_client(conn, action, id),
+    do: Clients.fetch_for(conn.assigns.current_scope, action, id)
 end

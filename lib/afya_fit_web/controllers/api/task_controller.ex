@@ -1,7 +1,7 @@
 defmodule AfyaFitWeb.API.TaskController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Tasks}
+  alias AfyaFit.{Authorization, Clients, Tasks}
   alias AfyaFit.Authorization.Scope
 
   # Authentication is handled in router pipeline
@@ -71,9 +71,8 @@ defmodule AfyaFitWeb.API.TaskController do
 
   def client_tasks(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
-    client = Accounts.get_user!(client_id)
 
-    with :ok <- Authorization.authorize(scope, :read, client),
+    with {:ok, client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :list, :task) do
       render(conn, :index, tasks: Tasks.list_client_tasks(client))
     end

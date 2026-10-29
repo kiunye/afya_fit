@@ -4,6 +4,8 @@ defmodule AfyaFit.Clients do
   """
   import Ecto.Query, warn: false
   alias AfyaFit.Accounts.{TrainerClient, User}
+  alias AfyaFit.Accounts
+  alias AfyaFit.Authorization
   alias AfyaFit.Authorization.Scope
   alias AfyaFit.Repo
 
@@ -149,6 +151,23 @@ defmodule AfyaFit.Clients do
       {:ok, %{client: client}} -> {:ok, client}
       {:error, :client, changeset, _} -> {:error, changeset}
       {:error, :trainer_client, changeset, _} -> {:error, changeset}
+    end
+  end
+
+  @doc """
+  Loads the client with `id` if the scope may perform `action` on them.
+
+  Returns `{:ok, client}`, `{:error, :not_found}` (no such client, a user who
+  is not a client, or a malformed id) or the authorization error. The one place
+  every API controller and LiveView uses to reach a client.
+  """
+  def fetch_for(%Scope{} = scope, action, id) do
+    case Accounts.get_user(id) do
+      %User{role: "client"} = client ->
+        with :ok <- Authorization.authorize(scope, action, client), do: {:ok, client}
+
+      _ ->
+        {:error, :not_found}
     end
   end
 

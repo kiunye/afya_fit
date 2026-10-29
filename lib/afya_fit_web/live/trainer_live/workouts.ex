@@ -64,7 +64,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
         )
 
       error ->
-        socket |> flash_denial(error) |> push_navigate(to: ~p"/trainer/workouts")
+        socket |> Access.flash_denial(error) |> push_navigate(to: ~p"/trainer/workouts")
     end
   end
 
@@ -108,14 +108,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
     do: Enum.filter(plans, &(&1.trainer_id != user_id and &1.is_public))
 
   defp in_tab(plans, "templates", _user_id), do: Enum.filter(plans, & &1.is_template)
-
-  defp flash_denial(socket, error) do
-    case Access.denial(socket.assigns.current_scope, error) do
-      {:read_only, _} -> put_flash(socket, :error, "Paused until payment clears.")
-      {:upgrade, _} -> put_flash(socket, :error, "That needs a higher plan.")
-      {_kind, message} -> put_flash(socket, :error, message)
-    end
-  end
 
   @impl true
   def render(assigns) do
@@ -345,7 +337,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
         {:noreply, assign(socket, :form, to_form(changeset, as: "workout_plan"))}
 
       error ->
-        {:noreply, flash_denial(socket, error)}
+        {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
@@ -362,7 +354,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
         {:noreply, assign(socket, :form, to_form(changeset, as: "workout_plan"))}
 
       error ->
-        {:noreply, flash_denial(socket, error)}
+        {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
@@ -386,7 +378,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
        |> put_flash(:info, "Duplicated.")
        |> push_navigate(to: ~p"/trainer/workouts/#{copy.id}")}
     else
-      error -> {:noreply, flash_denial(socket, error)}
+      error -> {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
@@ -404,7 +396,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
       {:noreply,
        socket |> put_flash(:info, "Plan deleted.") |> push_navigate(to: ~p"/trainer/workouts")}
     else
-      error -> {:noreply, socket |> assign(:confirm_delete?, false) |> flash_denial(error)}
+      error -> {:noreply, socket |> assign(:confirm_delete?, false) |> Access.flash_denial(error)}
     end
   end
 

@@ -186,6 +186,22 @@ defmodule AfyaFitWeb.Access do
     end
   end
 
+  @doc """
+  Puts the outcome of a blocked action on the socket as an error flash. The one
+  place the wording for read-only, plan limits and refusals lives.
+  """
+  @spec flash_denial(Phoenix.LiveView.Socket.t(), term()) :: Phoenix.LiveView.Socket.t()
+  def flash_denial(socket, error) do
+    message =
+      case denial(socket.assigns.current_scope, error) do
+        {:read_only, _status} -> "Paused until payment clears."
+        {:upgrade, _details} -> "That needs a higher plan."
+        {_kind, message} -> message
+      end
+
+    Phoenix.LiveView.put_flash(socket, :error, message)
+  end
+
   defp forbidden_message(%Scope{owner_name: name}) when is_binary(name),
     do: "#{name} (owner) can change this. You can see your clients and plans."
 
