@@ -142,7 +142,7 @@ defmodule AfyaFitWeb.Layouts do
           type="button"
           aria-controls="more-sheet"
           phx-click={JS.toggle(to: "#more-sheet", display: "block")}
-          class="flex min-h-[60px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-xs font-bold uppercase tracking-[.02em] text-ink-2 focus-visible:outline-3 focus-visible:outline-white"
+          class="flex min-h-[60px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-xs font-bold uppercase tracking-normal text-ink-2 focus-visible:outline-3 focus-visible:outline-white"
         >
           <.pictogram name={:more} class="size-7" />
           <span>More</span>
@@ -189,9 +189,10 @@ defmodule AfyaFitWeb.Layouts do
       title={@item.label}
       class={[
         "relative flex flex-col items-center gap-1.5 border-b-[1.5px] border-line/40 px-1.5 py-3.5",
-        "text-xs font-bold uppercase tracking-[.06em] focus-visible:outline-3 focus-visible:-outline-offset-4 focus-visible:outline-white",
-        @active == @item.key && "bg-paper text-field-0",
-        @active != @item.key && "text-ink-2 hover:bg-field-2 hover:text-white"
+        "text-xs font-bold uppercase tracking-[.06em] focus-visible:outline-3 focus-visible:-outline-offset-4",
+        @active == @item.key && "bg-paper text-field-0 focus-visible:outline-field-0",
+        @active != @item.key &&
+          "text-ink-2 hover:bg-field-2 hover:text-white focus-visible:outline-white"
       ]}
     >
       <.pictogram name={@item.icon} class="size-9" />
@@ -216,9 +217,9 @@ defmodule AfyaFitWeb.Layouts do
       aria-current={@active == @item.key && "page"}
       class={[
         "flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2",
-        "text-xs font-bold uppercase tracking-[.02em] focus-visible:outline-3 focus-visible:-outline-offset-4 focus-visible:outline-white",
-        @active == @item.key && "bg-paper text-field-0",
-        @active != @item.key && "text-ink-2"
+        "text-xs font-bold uppercase tracking-normal focus-visible:outline-3 focus-visible:-outline-offset-4",
+        @active == @item.key && "bg-paper text-field-0 focus-visible:outline-field-0",
+        @active != @item.key && "text-ink-2 focus-visible:outline-white"
       ]}
     >
       <.pictogram name={@item.icon} class="size-7" />

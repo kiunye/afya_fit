@@ -144,7 +144,7 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
   defp session_icon(%{kind: :workout}), do: :workouts
 
   defp session_time(%{time: %Time{} = time}), do: Calendar.strftime(time, "%H:%M")
-  defp session_time(_session), do: "Today"
+  defp session_time(_session), do: nil
 
   defp state_label(:done), do: "Done"
   defp state_label(:next), do: "Next"
