@@ -23,6 +23,7 @@ defmodule AfyaFit.Authorization.Scope do
 
   defstruct user: nil,
             organization: nil,
+            owner_name: nil,
             tier: "free",
             organization_status: "active",
             subscription_status: nil,
@@ -35,6 +36,7 @@ defmodule AfyaFit.Authorization.Scope do
   @type t :: %__MODULE__{
           user: User.t(),
           organization: struct() | nil,
+          owner_name: String.t() | nil,
           tier: String.t(),
           organization_status: String.t() | nil,
           subscription_status: String.t() | nil,
@@ -73,6 +75,7 @@ defmodule AfyaFit.Authorization.Scope do
 
     new(user,
       organization: organization,
+      owner_name: owner_name(user.organization_id),
       tier: organization && organization.plan_type,
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,
@@ -99,6 +102,23 @@ defmodule AfyaFit.Authorization.Scope do
       :org_admin -> not is_nil(client_id)
       :trainer -> MapSet.member?(scope.client_ids, client_id)
       _ -> false
+    end
+  end
+
+  # The person to ask about billing: the organization admin, else the longest-serving trainer.
+  defp owner_name(organization_id) do
+    from(u in User,
+      where:
+        u.organization_id == ^organization_id and u.role in ["org_admin", "trainer"] and
+          is_nil(u.deleted_at),
+      order_by: [asc: u.role, asc: u.inserted_at],
+      limit: 1,
+      select: {u.first_name, u.last_name}
+    )
+    |> Repo.one()
+    |> case do
+      {first, last} -> String.trim("#{first} #{last}")
+      nil -> nil
     end
   end
 

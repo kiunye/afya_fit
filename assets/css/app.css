@@ -41,6 +41,21 @@
   --color-error: oklch(58% 0.253 17.585);
 }
 
+/* The signature: pictogram strokes draw themselves when a sign is inserted. */
+.pictogram-draw * {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pictogram-draw 0.9s ease-out forwards;
+}
+
+@keyframes pictogram-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pictogram-draw * { animation: none; stroke-dashoffset: 0; }
+}
+
 /* Add variants based on LiveView classes */
 @custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
 @custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
