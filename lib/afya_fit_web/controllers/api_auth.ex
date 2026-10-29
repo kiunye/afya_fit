@@ -17,7 +17,7 @@ defmodule AfyaFitWeb.APIAuth do
   def call(conn, _opts) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> token] ->
-        case AfyaFit.Repo.unscoped(fn -> authenticate(token) end) do
+        case AfyaFit.RLS.unscoped(fn -> authenticate(token) end) do
           nil ->
             conn
             |> put_status(:unauthorized)

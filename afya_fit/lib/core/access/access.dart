@@ -104,54 +104,6 @@ class Access {
     );
   }
 
-  /// Used only when an older server does not send `access` yet: permissions are
-  /// derived from the legacy role so the app keeps working during a rollout.
-  factory Access.legacy(String role) {
-    const crud = {'list', 'read', 'create', 'update', 'delete'};
-    switch (role) {
-      case 'trainer':
-        return Access(
-          tier: 'pro',
-          permissions: {
-            'client': {...crud, 'invite'},
-            'workout_plan': {...crud, 'duplicate'},
-            'client_workout': {...crud, 'complete'},
-            'nutrition_plan': crud,
-            'progress_entry': {...crud, 'analytics'},
-            'task': {...crud, 'complete'},
-            'calendar_event': crud,
-          },
-          features: const {
-            'nutrition_plans': true,
-            'progress_analytics': true,
-            'task_automation': true,
-            'calendar': true,
-            'progress_photos': true,
-          },
-        );
-      case 'admin':
-        return const Access(
-          tier: 'pro',
-          permissions: {
-            'client': {'list', 'read'},
-            'subscription': {'read', 'manage'},
-            'admin_panel': {'access'},
-          },
-        );
-      default:
-        return const Access(
-          tier: 'pro',
-          permissions: {
-            'client': {'read', 'update'},
-            'client_workout': {'list', 'read', 'complete'},
-            'nutrition_plan': {'list', 'read'},
-            'progress_entry': {'list', 'read', 'create', 'update'},
-            'task': {'list', 'read', 'complete'},
-          },
-        );
-    }
-  }
-
   bool can(String resource, String action) =>
       permissions[resource]?.contains(action) ?? false;
 

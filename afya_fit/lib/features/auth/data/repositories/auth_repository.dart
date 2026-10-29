@@ -38,8 +38,8 @@ class AuthRepository {
     await _apiClient.clearAuthToken();
   }
 
-  /// The signed-in user and what they may do, from one `/auth/me` call. Older
-  /// servers do not send `access`; permissions then come from the legacy role.
+  /// The signed-in user and what they may do, from one `/auth/me` call. A
+  /// response without `access` is not a session.
   Future<Session?> getSession() async {
     try {
       final response = await _apiClient.getCurrentUser();
@@ -50,12 +50,9 @@ class AuthRepository {
       if (userData == null) return null;
 
       final user = UserModel.fromJson(userData);
-      final accessData = response['access'] as Map<String, dynamic>?;
-      final access = accessData == null
-          ? Access.legacy(user.role)
-          : Access.fromJson(accessData);
+      final accessData = response['access'] as Map<String, dynamic>;
 
-      return Session(user: user, access: access);
+      return Session(user: user, access: Access.fromJson(accessData));
     } catch (e) {
       return null;
     }

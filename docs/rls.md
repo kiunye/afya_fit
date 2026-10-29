@@ -16,7 +16,7 @@ another tenant's rows. It is off by default.
   role `afya_fit_app` (`SET ROLE` on connect). The migration creates it
   (`NOLOGIN`) and grants table access; it needs `CREATEROLE`, otherwise create
   the role and re-run the grants by hand.
-- `AfyaFit.Repo.with_scope/2` and `unscoped/1` pin a connection, set the context
+- `AfyaFit.RLS.with_scope/2` and `unscoped/1` pin a connection, set the context
   and reset it. They are applied for you to controller actions, LiveView
   callbacks (`AfyaFit.Repo.Wrap`) and Oban jobs. Sign-in, token lookup,
   registration, webhooks and jobs run `unscoped` because no organization is
