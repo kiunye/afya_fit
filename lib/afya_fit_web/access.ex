@@ -136,6 +136,24 @@ defmodule AfyaFitWeb.Access do
   defp short_date(datetime), do: Calendar.strftime(datetime, "%-d %b")
 
   @doc """
+  Checks the scope may perform `action` on `resource` and assigns `:denied` on
+  the socket: `nil` when allowed, otherwise `{kind, message}` for the page to
+  render with `denied_sign/1`. LiveViews call this first in `mount/3`.
+  """
+  @spec guard(Phoenix.LiveView.Socket.t(), atom(), atom()) :: Phoenix.LiveView.Socket.t()
+  def guard(socket, action, resource) do
+    scope = socket.assigns.current_scope
+
+    denied =
+      case Authorization.authorize(scope, action, resource) do
+        :ok -> nil
+        {:error, _} = error -> denial(scope, error)
+      end
+
+    Phoenix.Component.assign(socket, :denied, denied)
+  end
+
+  @doc """
   Turns the error from `Authorization.authorize/5` into what the UI shows:
 
     * `{:forbidden, message}` render the permission sign

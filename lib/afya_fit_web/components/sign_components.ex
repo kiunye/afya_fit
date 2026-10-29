@@ -361,6 +361,35 @@ defmodule AfyaFitWeb.SignComponents do
     """
   end
 
+  @doc """
+  The full-page sign for a page the user may not open, or that is not there.
+  Names who can help and links back to a page that works.
+  """
+  attr :kind, :atom, values: [:forbidden, :not_found], default: :forbidden
+  attr :message, :string, required: true
+  attr :back_path, :string, default: "/"
+
+  def denied_sign(assigns) do
+    ~H"""
+    <div id="denied" class="px-4 py-10 sm:px-[26px]">
+      <div class="flex max-w-xl flex-col gap-5">
+        <div class="grid size-[68px] place-items-center rounded-tile border-[3px] border-dashed border-line">
+          <.pictogram name={:lock} class="size-10" />
+        </div>
+        <h1 class="text-3xl font-black uppercase leading-none sm:text-4xl">
+          {if @kind == :forbidden, do: "Not for your role", else: "Not found"}
+        </h1>
+        <p class="text-lg text-ink-2">{@message}</p>
+        <div>
+          <AfyaFitWeb.CoreComponents.button navigate={@back_path}>
+            Back to home
+          </AfyaFitWeb.CoreComponents.button>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
   @doc "A status dot for overdue and needs-attention states. Always pair it with a word."
   def attention_dot(assigns) do
     ~H"""
