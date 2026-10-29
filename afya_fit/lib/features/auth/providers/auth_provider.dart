@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:afya_fit/core/providers/api_provider.dart';
+import 'package:afya_fit/features/auth/providers/user_provider.dart';
 
 part 'auth_provider.g.dart';
 
@@ -16,16 +17,17 @@ class AuthNotifier extends _$AuthNotifier {
 
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
-    
+
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.login(email, password);
-      
+
       // Verify token was stored
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      
+
       if (token != null && token.isNotEmpty) {
+        ref.invalidate(sessionProvider);
         state = const AsyncValue.data(true);
       } else {
         throw Exception('Login failed: No token received');
@@ -38,10 +40,11 @@ class AuthNotifier extends _$AuthNotifier {
 
   Future<void> logout() async {
     state = const AsyncValue.loading();
-    
+
     try {
       final apiClient = ref.read(apiClientProvider);
       await apiClient.clearAuthToken();
+      ref.invalidate(sessionProvider);
       state = const AsyncValue.data(false);
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
