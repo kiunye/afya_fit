@@ -13,7 +13,7 @@ defmodule AfyaFitWeb.Access do
     statics: AfyaFitWeb.static_paths()
 
   alias AfyaFit.Authorization
-  alias AfyaFit.Authorization.{Entitlements, Scope}
+  alias AfyaFit.Authorization.{BillingStatus, Entitlements, Scope}
 
   @type nav_item :: %{
           key: atom(),
@@ -97,49 +97,36 @@ defmodule AfyaFitWeb.Access do
   @spec banner(Scope.t(), DateTime.t()) :: banner() | nil
   def banner(%Scope{} = scope, now \\ DateTime.utc_now()) do
     if Scope.role(scope) in [:trainer, :org_admin] do
-      banner_for(scope, Entitlements.billing_state(scope, now))
+      scope |> Scope.billing(now) |> banner_for(scope)
     end
   end
 
-  defp banner_for(scope, :read_only) do
-    %{state: :read_only, message: read_only_message(scope), action: banner_action(scope)}
+  defp banner_for(%BillingStatus{reason: :grace} = status, scope) do
+    %{state: :grace, message: grace_message(status), action: banner_action(scope)}
   end
 
-  defp banner_for(%Scope{subscription_status: "past_due"} = scope, :active) do
-    until = scope.period_end && DateTime.add(scope.period_end, 7, :day)
-
-    %{
-      state: :grace,
-      message:
-        "Payment failed" <>
-          if(scope.period_end, do: " on #{short_date(scope.period_end)}", else: "") <>
-          ". You keep full access" <>
-          if(until, do: " until #{short_date(until)}", else: "") <> ".",
-      action: banner_action(scope)
-    }
+  defp banner_for(%BillingStatus{state: :read_only} = status, scope) do
+    %{state: :read_only, message: read_only_message(status), action: banner_action(scope)}
   end
 
-  defp banner_for(_scope, :active), do: nil
+  defp banner_for(_status, _scope), do: nil
 
-  defp read_only_message(scope) do
-    reason =
-      cond do
-        scope.organization_status not in [nil, "active"] ->
-          "This organisation is not active."
-
-        scope.subscription_status == "cancelled" ->
-          "The subscription was cancelled."
-
-        scope.subscription_status == "expired" ->
-          "The subscription expired."
-
-        true ->
-          "Payment overdue" <>
-            if(scope.period_end, do: " since #{short_date(scope.period_end)}", else: "") <> "."
-      end
-
-    "Read-only. #{reason} You can view everything; edits are paused."
+  defp grace_message(%{since: since, until: until}) do
+    "Payment failed on #{short_date(since)}. You keep full access until #{short_date(until)}."
   end
+
+  defp read_only_message(status) do
+    "Read-only. #{read_only_reason(status)} You can view everything; edits are paused."
+  end
+
+  defp read_only_reason(%{reason: :inactive}), do: "This organisation is not active."
+  defp read_only_reason(%{reason: :cancelled}), do: "The subscription was cancelled."
+  defp read_only_reason(%{reason: :expired}), do: "The subscription expired."
+
+  defp read_only_reason(%{reason: :past_due, since: nil}), do: "Payment overdue."
+
+  defp read_only_reason(%{reason: :past_due, since: since}),
+    do: "Payment overdue since #{short_date(since)}."
 
   defp banner_action(scope) do
     case Scope.role(scope) do

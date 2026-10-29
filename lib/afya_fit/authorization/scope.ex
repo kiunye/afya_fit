@@ -98,6 +98,11 @@ defmodule AfyaFit.Authorization.Scope do
   def effective_tier(%{plan_type: plan_type}, nil), do: plan_type
   def effective_tier(nil, nil), do: "free"
 
+  @doc "Whether the organization may write right now, and why."
+  @spec billing(t(), DateTime.t()) :: AfyaFit.Authorization.BillingStatus.t()
+  def billing(%__MODULE__{} = scope, now \\ DateTime.utc_now()),
+    do: AfyaFit.Authorization.BillingStatus.build(scope, now)
+
   @spec role(t()) :: role()
   def role(%__MODULE__{user: %User{role: role}}), do: Map.get(@roles, role, :none)
 

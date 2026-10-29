@@ -27,7 +27,7 @@ defmodule AfyaFit.Authorization do
   """
 
   alias AfyaFit.Accounts.User
-  alias AfyaFit.Authorization.{Entitlements, Permissions, Policy, Scope}
+  alias AfyaFit.Authorization.{BillingStatus, Entitlements, Permissions, Policy, Scope}
 
   @struct_types %{
     AfyaFit.Workouts.WorkoutPlan => :workout_plan,
@@ -125,7 +125,7 @@ defmodule AfyaFit.Authorization do
   defp check_billing(_scope, _role, :subscription, _action, _now), do: :ok
 
   defp check_billing(scope, _role, _type, action, now) do
-    if Permissions.read_action?(action) or Entitlements.billing_state(scope, now) == :active do
+    if Permissions.read_action?(action) or BillingStatus.writable?(Scope.billing(scope, now)) do
       :ok
     else
       {:error, {:subscription_inactive, scope.subscription_status || scope.organization_status}}

@@ -8,6 +8,7 @@ defmodule AfyaFitWeb.BillingLive do
   import AfyaFitWeb.SignComponents
 
   alias AfyaFit.{Authorization, Billing}
+  alias AfyaFit.Authorization.BillingStatus
   alias AfyaFitWeb.Access
 
   @impl true
@@ -32,6 +33,7 @@ defmodule AfyaFitWeb.BillingLive do
 
     socket
     |> assign(:subscription, subscription)
+    |> assign(:status, status_of(subscription, scope))
     |> assign(:can_manage?, Authorization.can?(scope, :manage, :subscription))
     |> assign(:invoices_empty?, invoices == [])
     |> stream(:invoices, invoices, reset: true)
@@ -46,7 +48,7 @@ defmodule AfyaFitWeb.BillingLive do
       <div :if={!@denied} id="billing">
         <.page_header>
           Billing
-          <:subtitle>{summary(@subscription, @current_scope)}</:subtitle>
+          <:subtitle>{summary(@subscription, @status, @current_scope)}</:subtitle>
         </.page_header>
 
         <.sign_group label="Plan">
@@ -63,7 +65,7 @@ defmodule AfyaFitWeb.BillingLive do
                 Upgrade to Pro
               </.sign_action>
               <.sign_action
-                :if={fix_payment?(@subscription)}
+                :if={fix_payment?(@status)}
                 id="update-payment"
                 primary
                 phx-click="update_payment"
@@ -77,16 +79,16 @@ defmodule AfyaFitWeb.BillingLive do
             :if={@subscription}
             id="status"
             icon={:alert}
-            state={if @subscription.status == "active", do: :later, else: :next}
-            time={status_word(@subscription)}
+            state={if @status.reason, do: :next, else: :later}
+            time={status_word(@status)}
             time_label="Status"
           >
             <:title>
-              <.attention_dot :if={@subscription.status != "active"} />
-              {status_headline(@subscription)}
+              <.attention_dot :if={@status.reason} />
+              {status_headline(@status)}
             </:title>
-            {status_detail(@subscription)}
-            <:actions :if={@can_manage? && cancellable?(@subscription)}>
+            {status_detail(@status)}
+            <:actions :if={@can_manage? && cancellable?(@subscription, @status)}>
               <.sign_action id="cancel-plan" phx-click="ask_cancel">Cancel plan</.sign_action>
             </:actions>
           </.sign>
@@ -138,25 +140,6 @@ defmodule AfyaFitWeb.BillingLive do
     """
   end
 
-  defp summary(nil, _scope), do: "Free plan."
-
-  defp summary(%{status: "active", cancel_at_period_end: true} = subscription, _scope),
-    do: "Cancelled. Access ends #{period_end_text(subscription)}."
-
-  defp summary(%{status: "active"} = subscription, _scope),
-    do: "#{plan_name(subscription, nil)} plan, renews #{period_end_text(subscription)}."
-
-  defp summary(%{status: "past_due"} = subscription, _scope),
-    do: "Payment failed on #{period_end_text(subscription)}. Read-only until it clears."
-
-  defp summary(%{status: "cancelled"} = subscription, _scope) do
-    if paid_period_left?(subscription),
-      do: "Cancelled. Access ends #{period_end_text(subscription)}.",
-      else: "Cancelled. The account is read-only."
-  end
-
-  defp summary(%{status: "expired"}, _scope), do: "Expired. The account is read-only."
-
   defp plan_name(nil, scope), do: String.capitalize(scope.tier)
   defp plan_name(subscription, _scope), do: String.capitalize(subscription.plan_type)
 
@@ -171,47 +154,84 @@ defmodule AfyaFitWeb.BillingLive do
   defp period_end_text(subscription),
     do: Calendar.strftime(subscription.current_period_end, "%-d %b")
 
-  defp status_word(%{status: "past_due"}), do: "Past due"
-  defp status_word(%{status: "cancelled"}), do: "Cancelled"
-  defp status_word(%{status: "expired"}), do: "Expired"
-  defp status_word(_subscription), do: "Active"
-
-  defp status_headline(%{status: status, cancel_at_period_end: true} = subscription)
-       when status in ["active", "cancelled"] do
-    if paid_period_left?(subscription), do: "Cancelling", else: "Cancelled"
-  end
-
-  defp status_headline(%{status: "active"}), do: "Active"
-
-  defp status_headline(%{status: "past_due"} = subscription),
-    do: "Past due since #{period_end_text(subscription)}"
-
-  defp status_headline(%{status: "cancelled"}), do: "Cancelled"
-  defp status_headline(%{status: "expired"}), do: "Expired"
-
-  defp status_detail(%{status: "past_due"}),
-    do: "You get seven days of full access after a failed payment. Clients keep using the app."
-
-  defp status_detail(%{status: "cancelled"} = subscription) do
-    if paid_period_left?(subscription),
-      do: "Edits pause when the paid period ends.",
-      else: "The paid period has ended. Pay to restore editing."
-  end
-
-  defp status_detail(%{status: "expired"}), do: "Pay to restore editing. Your data is safe."
-  defp status_detail(_subscription), do: "Nothing needs your attention."
-
-  defp paid_period_left?(subscription),
-    do: DateTime.compare(DateTime.utc_now(), subscription.current_period_end) == :lt
-
   defp upgrade?(nil), do: true
   defp upgrade?(subscription), do: subscription.plan_type == "free"
 
-  defp fix_payment?(%{status: status}) when status in ["past_due", "expired"], do: true
-  defp fix_payment?(_subscription), do: false
+  # Everything about billing state comes from one BillingStatus.
+  defp status_of(nil, _scope), do: %BillingStatus{state: :active}
 
-  defp cancellable?(%{status: "active", cancel_at_period_end: false}), do: true
-  defp cancellable?(_subscription), do: false
+  defp status_of(subscription, scope) do
+    BillingStatus.build(
+      %{
+        subscription_status: subscription.status,
+        period_end: subscription.current_period_end,
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        organization_status: scope.organization_status
+      },
+      DateTime.utc_now()
+    )
+  end
+
+  defp summary(nil, _status, _scope), do: "Free plan."
+
+  defp summary(subscription, status, _scope) do
+    case status.reason do
+      nil ->
+        "#{plan_name(subscription, nil)} plan, renews #{period_end_text(subscription)}."
+
+      :grace ->
+        "Payment failed on #{date(status.since)}. Full access until #{date(status.until)}."
+
+      :cancelling ->
+        "Cancelled. Access ends #{date(status.until)}."
+
+      :past_due ->
+        "Payment failed on #{date(status.since)}. Read-only until it clears."
+
+      :cancelled ->
+        "Cancelled. The account is read-only."
+
+      :expired ->
+        "Expired. The account is read-only."
+
+      :inactive ->
+        "This organisation is not active."
+    end
+  end
+
+  defp status_word(%{reason: reason}) when reason in [:grace, :past_due], do: "Past due"
+  defp status_word(%{reason: :cancelling}), do: "Cancelling"
+  defp status_word(%{reason: :cancelled}), do: "Cancelled"
+  defp status_word(%{reason: :expired}), do: "Expired"
+  defp status_word(%{reason: :inactive}), do: "Inactive"
+  defp status_word(_status), do: "Active"
+
+  defp status_headline(%{reason: reason} = status) when reason in [:grace, :past_due],
+    do: "Past due since #{date(status.since)}"
+
+  defp status_headline(status), do: status_word(status)
+
+  defp status_detail(%{reason: :grace}),
+    do: "You get seven days of full access after a failed payment. Clients keep using the app."
+
+  defp status_detail(%{reason: :past_due}),
+    do: "Pay to restore editing. Clients keep using the app."
+
+  defp status_detail(%{reason: :cancelling}), do: "Edits pause when the paid period ends."
+
+  defp status_detail(%{reason: :cancelled}),
+    do: "The paid period has ended. Pay to restore editing."
+
+  defp status_detail(%{reason: :expired}), do: "Pay to restore editing. Your data is safe."
+  defp status_detail(%{reason: :inactive}), do: "Contact support to reactivate this organisation."
+  defp status_detail(_status), do: "Nothing needs your attention."
+
+  defp fix_payment?(%{reason: reason}), do: reason in [:grace, :past_due, :expired]
+
+  defp cancellable?(subscription, status),
+    do: is_nil(status.reason) and subscription.status == "active"
+
+  defp date(datetime), do: Calendar.strftime(datetime, "%-d %b")
 
   defp format_amount(%Decimal{} = amount),
     do: amount |> Decimal.round(2) |> Decimal.to_string(:normal)
