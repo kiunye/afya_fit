@@ -3,6 +3,7 @@ defmodule AfyaFit.Workouts do
   The Workouts context.
   """
   import Ecto.Query, warn: false
+  alias AfyaFit.Authorization.Scope
   alias AfyaFit.Repo
 
   alias AfyaFit.Workouts.{
@@ -17,6 +18,40 @@ defmodule AfyaFit.Workouts do
 
   def list_workout_plans do
     Repo.all(WorkoutPlan)
+  end
+
+  @doc """
+  Lists the workout plans the scope's user may read: every plan for platform
+  admins, the organization's plans for organization admins, and for trainers
+  their own plus the organization's public and template plans.
+  """
+  def list_workout_plans_for(%Scope{user: user} = scope) do
+    case Scope.role(scope) do
+      :admin ->
+        Repo.all(WorkoutPlan)
+
+      :org_admin ->
+        Repo.all(from p in WorkoutPlan, where: p.organization_id == ^user.organization_id)
+
+      :trainer ->
+        Repo.all(
+          from p in WorkoutPlan,
+            where:
+              p.organization_id == ^user.organization_id and
+                (p.trainer_id == ^user.id or p.is_public or p.is_template)
+        )
+
+      _ ->
+        []
+    end
+  end
+
+  @doc "Lists the organization's template plans."
+  def list_workout_templates_for(%Scope{user: user}) do
+    Repo.all(
+      from p in WorkoutPlan,
+        where: p.organization_id == ^user.organization_id and p.is_template
+    )
   end
 
   def get_workout_plan!(id), do: Repo.get!(WorkoutPlan, id)

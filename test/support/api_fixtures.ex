@@ -33,6 +33,7 @@ defmodule AfyaFitWeb.APIFixtures do
       Map.merge(
         %{
           email: "#{role}-#{n}@example.com",
+          password_hash: "not-a-real-hash",
           role: to_string(role),
           first_name: "First#{n}",
           last_name: "Last#{n}",
