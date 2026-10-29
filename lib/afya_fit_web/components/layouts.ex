@@ -5,6 +5,11 @@ defmodule AfyaFitWeb.Layouts do
   """
   use AfyaFitWeb, :html
 
+  import AfyaFitWeb.SignComponents
+
+  alias AfyaFit.Authorization.Scope
+  alias AfyaFitWeb.Access
+
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
   # skeleton of your application, namely HTML headers
@@ -14,13 +19,14 @@ defmodule AfyaFitWeb.Layouts do
   @doc """
   Renders your app layout.
 
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
+  Signed-in users get the sign-system shell: a sidebar on desktop, a bottom
+  tab bar on phones, and the account banner above the page. Visitors get the
+  public header. Pass `active` (a navigation key such as `:clients`) so the
+  current item is marked.
 
   ## Examples
 
-      <Layouts.app flash={@flash}>
+      <Layouts.app flash={@flash} current_scope={@current_scope} active={:clients}>
         <h1>Content</h1>
       </Layouts.app>
 
@@ -32,164 +38,139 @@ defmodule AfyaFitWeb.Layouts do
     doc: "the current [scope](https://hexdocs.pm/phoenix/scopes.html)"
 
   attr :is_homepage, :boolean, default: false, doc: "whether this is the homepage"
+  attr :active, :atom, default: nil, doc: "the navigation key of the current page"
 
   slot :inner_block, required: true
 
   def app(assigns) do
-    user = if assigns.current_scope, do: assigns.current_scope.user, else: nil
-
-    organization =
-      if user && Ecto.assoc_loaded?(user.organization), do: user.organization, else: nil
-
-    if user do
-      authenticated_layout(assigns, user, organization)
-    else
-      unauthenticated_layout(assigns)
+    case assigns.current_scope do
+      %Scope{} = scope -> authenticated_layout(assign(assigns, :scope, scope))
+      _ -> unauthenticated_layout(assigns)
     end
   end
 
-  defp get_logo_url(nil), do: nil
+  defp authenticated_layout(assigns) do
+    items = Access.nav_items(assigns.scope)
 
-  defp get_logo_url(organization) do
-    if organization.branding_config && is_map(organization.branding_config) do
-      Map.get(organization.branding_config, "logo_url")
-    else
-      nil
-    end
-  end
-
-  defp authenticated_layout(assigns, user, organization) do
     assigns =
       assigns
-      |> assign(:user, user)
-      |> assign(:logo_url, get_logo_url(organization))
-      |> assign(:org_name, if(organization, do: organization.name, else: "Afya Fit"))
+      |> assign(:items, items)
+      |> assign(:more_items, Enum.filter(items, &(&1.phone == :more)))
+      |> assign(:banner, Access.banner(assigns.scope))
+      |> assign(:org_name, org_name(assigns.scope))
+      |> assign(:logo_url, logo_url(assigns.scope.organization))
 
     ~H"""
-    <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <!-- Sidebar Navigation -->
-      <aside
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:bg-paper focus:px-3 focus:py-2 focus:text-field-0"
+    >
+      Skip to content
+    </a>
+    <div class="min-h-screen bg-field-1 pb-[78px] text-ink md:grid md:grid-cols-[72px_1fr] md:pb-0 lg:grid-cols-[132px_1fr]">
+      <nav
         id="sidebar"
-        class="fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out lg:translate-x-0 -translate-x-full"
-        phx-hook="Sidebar"
+        aria-label="Main"
+        class="hidden border-r-[3px] border-line bg-field-0 md:sticky md:top-0 md:flex md:h-screen md:flex-col md:overflow-y-auto"
       >
-        <div class="flex flex-col h-full">
-          <!-- Logo/Branding -->
-          <div class="flex items-center justify-between h-16 px-6 border-b border-gray-200 dark:border-gray-700">
-            <a href={~p"/"} class="flex items-center gap-3">
-              <%= if @logo_url do %>
-                <img
-                  src={@logo_url}
-                  alt={@org_name}
-                  class="h-8 w-8 rounded object-contain"
-                />
-              <% else %>
-                <img
-                  src={~p"/images/afya-fit-logo.png"}
-                  alt="Afya Fit"
-                  class="h-8 w-8 rounded object-contain"
-                />
-              <% end %>
-              <span class="text-lg font-bold text-gray-900 dark:text-white">
-                {@org_name}
-              </span>
-            </a>
+        <.link
+          navigate={~p"/"}
+          class="flex flex-col items-center gap-1.5 border-b-[1.5px] border-line/40 px-1.5 py-3 text-center"
+        >
+          <img
+            :if={@logo_url}
+            src={@logo_url}
+            alt=""
+            class="size-8 rounded-control object-contain"
+          />
+          <img
+            :if={!@logo_url}
+            src={~p"/images/afya-fit-logo.png"}
+            alt=""
+            class="size-8 rounded-control object-contain"
+          />
+          <span class="hidden max-w-full truncate text-xs font-bold lg:block">{@org_name}</span>
+          <span class="sr-only lg:hidden">{@org_name}</span>
+        </.link>
+        <.side_link :for={item <- @items} item={item} active={@active} />
+        <div class="mt-auto border-t-[1.5px] border-line/40">
+          <.side_link item={settings_item()} active={@active} />
+          <div class="hidden px-2.5 py-3 text-xs leading-tight text-ink-2 lg:block">
+            <b class="block truncate font-bold text-ink">
+              {@scope.user.first_name} {@scope.user.last_name}
+            </b>
+            {role_label(@scope)} · {plan_label(@scope)}
+          </div>
+          <form action={~p"/users/log_out"} method="post" class="px-2 pb-3">
+            <input type="hidden" name="_method" value="delete" />
+            <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
             <button
-              class="lg:hidden p-2 rounded-md text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-              onclick="window.toggleSidebar && window.toggleSidebar()"
-              data-sidebar-toggle
+              type="submit"
+              class="w-full cursor-pointer rounded-control px-1 py-2 text-xs font-bold uppercase tracking-[.06em] text-ink-2 hover:bg-field-2 hover:text-white focus-visible:outline-3 focus-visible:outline-white"
             >
-              <.icon name="hero-x-mark" class="w-5 h-5" />
+              Sign out
             </button>
-          </div>
-
-    <!-- Navigation Menu -->
-          <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-            <%= if @user.role == "trainer" do %>
-              <.nav_link navigate={~p"/trainer/dashboard"} label="Dashboard" icon="hero-home" />
-              <.nav_link navigate={~p"/trainer/clients"} label="Clients" icon="hero-users" />
-              <.nav_link navigate={~p"/trainer/workouts"} label="Workouts" icon="hero-bolt" />
-              <.nav_link navigate={~p"/trainer/nutrition"} label="Nutrition" icon="hero-cake" />
-              <.nav_link navigate={~p"/trainer/progress"} label="Progress" icon="hero-chart-bar" />
-            <% else %>
-              <.nav_link navigate={~p"/"} label="Home" icon="hero-home" />
-            <% end %>
-            <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
-              <%= if @user.role == "trainer" do %>
-                <.nav_link
-                  navigate={~p"/trainer/subscription"}
-                  label="Subscription"
-                  icon="hero-credit-card"
-                />
-              <% end %>
-              <.nav_link navigate={~p"/users/settings"} label="Settings" icon="hero-cog-6-tooth" />
-            </div>
-          </nav>
-
-    <!-- User Profile Footer -->
-          <div class="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="flex items-center gap-3 mb-3">
-              <%= if @user.avatar_url do %>
-                <img
-                  src={@user.avatar_url}
-                  alt={"#{@user.first_name} #{@user.last_name}"}
-                  class="h-10 w-10 rounded-full"
-                />
-              <% else %>
-                <div class="h-10 w-10 rounded-full flex items-center justify-center">
-                  <.icon name="hero-user-circle" class="w-8 h-8 text-gray-600 dark:text-gray-400" />
-                </div>
-              <% end %>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {@user.first_name} {@user.last_name}
-                </p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 truncate">{@user.email}</p>
-              </div>
-            </div>
-            <form action={~p"/users/log_out"} method="post" class="w-full">
-              <input type="hidden" name="_method" value="delete" />
-              <input type="hidden" name={get_csrf_token()} value={get_csrf_token()} />
-              <button
-                type="submit"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-              >
-                <.icon name="hero-arrow-right-on-rectangle" class="w-4 h-4" /> Sign out
-              </button>
-            </form>
-          </div>
+          </form>
         </div>
-      </aside>
+      </nav>
 
-    <!-- Main Content Area -->
-      <div class="lg:pl-64">
-        <!-- Top Bar -->
-        <header class="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            class="-m-2.5 p-2.5 text-gray-700 dark:text-gray-300 lg:hidden"
-            onclick="window.toggleSidebar && window.toggleSidebar()"
-            data-sidebar-toggle
-          >
-            <.icon name="hero-bars-3" class="h-6 w-6" />
-          </button>
-
-          <div class="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div class="flex flex-1 items-center gap-x-4 lg:gap-x-6">
-              <!-- Search or other top bar content can go here -->
-            </div>
-            <div class="flex items-center gap-x-4 lg:gap-x-6">
-              <.theme_toggle />
-            </div>
-          </div>
-        </header>
-
-    <!-- Page Content -->
-        <main class="py-8">
-          <div class="px-4 sm:px-6 lg:px-8">
-            {render_slot(@inner_block)}
-          </div>
+      <div class="min-w-0">
+        <.account_banner :if={@banner} state={@banner.state}>
+          {@banner.message}
+          <:action :if={@banner.action == :update_payment}>
+            <.link navigate={~p"/billing"}>Update payment</.link>
+          </:action>
+          <:action :if={match?({:ask, _}, @banner.action)}>
+            {elem(@banner.action, 1)} can fix this
+          </:action>
+        </.account_banner>
+        <main id="main">
+          {render_slot(@inner_block)}
         </main>
+      </div>
+
+      <nav
+        aria-label="Main"
+        class="fixed inset-x-0 bottom-0 z-30 flex border-t-[3px] border-line bg-field-0 md:hidden"
+      >
+        <.tab_link
+          :for={item <- Enum.filter(@items, &(&1.phone == :tab))}
+          item={item}
+          active={@active}
+        />
+        <button
+          type="button"
+          aria-controls="more-sheet"
+          phx-click={JS.toggle(to: "#more-sheet", display: "block")}
+          class="flex min-h-[60px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-xs font-bold uppercase tracking-normal text-ink-2 focus-visible:outline-3 focus-visible:outline-white"
+        >
+          <.pictogram name={:more} class="size-7" />
+          <span>More</span>
+        </button>
+      </nav>
+
+      <div
+        id="more-sheet"
+        class="fixed inset-x-0 bottom-[66px] z-30 hidden border-t-[3px] border-field-0 bg-paper text-field-0 md:hidden"
+      >
+        <.link
+          :for={item <- @more_items ++ [settings_item()]}
+          navigate={item.path}
+          class="flex items-center gap-4 border-b border-field-0/20 px-4 py-3.5 text-base font-bold focus-visible:outline-3 focus-visible:outline-field-0"
+        >
+          <.pictogram name={item.icon} class="size-8" />
+          {item.label}
+        </.link>
+        <form action={~p"/users/log_out"} method="post">
+          <input type="hidden" name="_method" value="delete" />
+          <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+          <button
+            type="submit"
+            class="w-full cursor-pointer px-4 py-3.5 text-left text-base font-bold focus-visible:outline-3 focus-visible:outline-field-0"
+          >
+            Sign out
+          </button>
+        </form>
       </div>
     </div>
 
@@ -197,14 +178,91 @@ defmodule AfyaFitWeb.Layouts do
     """
   end
 
-  defp unauthenticated_layout(assigns) do
-    is_homepage = Map.get(assigns, :is_homepage, false)
+  attr :item, :map, required: true
+  attr :active, :atom, default: nil
 
+  defp side_link(assigns) do
+    ~H"""
+    <.link
+      navigate={@item.path}
+      aria-current={@active == @item.key && "page"}
+      title={@item.label}
+      class={[
+        "relative flex flex-col items-center gap-1.5 border-b-[1.5px] border-line/40 px-1.5 py-3.5",
+        "text-xs font-bold uppercase tracking-[.06em] focus-visible:outline-3 focus-visible:-outline-offset-4",
+        @active == @item.key && "bg-paper text-field-0 focus-visible:outline-field-0",
+        @active != @item.key &&
+          "text-ink-2 hover:bg-field-2 hover:text-white focus-visible:outline-white"
+      ]}
+    >
+      <.pictogram name={@item.icon} class="size-9" />
+      <span class="sr-only lg:not-sr-only">{@item.label}</span>
+      <span
+        :if={@item.pro}
+        class="absolute right-1.5 top-1.5 rounded-[3px] border-2 border-current px-1 text-xs leading-4"
+      >
+        Pro
+      </span>
+    </.link>
+    """
+  end
+
+  attr :item, :map, required: true
+  attr :active, :atom, default: nil
+
+  defp tab_link(assigns) do
+    ~H"""
+    <.link
+      navigate={@item.path}
+      aria-current={@active == @item.key && "page"}
+      class={[
+        "flex min-h-[60px] flex-1 flex-col items-center justify-center gap-0.5 px-0.5 py-2",
+        "text-xs font-bold uppercase tracking-normal focus-visible:outline-3 focus-visible:-outline-offset-4",
+        @active == @item.key && "bg-paper text-field-0 focus-visible:outline-field-0",
+        @active != @item.key && "text-ink-2 focus-visible:outline-white"
+      ]}
+    >
+      <.pictogram name={@item.icon} class="size-7" />
+      <span>{@item.label}</span>
+    </.link>
+    """
+  end
+
+  defp settings_item,
+    do: %{
+      key: :settings,
+      label: "Settings",
+      icon: :settings,
+      path: "/users/settings",
+      pro: false,
+      phone: :more
+    }
+
+  defp org_name(%Scope{organization: %{name: name}}), do: name
+  defp org_name(_scope), do: "Afya Fit"
+
+  defp logo_url(%{branding_config: %{"logo_url" => url}}) when is_binary(url), do: url
+  defp logo_url(_organization), do: nil
+
+  defp role_label(scope) do
+    case Scope.role(scope) do
+      :org_admin -> "Owner"
+      :trainer -> "Trainer"
+      :client -> "Client"
+      :admin -> "Platform"
+      _ -> "User"
+    end
+  end
+
+  defp plan_label(%Scope{tier: tier}), do: String.capitalize("#{tier} plan")
+
+  defp unauthenticated_layout(assigns) do
     ~H"""
     <div class={[
       "min-h-screen",
       @is_homepage && "bg-gradient-to-br from-black via-slate-950 to-black",
-      !@is_homepage && "bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
+      !@is_homepage &&
+        "bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800"
     ]}>
       <!-- Simple Header for Unauthenticated Users -->
       <header class={[
@@ -224,41 +282,43 @@ defmodule AfyaFitWeb.Layouts do
                 "text-xl font-bold",
                 @is_homepage && "text-white",
                 !@is_homepage && "text-gray-900 dark:text-white"
-              ]}>Afya Fit</span>
+              ]}>
+                Afya Fit
+              </span>
             </a>
             <div class="flex items-center gap-4">
               <%= unless @is_homepage do %>
                 <.theme_toggle />
               <% end %>
-              <%= if !assigns.current_scope || !assigns.current_scope.user do %>
-                <div class="flex items-center gap-2">
-                  <.link
-                    navigate={~p"/users/log_in"}
-                    class={[
-                      "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                      @is_homepage && "text-white hover:text-gray-200",
-                      !@is_homepage && "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                    ]}
-                  >
-                    Sign in
-                  </.link>
-                  <.link
-                    navigate={~p"/users/register"}
-                    class={[
-                      "px-4 py-2 text-sm font-medium rounded-md transition-colors",
-                      @is_homepage && "text-white bg-white/10 hover:bg-white/20 border border-white/20",
-                      !@is_homepage && "text-white bg-blue-600 hover:bg-blue-700"
-                    ]}
-                  >
-                    Get started
-                  </.link>
-                </div>
-              <% end %>
+              <div class="flex items-center gap-2">
+                <.link
+                  navigate={~p"/users/log_in"}
+                  class={[
+                    "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                    @is_homepage && "text-white hover:text-gray-200",
+                    !@is_homepage &&
+                      "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                  ]}
+                >
+                  Sign in
+                </.link>
+                <.link
+                  navigate={~p"/users/register"}
+                  class={[
+                    "px-4 py-2 text-sm font-medium rounded-md transition-colors",
+                    @is_homepage &&
+                      "text-white bg-white/10 hover:bg-white/20 border border-white/20",
+                    !@is_homepage && "text-white bg-blue-600 hover:bg-blue-700"
+                  ]}
+                >
+                  Get started
+                </.link>
+              </div>
             </div>
           </div>
         </div>
       </header>
-
+      
     <!-- Main Content -->
       <main class="flex-1">
         {render_slot(@inner_block)}
@@ -266,28 +326,6 @@ defmodule AfyaFitWeb.Layouts do
     </div>
 
     <.flash_group flash={@flash} />
-    """
-  end
-
-  attr :navigate, :string, required: true
-  attr :label, :string, required: true
-  attr :icon, :string, required: true
-  attr :active, :boolean, default: false
-
-  defp nav_link(assigns) do
-    ~H"""
-    <a
-      href={@navigate}
-      class={[
-        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-        (@active &&
-           "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400") ||
-          "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-      ]}
-    >
-      <.icon name={@icon} class="w-5 h-5" />
-      <span>{@label}</span>
-    </a>
     """
   end
 
@@ -335,27 +373,29 @@ defmodule AfyaFitWeb.Layouts do
   end
 
   @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
+  Provides dark vs light theme toggle for the public pages.
 
   See <head> in root.html.heex which applies the theme before page load.
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
-      <div class="absolute w-1/2 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=dark]_&]:left-1/2 transition-[left]" />
+    <div class="relative flex flex-row items-center rounded-full border-2 border-base-300 bg-base-300">
+      <div class="absolute left-0 h-full w-1/2 rounded-full border border-base-200 bg-base-100 brightness-200 transition-[left] [[data-theme=dark]_&]:left-1/2" />
 
       <button
-        class="flex p-2 cursor-pointer w-1/2"
+        class="flex w-1/2 cursor-pointer p-2"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="light"
+        aria-label="Light theme"
       >
         <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
 
       <button
-        class="flex p-2 cursor-pointer w-1/2"
+        class="flex w-1/2 cursor-pointer p-2"
         phx-click={JS.dispatch("phx:set-theme")}
         data-phx-theme="dark"
+        aria-label="Dark theme"
       >
         <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>

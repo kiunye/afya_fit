@@ -1,197 +1,163 @@
 defmodule AfyaFitWeb.TrainerLive.Dashboard do
+  @moduledoc """
+  Today: the sessions on the day and the clients who need the trainer.
+  """
   use AfyaFitWeb, :live_view
 
-  alias AfyaFit.Dashboard
+  import AfyaFitWeb.SignComponents
 
+  alias AfyaFit.Authorization
+  alias AfyaFit.Authorization.Entitlements
+  alias AfyaFit.Today
+  alias AfyaFitWeb.Access
+
+  @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
+    scope = socket.assigns.current_scope
 
-    if user.role != "trainer" do
-      {:ok,
-       socket
-       |> put_flash(:error, "Access denied. Trainer role required.")
-       |> redirect(to: ~p"/")}
+    socket =
+      socket
+      |> Access.guard(:create, :client)
+      |> assign(:page_title, "Today")
+
+    if socket.assigns.denied do
+      {:ok, socket}
     else
-      stats = Dashboard.get_trainer_stats(user)
-      activity = Dashboard.get_recent_activity(user)
+      today = Today.build(scope)
 
       {:ok,
        socket
-       |> assign(:stats, stats)
-       |> assign(:activity, activity)
-       |> assign(:page_title, "Dashboard")}
+       |> assign(:counts, today.counts)
+       |> assign(:client_count, today.client_count)
+       |> assign(:calendar?, Entitlements.allows?(scope.tier, :calendar))
+       |> assign(:can_upgrade?, Authorization.can?(scope, :manage, :subscription))
+       |> assign(:sessions_empty?, today.sessions == [])
+       |> assign(:needs_empty?, today.needs_you == [])
+       |> assign(:needs_count, length(today.needs_you))
+       |> stream(:sessions, today.sessions)
+       |> stream(:needs, Enum.map(today.needs_you, &need_row/1))}
     end
   end
 
+  defp need_row(need), do: Map.put(need, :id, "need-#{need.kind}-#{need.client.id}")
+
+  @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="mb-8">
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">
-            Welcome back! Here's an overview of your fitness business.
-          </p>
-        </div>
-        
-    <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <.stat_card
-            title="Active Clients"
-            value={@stats.total_clients}
-            icon="hero-users"
-            color="blue"
-          />
-          <.stat_card
-            title="Workout Plans"
-            value={@stats.total_workout_plans}
-            icon="hero-dumbbell"
-            color="green"
-          />
-          <.stat_card
-            title="Nutrition Plans"
-            value={@stats.total_nutrition_plans}
-            icon="hero-clipboard-document-list"
-            color="purple"
-          />
-          <.stat_card
-            title="Active Tasks"
-            value={@stats.active_tasks}
-            icon="hero-check-circle"
-            color="orange"
-          />
-          <.stat_card
-            title="Upcoming Events"
-            value={@stats.upcoming_events}
-            icon="hero-calendar"
-            color="indigo"
-          />
-        </div>
-        
-    <!-- Quick Actions -->
-        <div class="mb-8">
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <.link
-              navigate={~p"/trainer/clients/new"}
-              class="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+    <Layouts.app flash={@flash} current_scope={@current_scope} active={:today}>
+      <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
+      <div :if={!@denied} id="today">
+        <.page_header>
+          Today · {Calendar.strftime(Date.utc_today(), "%a %-d %b")}
+          <:subtitle>
+            <b class="text-ink">{@counts.done} done, {@counts.remaining} to go.</b>
+            {needs_sentence(@needs_count, @client_count)}
+          </:subtitle>
+        </.page_header>
+
+        <.sign_group label="Sessions">
+          <div id="sessions" phx-update="stream">
+            <div
+              id="sessions-empty"
+              class="hidden border-b border-line/40 px-4 py-6 text-ink-2 only:block sm:px-[26px]"
             >
-              <.icon name="hero-user-plus" class="w-5 h-5 mr-2" /> Add Client
-            </.link>
-            <.link
-              navigate={~p"/trainer/workouts/new"}
-              class="flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Workout Plan
-            </.link>
-            <.link
-              navigate={~p"/trainer/nutrition/new"}
-              class="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-            >
-              <.icon name="hero-clipboard-document-list" class="w-5 h-5 mr-2" /> Create Nutrition Plan
-            </.link>
-            <.link
-              navigate={~p"/trainer/clients"}
-              class="flex items-center justify-center px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <.icon name="hero-users" class="w-5 h-5 mr-2" /> View All Clients
-            </.link>
-          </div>
-        </div>
-        
-    <!-- Recent Activity -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <!-- Recent Clients -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Recent Clients
-            </h3>
-            <div class="space-y-3">
-              <%= if Enum.empty?(@activity.recent_clients) do %>
-                <p class="text-gray-500 dark:text-gray-400 text-sm">No clients yet</p>
-              <% else %>
-                <%= for client <- @activity.recent_clients do %>
-                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">
-                        {client.first_name} {client.last_name}
-                      </p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">{client.email}</p>
-                    </div>
-                    <.link
-                      navigate={~p"/trainer/clients/#{client.id}"}
-                      class="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                    >
-                      View
-                    </.link>
-                  </div>
-                <% end %>
-              <% end %>
+              Nothing scheduled today. Assign a workout to see it here.
+              <.link navigate={~p"/trainer/workouts"} class="font-bold text-ink underline">
+                Open workouts
+              </.link>
             </div>
+            <.sign
+              :for={{id, session} <- @streams.sessions}
+              id={id}
+              icon={session_icon(session)}
+              state={session.state}
+              time={session_time(session)}
+              time_label={state_label(session.state)}
+            >
+              <:title>{session.title}</:title>
+              {session.detail}
+              <:actions :if={session.client_id}>
+                <.sign_action navigate={~p"/trainer/clients/#{session.client_id}"}>
+                  Open
+                </.sign_action>
+              </:actions>
+            </.sign>
           </div>
-          
-    <!-- Recent Workouts -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Recent Workout Plans
-            </h3>
-            <div class="space-y-3">
-              <%= if Enum.empty?(@activity.recent_workouts) do %>
-                <p class="text-gray-500 dark:text-gray-400 text-sm">No workout plans yet</p>
-              <% else %>
-                <%= for workout <- @activity.recent_workouts do %>
-                  <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div>
-                      <p class="font-medium text-gray-900 dark:text-white">{workout.name}</p>
-                      <p class="text-sm text-gray-500 dark:text-gray-400">
-                        {workout.duration_weeks} weeks • {workout.difficulty}
-                      </p>
-                    </div>
-                    <.link
-                      navigate={~p"/trainer/workouts/#{workout.id}"}
-                      class="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                    >
-                      View
-                    </.link>
-                  </div>
-                <% end %>
-              <% end %>
+          <.closed_sign
+            :if={!@calendar?}
+            id="calendar-closed"
+            icon={:today}
+            title="Calendar"
+            can_upgrade={@can_upgrade?}
+            owner_name={@current_scope.owner_name}
+          >
+            Book sessions and see them here.
+          </.closed_sign>
+        </.sign_group>
+
+        <.sign_group label="Needs you">
+          <div id="needs" phx-update="stream">
+            <div
+              id="needs-empty"
+              class="hidden border-b border-line/40 px-4 py-6 text-ink-2 only:block sm:px-[26px]"
+            >
+              Nobody needs you right now.
             </div>
+            <.sign
+              :for={{id, need} <- @streams.needs}
+              id={id}
+              icon={need_icon(need)}
+              state={if need.overdue, do: :next, else: :later}
+              overdue={need.overdue}
+            >
+              <:title>{need.client.first_name} {need.client.last_name}</:title>
+              {need.reason}
+              <:actions>
+                <.sign_action
+                  primary={need.overdue}
+                  navigate={need_path(need)}
+                >
+                  {need_action(need)}
+                </.sign_action>
+              </:actions>
+            </.sign>
           </div>
-        </div>
+        </.sign_group>
       </div>
     </Layouts.app>
     """
   end
 
-  attr :title, :string, required: true
-  attr :value, :integer, required: true
-  attr :icon, :string, required: true
-  attr :color, :string, default: "blue"
+  defp needs_sentence(0, 0), do: "Add your first client to get started."
 
-  defp stat_card(assigns) do
-    color_classes = %{
-      "blue" => "bg-blue-500",
-      "green" => "bg-green-500",
-      "purple" => "bg-purple-500",
-      "orange" => "bg-orange-500",
-      "indigo" => "bg-indigo-500"
-    }
+  defp needs_sentence(0, clients),
+    do: "#{clients} #{pluralize(clients, "client")}, nobody waiting on you."
 
-    assigns = assign(assigns, :icon_bg, Map.get(color_classes, assigns.color, "bg-blue-500"))
+  defp needs_sentence(n, _clients),
+    do: "#{n} #{pluralize(n, "client")} #{if n == 1, do: "needs", else: "need"} you."
 
-    ~H"""
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex items-center">
-        <div class={"flex-shrink-0 #{@icon_bg} rounded-lg p-3"}>
-          <.icon name={@icon} class="w-6 h-6 text-white" />
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-500 dark:text-gray-400">{@title}</p>
-          <p class="text-2xl font-semibold text-gray-900 dark:text-white">{@value}</p>
-        </div>
-      </div>
-    </div>
-    """
-  end
+  defp pluralize(1, word), do: word
+  defp pluralize(_n, word), do: word <> "s"
+
+  defp session_icon(%{kind: :event}), do: :today
+  defp session_icon(%{kind: :workout}), do: :workouts
+
+  defp session_time(%{time: %Time{} = time}), do: Calendar.strftime(time, "%H:%M")
+  defp session_time(_session), do: nil
+
+  defp state_label(:done), do: "Done"
+  defp state_label(:next), do: "Next"
+  defp state_label(:later), do: "Later"
+
+  defp need_icon(%{kind: :tasks}), do: :alert
+  defp need_icon(%{kind: :progress}), do: :progress
+  defp need_icon(%{kind: :plan_end}), do: :workouts
+
+  defp need_path(%{kind: :progress, client: client}), do: ~p"/trainer/progress/#{client.id}"
+  defp need_path(%{client: client}), do: ~p"/trainer/clients/#{client.id}"
+
+  defp need_action(%{kind: :tasks}), do: "Open client"
+  defp need_action(%{kind: :progress}), do: "See progress"
+  defp need_action(%{kind: :plan_end}), do: "Assign next"
 end

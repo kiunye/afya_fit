@@ -46,4 +46,13 @@ defmodule AfyaFit.Schedule.CalendarEvent do
     |> validate_required([:organization_id, :user_id, :title, :event_type, :start_time])
     |> validate_inclusion(:event_type, ["workout", "nutrition", "task", "appointment", "custom"])
   end
+
+  @ownership [:organization_id, :user_id]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:organization_id, :user_id`) can never change.
+  """
+  def update_changeset(event, attrs),
+    do: changeset(event, AfyaFit.Ownership.without(attrs, @ownership))
 end

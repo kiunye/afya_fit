@@ -1,9 +1,11 @@
 defmodule AfyaFitWeb.PageControllerTest do
   use AfyaFitWeb.ConnCase
 
-  test "GET /", %{conn: conn} do
+  test "GET / shows the landing page to visitors", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Welcome to Afya Fit"
-    assert html_response(conn, 200) =~ "Your fitness management platform"
+
+    assert html = html_response(conn, 200)
+    assert html =~ "Afya Fit"
+    assert html =~ "Sign in"
   end
 end

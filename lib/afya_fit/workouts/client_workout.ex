@@ -46,4 +46,13 @@ defmodule AfyaFit.Workouts.ClientWorkout do
     ])
     |> validate_inclusion(:status, ["assigned", "in_progress", "completed", "skipped"])
   end
+
+  @ownership [:client_id, :assigned_by]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:client_id, :assigned_by`) can never change.
+  """
+  def update_changeset(client_workout, attrs),
+    do: changeset(client_workout, AfyaFit.Ownership.without(attrs, @ownership))
 end

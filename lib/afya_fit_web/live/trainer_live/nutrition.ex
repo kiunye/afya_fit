@@ -1,522 +1,406 @@
 defmodule AfyaFitWeb.TrainerLive.Nutrition do
+  @moduledoc """
+  Nutrition: meal plans for clients. A Pro feature: on Free the existing plans
+  stay readable and creating one is shown as a closed sign.
+  """
   use AfyaFitWeb, :live_view
 
-  alias AfyaFit.{Clients, Nutrition}
+  import AfyaFitWeb.SignComponents
+
+  alias AfyaFit.{Authorization, Clients, Nutrition}
+  alias AfyaFit.Authorization.Scope
   alias AfyaFit.Nutrition.NutritionPlan
+  alias AfyaFitWeb.Access
 
+  @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
+    socket =
+      socket
+      |> Access.guard(:list, :nutrition_plan)
+      |> assign(:page_title, "Nutrition")
+      |> assign(:form, nil)
+      |> assign(:nutrition_plan, nil)
+      |> assign(:clients, [])
+      |> assign(:confirm_delete?, false)
 
-    if user.role != "trainer" do
-      {:ok,
-       socket
-       |> put_flash(:error, "Access denied. Trainer role required.")
-       |> redirect(to: ~p"/")}
-    else
-      changeset = NutritionPlan.changeset(%NutritionPlan{}, %{})
-      form = to_form(changeset, as: "nutrition_plan")
-
-      {:ok,
-       socket
-       |> assign(:nutrition_plans, [])
-       |> assign(:clients, [])
-       |> assign(:form, form)
-       |> assign(:page_title, "Nutrition Plans")}
-    end
+    {:ok, socket}
   end
 
+  @impl true
   def handle_params(params, _uri, socket) do
-    user = socket.assigns.current_scope.user
-
-    case socket.assigns.live_action do
-      :index ->
-        nutrition_plans =
-          Nutrition.list_nutrition_plans()
-          |> Enum.filter(fn plan ->
-            plan.organization_id == user.organization_id &&
-              plan.trainer_id == user.id
-          end)
-          |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
-
-        clients =
-          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
-
-        {:noreply,
-         socket
-         |> assign(:nutrition_plans, nutrition_plans)
-         |> assign(:clients, clients)}
-
-      :new ->
-        clients =
-          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
-
-        changeset = NutritionPlan.changeset(%NutritionPlan{}, %{})
-        form = to_form(changeset, as: "nutrition_plan")
-        {:noreply, assign(socket, :form, form) |> assign(:clients, clients)}
-
-      :show ->
-        nutrition_plan = Nutrition.get_nutrition_plan!(params["id"])
-        {:noreply, assign(socket, :nutrition_plan, nutrition_plan)}
-
-      :edit ->
-        clients =
-          Clients.list_trainer_clients(user.id, %{status: "active"}) |> Enum.map(& &1.client)
-
-        nutrition_plan = Nutrition.get_nutrition_plan!(params["id"])
-        changeset = NutritionPlan.changeset(nutrition_plan, %{})
-        form = to_form(changeset, as: "nutrition_plan")
-
-        {:noreply,
-         socket
-         |> assign(:nutrition_plan, nutrition_plan)
-         |> assign(:form, form)
-         |> assign(:clients, clients)}
+    if socket.assigns.denied do
+      {:noreply, socket}
+    else
+      {:noreply, apply_action(socket, socket.assigns.live_action, params)}
     end
   end
 
+  defp apply_action(socket, :index, _params) do
+    scope = socket.assigns.current_scope
+    plans = Nutrition.list_nutrition_plans_for(scope)
+
+    socket
+    |> assign(:total, length(plans))
+    |> assign(:create_state, create_state(scope))
+    |> assign(:can_upgrade?, Authorization.can?(scope, :manage, :subscription))
+    |> assign(:empty?, plans == [])
+    |> stream(:plans, Enum.sort_by(plans, & &1.inserted_at, {:desc, DateTime}), reset: true)
+  end
+
+  defp apply_action(socket, :new, _params) do
+    scope = socket.assigns.current_scope
+
+    case Authorization.authorize(scope, :create, :nutrition_plan) do
+      :ok ->
+        socket
+        |> assign(:clients, Clients.list_clients_for(scope))
+        |> assign(
+          :form,
+          to_form(NutritionPlan.changeset(%NutritionPlan{}, %{}), as: "nutrition_plan")
+        )
+
+      _blocked ->
+        push_navigate(socket, to: ~p"/trainer/nutrition")
+    end
+  end
+
+  defp apply_action(socket, action, %{"id" => id}) when action in [:show, :edit] do
+    scope = socket.assigns.current_scope
+    plan_action = if action == :show, do: :read, else: :update
+
+    case fetch_plan(scope, plan_action, id) do
+      {:ok, plan} ->
+        socket
+        |> assign(:nutrition_plan, plan)
+        |> assign(:confirm_delete?, false)
+        |> assign(:clients, Clients.list_clients_for(scope))
+        |> assign(:can_update?, Authorization.can?(scope, :update, plan))
+        |> assign(:can_delete?, Authorization.can?(scope, :delete, plan))
+        |> assign(
+          :form,
+          action == :edit && to_form(NutritionPlan.changeset(plan, %{}), as: "nutrition_plan")
+        )
+
+      {:denied, denied} ->
+        assign(socket, :denied, denied)
+    end
+  end
+
+  defp fetch_plan(scope, action, id) do
+    with {:ok, uuid} <- Ecto.UUID.cast(id),
+         %NutritionPlan{} = plan <- Nutrition.get_nutrition_plan(uuid),
+         :ok <- Authorization.authorize(scope, action, plan) do
+      {:ok, plan}
+    else
+      {:error, _} = error -> {:denied, Access.denial(scope, error)}
+      _ -> {:denied, Access.denial(scope, {:error, :not_found})}
+    end
+  end
+
+  # :ok, :closed (not on this plan) or :paused (read-only account).
+  defp create_state(scope) do
+    case Authorization.authorize(scope, :create, :nutrition_plan) do
+      :ok -> :ok
+      {:error, {:upgrade_required, _}} -> :closed
+      {:error, {:subscription_inactive, _}} -> :paused
+      {:error, _} -> :hidden
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <%= case @live_action do %>
-          <% :index -> %>
-            <.nutrition_index
-              nutrition_plans={@nutrition_plans}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :new -> %>
-            <.nutrition_new
-              form={@form}
-              clients={@clients}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :show -> %>
-            <.nutrition_show
-              nutrition_plan={@nutrition_plan}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :edit -> %>
-            <.nutrition_edit
-              form={@form}
-              nutrition_plan={@nutrition_plan}
-              clients={@clients}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-        <% end %>
+    <Layouts.app flash={@flash} current_scope={@current_scope} active={:nutrition}>
+      <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
+      <div :if={!@denied}>
+        <.nutrition_index :if={@live_action == :index} {assigns} />
+        <.nutrition_form :if={@live_action in [:new, :edit] && @form} {assigns} />
+        <.nutrition_show :if={@live_action == :show && @nutrition_plan} {assigns} />
       </div>
     </Layouts.app>
     """
   end
 
-  attr :nutrition_plans, :list, default: []
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def nutrition_index(assigns) do
+  defp nutrition_index(assigns) do
     ~H"""
-    <div>
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Nutrition Plans</h1>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">
-            Create and manage nutrition plans for your clients
-          </p>
-        </div>
-        <.link
-          navigate={~p"/trainer/nutrition/new"}
-          class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" /> New Nutrition Plan
-        </.link>
-      </div>
+    <.page_header>
+      Nutrition
+      <:subtitle>
+        <b class="text-ink">{@total} {if @total == 1, do: "plan", else: "plans"}.</b>
+        Calories and meals for each client.
+      </:subtitle>
+    </.page_header>
 
-      <%= if Enum.empty?(@nutrition_plans) do %>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-          <.icon name="hero-clipboard-document-list" class="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No nutrition plans yet
-          </h3>
-          <p class="text-gray-500 dark:text-gray-400 mb-6">
-            Create your first nutrition plan to get started
-          </p>
-          <.link
-            navigate={~p"/trainer/nutrition/new"}
-            class="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Nutrition Plan
-          </.link>
+    <.sign_group label="Plans">
+      <:actions>
+        <.sign_action
+          :if={@create_state == :ok}
+          id="new-plan"
+          primary
+          navigate={~p"/trainer/nutrition/new"}
+        >
+          New plan
+        </.sign_action>
+        <span :if={@create_state == :paused} class="flex items-center gap-3 text-sm text-ink-2">
+          Paused until payment clears
+          <.sign_action id="new-plan" aria-disabled="true">New plan</.sign_action>
+        </span>
+      </:actions>
+
+      <.closed_sign
+        :if={@create_state == :closed}
+        id="nutrition-closed"
+        icon={:nutrition}
+        title="Nutrition plans"
+        can_upgrade={@can_upgrade?}
+        owner_name={@current_scope.owner_name}
+      >
+        Meal plans with calories and macros for each client. Existing plans stay readable.
+      </.closed_sign>
+
+      <div id="plans" phx-update="stream">
+        <div
+          id="plans-empty"
+          class="hidden border-b border-line/40 px-4 py-6 text-ink-2 only:block sm:px-[26px]"
+        >
+          No nutrition plans yet.
         </div>
-      <% else %>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <%= for plan <- @nutrition_plans do %>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
-              <div class="p-6">
-                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {plan.name}
-                </h3>
-                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                  {plan.description || "No description"}
-                </p>
-                <div class="space-y-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  <div class="flex justify-between">
-                    <span>Daily Calories:</span>
-                    <span class="font-medium">{plan.daily_calories || "—"}</span>
-                  </div>
-                  <%= if plan.start_date && plan.end_date do %>
-                    <div class="flex justify-between">
-                      <span>Duration:</span>
-                      <span class="font-medium">
-                        {Calendar.strftime(plan.start_date, "%b %d")} - {Calendar.strftime(
-                          plan.end_date,
-                          "%b %d"
-                        )}
-                      </span>
-                    </div>
-                  <% end %>
-                </div>
-                <div class="flex space-x-2">
-                  <.link
-                    navigate={~p"/trainer/nutrition/#{plan.id}"}
-                    class="flex-1 px-3 py-2 bg-purple-600 text-white text-center rounded-lg hover:bg-purple-700 text-sm"
-                  >
-                    View
-                  </.link>
-                  <.link
-                    navigate={~p"/trainer/nutrition/#{plan.id}/edit"}
-                    class="flex-1 px-3 py-2 bg-gray-600 text-white text-center rounded-lg hover:bg-gray-700 text-sm"
-                  >
-                    Edit
-                  </.link>
-                </div>
-              </div>
-            </div>
-          <% end %>
-        </div>
-      <% end %>
-    </div>
+        <.sign
+          :for={{id, plan} <- @streams.plans}
+          id={id}
+          icon={:nutrition}
+          time={Calendar.strftime(plan.start_date, "%-d %b")}
+          time_label="Starts"
+        >
+          <:title>{plan.name}</:title>
+          {plan_detail(plan)}
+          <:actions>
+            <.sign_action navigate={~p"/trainer/nutrition/#{plan.id}"}>Open</.sign_action>
+          </:actions>
+        </.sign>
+      </div>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :clients, :list, default: []
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
+  defp plan_detail(plan) do
+    [plan.daily_calories && "#{plan.daily_calories} kcal", plan.is_template && "Template"]
+    |> Enum.filter(& &1)
+    |> Enum.join(" · ")
+  end
 
-  def nutrition_new(assigns) do
+  defp nutrition_form(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/nutrition"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plans
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Nutrition Plan</h1>
+    <.page_header>
+      {if @live_action == :new, do: "New nutrition plan", else: "Edit nutrition plan"}
+      <:subtitle>
+        {if @live_action == :new, do: "Calories, dates and who it is for.", else: @nutrition_plan.name}
+      </:subtitle>
+    </.page_header>
+
+    <.form
+      for={@form}
+      id="nutrition-form"
+      phx-submit={if @live_action == :new, do: "save", else: "update"}
+      phx-change="validate"
+      class="max-w-2xl px-4 py-6 sm:px-[26px]"
+    >
+      <.input field={@form[:name]} type="text" label="Plan name" required />
+      <.input field={@form[:description]} type="textarea" label="Description" />
+      <div class="grid gap-x-6 sm:grid-cols-2">
+        <.input field={@form[:daily_calories]} type="number" label="Daily calories" min="0" />
+        <.input
+          field={@form[:client_id]}
+          type="select"
+          label="Client"
+          prompt="Choose a client"
+          options={Enum.map(@clients, &{"#{&1.first_name} #{&1.last_name}", &1.id})}
+          required
+        />
+        <.input field={@form[:start_date]} type="date" label="Start date" required />
+        <.input field={@form[:end_date]} type="date" label="End date" />
       </div>
+      <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="nutrition-plan-form"
-          phx-submit="save"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Plan Name"
-            required
-          />
-
-          <.input
-            field={@form[:description]}
-            type="textarea"
-            label="Description"
-            rows="4"
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:daily_calories]}
-              type="number"
-              label="Daily Calories"
-            />
-
-            <.input
-              field={@form[:client_id]}
-              type="select"
-              label="Client (optional)"
-              options={[
-                {"Select a client...", ""}
-                | Enum.map(@clients, fn client ->
-                    {"#{client.first_name} #{client.last_name}", client.id}
-                  end)
-              ]}
-            />
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:start_date]}
-              type="date"
-              label="Start Date"
-            />
-
-            <.input
-              field={@form[:end_date]}
-              type="date"
-              label="End Date"
-            />
-          </div>
-
-          <.input
-            field={@form[:is_template]}
-            type="checkbox"
-            label="Save as template"
-          />
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/nutrition"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Create Plan
-            </.button>
-          </div>
-        </.form>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <.button type="submit" variant="primary">
+          {if @live_action == :new, do: "Create plan", else: "Save"}
+        </.button>
+        <.button navigate={
+          if @live_action == :new,
+            do: ~p"/trainer/nutrition",
+            else: ~p"/trainer/nutrition/#{@nutrition_plan.id}"
+        }>
+          Cancel
+        </.button>
       </div>
-    </div>
+    </.form>
     """
   end
 
   defp nutrition_show(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/nutrition"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
+    <.page_header>
+      {@nutrition_plan.name}
+      <:subtitle>{@nutrition_plan.description || "No description."}</:subtitle>
+      <:actions>
+        <.sign_action
+          :if={@can_update?}
+          id="edit-plan"
+          navigate={~p"/trainer/nutrition/#{@nutrition_plan.id}/edit"}
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plans
-        </.link>
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-              {@nutrition_plan.name}
-            </h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">
-              {@nutrition_plan.description || "No description"}
-            </p>
-          </div>
-          <.link
-            navigate={~p"/trainer/nutrition/#{@nutrition_plan.id}/edit"}
-            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-          >
-            Edit Plan
-          </.link>
-        </div>
-      </div>
+          Edit
+        </.sign_action>
+      </:actions>
+    </.page_header>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Daily Calories</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-              {@nutrition_plan.daily_calories || "Not set"}
-            </dd>
-          </div>
-          <%= if @nutrition_plan.start_date do %>
-            <div>
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                {Calendar.strftime(@nutrition_plan.start_date, "%B %d, %Y")}
-              </dd>
-            </div>
-          <% end %>
-          <%= if @nutrition_plan.end_date do %>
-            <div>
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">End Date</dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                {Calendar.strftime(@nutrition_plan.end_date, "%B %d, %Y")}
-              </dd>
-            </div>
-          <% end %>
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Template</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-              {if @nutrition_plan.is_template, do: "Yes", else: "No"}
-            </dd>
-          </div>
-        </dl>
+    <.sign_group label="Details">
+      <div class="px-4 sm:px-[26px]">
+        <.list>
+          <:item title="Client">
+            {@nutrition_plan.client &&
+              "#{@nutrition_plan.client.first_name} #{@nutrition_plan.client.last_name}"}
+          </:item>
+          <:item title="Daily calories">{@nutrition_plan.daily_calories || "Not set"}</:item>
+          <:item title="Dates">
+            {Calendar.strftime(@nutrition_plan.start_date, "%-d %b %Y")}{if @nutrition_plan.end_date,
+              do: " to #{Calendar.strftime(@nutrition_plan.end_date, "%-d %b %Y")}"}
+          </:item>
+          <:item title="Template">{if @nutrition_plan.is_template, do: "Yes", else: "No"}</:item>
+        </.list>
       </div>
-    </div>
+    </.sign_group>
+
+    <.sign_group :if={@can_delete?} label="Delete">
+      <.sign :if={!@confirm_delete?} id="delete-plan" icon={:alert} draw={false}>
+        <:title>Delete this plan</:title>
+        The client keeps their history.
+        <:actions>
+          <.sign_action id="ask-delete" phx-click="ask_delete">Delete</.sign_action>
+        </:actions>
+      </.sign>
+      <.sign :if={@confirm_delete?} id="delete-confirm" icon={:alert} state={:next} draw={false}>
+        <:title>Delete {@nutrition_plan.name}?</:title>
+        This cannot be undone.
+        <:actions>
+          <.sign_action id="confirm-delete" primary phx-click="delete">Delete plan</.sign_action>
+          <.sign_action id="keep-plan" phx-click="keep">Keep</.sign_action>
+        </:actions>
+      </.sign>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :nutrition_plan, :any, required: true
-  attr :clients, :list, default: []
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def nutrition_edit(assigns) do
-    ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/nutrition/#{@nutrition_plan.id}"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Nutrition Plan
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Nutrition Plan</h1>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="nutrition-plan-form"
-          phx-submit="update"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Plan Name"
-            required
-          />
-
-          <.input
-            field={@form[:description]}
-            type="textarea"
-            label="Description"
-            rows="4"
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:daily_calories]}
-              type="number"
-              label="Daily Calories"
-            />
-
-            <.input
-              field={@form[:client_id]}
-              type="select"
-              label="Client (optional)"
-              options={[
-                {"Select a client...", ""}
-                | Enum.map(@clients, fn client ->
-                    {"#{client.first_name} #{client.last_name}", client.id}
-                  end)
-              ]}
-            />
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:start_date]}
-              type="date"
-              label="Start Date"
-            />
-
-            <.input
-              field={@form[:end_date]}
-              type="date"
-              label="End Date"
-            />
-          </div>
-
-          <.input
-            field={@form[:is_template]}
-            type="checkbox"
-            label="Save as template"
-          />
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/nutrition/#{@nutrition_plan.id}"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-            >
-              Update Plan
-            </.button>
-          </div>
-        </.form>
-      </div>
-    </div>
-    """
-  end
-
-  def handle_event("validate", %{"nutrition_plan" => plan_params}, socket) do
-    user = socket.assigns.current_scope.user
-
-    attrs =
-      plan_params
-      |> Map.put("organization_id", user.organization_id)
-      |> Map.put("trainer_id", user.id)
-
+  @impl true
+  def handle_event("validate", %{"nutrition_plan" => params}, socket) do
     changeset =
       case socket.assigns.live_action do
-        :new ->
-          NutritionPlan.changeset(%NutritionPlan{}, attrs)
-
-        :edit ->
-          NutritionPlan.changeset(socket.assigns.nutrition_plan, attrs)
+        :new -> NutritionPlan.changeset(%NutritionPlan{}, own(params, socket))
+        :edit -> NutritionPlan.update_changeset(socket.assigns.nutrition_plan, params)
       end
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :form, to_form(changeset, as: "nutrition_plan"))}
   end
 
-  def handle_event("save", %{"nutrition_plan" => plan_params}, socket) do
-    user = socket.assigns.current_scope.user
+  def handle_event("save", %{"nutrition_plan" => params}, socket) do
+    scope = socket.assigns.current_scope
 
-    attrs =
-      plan_params
-      |> Map.put("organization_id", user.organization_id)
-      |> Map.put("trainer_id", user.id)
+    with :ok <- Authorization.authorize(scope, :create, :nutrition_plan),
+         :ok <- check_client(scope, params["client_id"]),
+         {:ok, plan} <- Nutrition.create_nutrition_plan(own(params, socket)) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Plan created.")
+       |> push_navigate(to: ~p"/trainer/nutrition/#{plan.id}")}
+    else
+      {:client_error, message} ->
+        {:noreply, client_error(socket, params, message)}
 
-    case Nutrition.create_nutrition_plan(attrs) do
-      {:ok, nutrition_plan} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Nutrition plan created successfully")
-         |> push_navigate(to: ~p"/trainer/nutrition/#{nutrition_plan.id}")}
-
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: "nutrition_plan"))}
+
+      _blocked ->
+        {:noreply, push_navigate(socket, to: ~p"/trainer/nutrition")}
     end
   end
 
-  def handle_event("update", %{"nutrition_plan" => plan_params}, socket) do
-    case Nutrition.update_nutrition_plan(socket.assigns.nutrition_plan, plan_params) do
-      {:ok, nutrition_plan} ->
+  def handle_event("update", %{"nutrition_plan" => params}, socket) do
+    scope = socket.assigns.current_scope
+    plan = socket.assigns.nutrition_plan
+
+    with :ok <- Authorization.authorize(scope, :update, plan),
+         :ok <- check_client(scope, params["client_id"]),
+         {:ok, plan} <- Nutrition.update_nutrition_plan(plan, params) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Saved.")
+       |> push_navigate(to: ~p"/trainer/nutrition/#{plan.id}")}
+    else
+      {:client_error, message} ->
+        {:noreply, client_error(socket, params, message)}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :form, to_form(changeset, as: "nutrition_plan"))}
+
+      _blocked ->
+        {:noreply, put_flash(socket, :error, "Paused until payment clears.")}
+    end
+  end
+
+  def handle_event("ask_delete", _params, socket),
+    do: {:noreply, assign(socket, :confirm_delete?, true)}
+
+  def handle_event("keep", _params, socket),
+    do: {:noreply, assign(socket, :confirm_delete?, false)}
+
+  def handle_event("delete", _params, socket) do
+    plan = socket.assigns.nutrition_plan
+
+    with :ok <- Authorization.authorize(socket.assigns.current_scope, :delete, plan),
+         {:ok, _plan} <- Nutrition.delete_nutrition_plan(plan) do
+      {:noreply,
+       socket |> put_flash(:info, "Plan deleted.") |> push_navigate(to: ~p"/trainer/nutrition")}
+    else
+      _blocked ->
         {:noreply,
          socket
-         |> put_flash(:info, "Nutrition plan updated successfully")
-         |> push_navigate(to: ~p"/trainer/nutrition/#{nutrition_plan.id}")}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, as: "nutrition_plan"))}
+         |> assign(:confirm_delete?, false)
+         |> put_flash(:error, "Paused until payment clears.")}
     end
+  end
+
+  # A plan can only be assigned to a client the requester coaches.
+  defp check_client(_scope, client_id) when client_id in [nil, ""], do: :ok
+
+  defp check_client(%Scope{} = scope, client_id) do
+    if Scope.manages_client?(scope, client_id),
+      do: :ok,
+      else: {:client_error, "is not one of your clients"}
+  end
+
+  defp client_error(socket, params, message) do
+    changeset =
+      socket
+      |> base_changeset(params)
+      |> Ecto.Changeset.add_error(:client_id, message)
+      |> Map.put(:action, :validate)
+
+    assign(socket, :form, to_form(changeset, as: "nutrition_plan"))
+  end
+
+  defp base_changeset(%{assigns: %{live_action: :new}} = socket, params),
+    do: NutritionPlan.changeset(%NutritionPlan{}, own(params, socket))
+
+  defp base_changeset(socket, params),
+    do: NutritionPlan.update_changeset(socket.assigns.nutrition_plan, params)
+
+  defp own(params, socket) do
+    user = socket.assigns.current_scope.user
+
+    params
+    |> Map.put("organization_id", user.organization_id)
+    |> Map.put("trainer_id", user.id)
   end
 end

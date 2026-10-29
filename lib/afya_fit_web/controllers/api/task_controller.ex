@@ -1,15 +1,12 @@
 defmodule AfyaFitWeb.API.TaskController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Tasks}
+  alias AfyaFit.{Authorization, Clients, Tasks}
   alias AfyaFit.Authorization.Scope
 
   # Authentication is handled in router pipeline
 
   action_fallback AfyaFitWeb.API.FallbackController
-
-  # Ownership of a task cannot be changed through the API.
-  @protected_fields ["organization_id", "trainer_id", "client_id"]
 
   def index(conn, _params) do
     scope = conn.assigns.current_scope
@@ -41,7 +38,7 @@ defmodule AfyaFitWeb.API.TaskController do
   def update(conn, %{"id" => id, "task" => task_params}) do
     scope = conn.assigns.current_scope
     task = Tasks.get_task!(id)
-    attrs = Map.drop(task_params, @protected_fields)
+    attrs = task_params
 
     with :ok <- Authorization.authorize(scope, :update, task),
          :ok <- authorize_automation(scope, attrs),
@@ -71,9 +68,8 @@ defmodule AfyaFitWeb.API.TaskController do
 
   def client_tasks(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
-    client = Accounts.get_user!(client_id)
 
-    with :ok <- Authorization.authorize(scope, :read, client),
+    with {:ok, client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :list, :task) do
       render(conn, :index, tasks: Tasks.list_client_tasks(client))
     end

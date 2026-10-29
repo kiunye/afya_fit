@@ -12,7 +12,10 @@ config :afya_fit, AfyaFit.Repo,
   database:
     System.get_env("POSTGRES_DB") || "afya_fit_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  # LiveView and API tests run in parallel; wait for a connection instead of failing.
+  queue_target: 5_000,
+  queue_interval: 5_000
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

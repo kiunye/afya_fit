@@ -4,6 +4,8 @@ defmodule AfyaFit.Clients do
   """
   import Ecto.Query, warn: false
   alias AfyaFit.Accounts.{TrainerClient, User}
+  alias AfyaFit.Accounts
+  alias AfyaFit.Authorization
   alias AfyaFit.Authorization.Scope
   alias AfyaFit.Repo
 
@@ -23,23 +25,6 @@ defmodule AfyaFit.Clients do
       end
 
     Repo.all(query)
-  end
-
-  @doc """
-  Gets a single trainer-client relationship.
-  """
-  def get_trainer_client!(id) do
-    TrainerClient
-    |> Repo.get!(id)
-    |> Repo.preload([:client, :trainer])
-  end
-
-  @doc """
-  Gets a trainer-client relationship by trainer and client IDs.
-  """
-  def get_trainer_client_by_ids(trainer_id, client_id) do
-    Repo.get_by(TrainerClient, trainer_id: trainer_id, client_id: client_id)
-    |> Repo.preload([:client, :trainer])
   end
 
   @doc """
@@ -68,27 +53,6 @@ defmodule AfyaFit.Clients do
       status: "archived",
       ended_at: DateTime.utc_now()
     })
-  end
-
-  @doc """
-  Gets a client user by ID, ensuring they belong to the trainer's organization.
-  """
-  def get_client!(trainer, client_id) do
-    # Verify client belongs to same organization
-    client = Repo.get!(User, client_id)
-
-    if client.organization_id == trainer.organization_id && client.role == "client" do
-      # Verify trainer-client relationship exists
-      case get_trainer_client_by_ids(trainer.id, client_id) do
-        nil ->
-          raise Ecto.NoResultsError, queryable: TrainerClient
-
-        _trainer_client ->
-          client
-      end
-    else
-      raise Ecto.NoResultsError, queryable: User
-    end
   end
 
   @doc """
@@ -152,14 +116,29 @@ defmodule AfyaFit.Clients do
     end
   end
 
-  @protected_fields ["role", "organization_id", "password_hash", "password"]
+  @doc """
+  Loads the client with `id` if the scope may perform `action` on them.
+
+  Returns `{:ok, client}`, `{:error, :not_found}` (no such client, a user who
+  is not a client, or a malformed id) or the authorization error. The one place
+  every API controller and LiveView uses to reach a client.
+  """
+  def fetch_for(%Scope{} = scope, action, id) do
+    case Accounts.get_user(id) do
+      %User{role: "client"} = client ->
+        with :ok <- Authorization.authorize(scope, action, client), do: {:ok, client}
+
+      _ ->
+        {:error, :not_found}
+    end
+  end
 
   @doc """
-  Updates a client user. Role, organization and credentials cannot be changed here.
+  Updates a client's profile details. Role, organization and credentials cannot be changed here.
   """
   def update_client(%User{} = client, attrs) do
     client
-    |> User.changeset(Map.drop(attrs, @protected_fields))
+    |> User.profile_changeset(attrs)
     |> Repo.update()
   end
 
@@ -216,16 +195,6 @@ defmodule AfyaFit.Clients do
     case Repo.get_by(TrainerClient, client_id: client_id, status: "active") do
       nil -> default
       %TrainerClient{trainer_id: trainer_id} -> trainer_id
-    end
-  end
-
-  @doc """
-  Checks if a trainer has access to a client.
-  """
-  def trainer_has_client?(trainer_id, client_id) do
-    case get_trainer_client_by_ids(trainer_id, client_id) do
-      nil -> false
-      %TrainerClient{status: status} -> status in ["active", "paused"]
     end
   end
 

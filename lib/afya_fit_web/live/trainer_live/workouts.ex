@@ -1,485 +1,405 @@
 defmodule AfyaFitWeb.TrainerLive.Workouts do
+  @moduledoc """
+  Workouts: the library of plans a trainer builds and shares.
+  """
   use AfyaFitWeb, :live_view
 
+  import AfyaFitWeb.SignComponents
+
+  alias AfyaFit.Authorization
   alias AfyaFit.Workouts
   alias AfyaFit.Workouts.WorkoutPlan
+  alias AfyaFitWeb.Access
 
+  @tabs ~w(mine shared templates)
+
+  @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
+    socket =
+      socket
+      |> Access.guard(:list, :workout_plan)
+      |> assign(:page_title, "Workouts")
+      |> assign(:form, nil)
+      |> assign(:workout_plan, nil)
+      |> assign(:tab, "mine")
+      |> assign(:confirm_delete?, false)
 
-    if user.role != "trainer" do
-      {:ok,
-       socket
-       |> put_flash(:error, "Access denied. Trainer role required.")
-       |> redirect(to: ~p"/")}
-    else
-      changeset = WorkoutPlan.changeset(%WorkoutPlan{}, %{})
-      form = to_form(changeset, as: "workout_plan")
-
-      {:ok,
-       socket
-       |> assign(:workout_plans, [])
-       |> assign(:form, form)
-       |> assign(:page_title, "Workout Plans")}
-    end
+    {:ok, socket}
   end
 
+  @impl true
   def handle_params(params, _uri, socket) do
-    user = socket.assigns.current_scope.user
-
-    case socket.assigns.live_action do
-      :index ->
-        workout_plans =
-          Workouts.list_workout_plans()
-          |> Enum.filter(fn plan ->
-            plan.organization_id == user.organization_id &&
-              (plan.trainer_id == user.id || plan.is_public)
-          end)
-          |> Enum.sort_by(& &1.inserted_at, {:desc, DateTime})
-
-        {:noreply, assign(socket, :workout_plans, workout_plans)}
-
-      :new ->
-        changeset = WorkoutPlan.changeset(%WorkoutPlan{}, %{})
-        form = to_form(changeset, as: "workout_plan")
-        {:noreply, assign(socket, :form, form)}
-
-      :show ->
-        workout_plan = Workouts.get_workout_plan!(params["id"])
-        {:noreply, assign(socket, :workout_plan, workout_plan)}
-
-      :edit ->
-        workout_plan = Workouts.get_workout_plan!(params["id"])
-        changeset = WorkoutPlan.changeset(workout_plan, %{})
-        form = to_form(changeset, as: "workout_plan")
-        {:noreply, assign(socket, :workout_plan, workout_plan) |> assign(:form, form)}
+    if socket.assigns.denied do
+      {:noreply, socket}
+    else
+      {:noreply, apply_action(socket, socket.assigns.live_action, params)}
     end
   end
 
+  defp apply_action(socket, :index, params) do
+    scope = socket.assigns.current_scope
+    tab = if params["tab"] in @tabs, do: params["tab"], else: "mine"
+    plans = scope |> Workouts.list_workout_plans_for() |> in_tab(tab, scope.user.id)
+
+    socket
+    |> assign(:tab, tab)
+    |> assign(:total, length(Workouts.list_workout_plans_for(scope)))
+    |> assign(:can_create?, Authorization.can?(scope, :create, :workout_plan))
+    |> assign(:empty?, plans == [])
+    |> stream(:plans, Enum.sort_by(plans, & &1.inserted_at, {:desc, DateTime}), reset: true)
+  end
+
+  defp apply_action(socket, :new, _params) do
+    scope = socket.assigns.current_scope
+
+    case Authorization.authorize(scope, :create, :workout_plan) do
+      :ok ->
+        assign(
+          socket,
+          :form,
+          to_form(WorkoutPlan.changeset(%WorkoutPlan{}, %{}), as: "workout_plan")
+        )
+
+      error ->
+        socket |> Access.flash_denial(error) |> push_navigate(to: ~p"/trainer/workouts")
+    end
+  end
+
+  defp apply_action(socket, action, %{"id" => id}) when action in [:show, :edit] do
+    scope = socket.assigns.current_scope
+    plan_action = if action == :show, do: :read, else: :update
+
+    case fetch_plan(scope, plan_action, id) do
+      {:ok, plan} ->
+        socket
+        |> assign(:workout_plan, plan)
+        |> assign(:confirm_delete?, false)
+        |> assign(:can_update?, Authorization.can?(scope, :update, plan))
+        |> assign(:can_delete?, Authorization.can?(scope, :delete, plan))
+        |> assign(:can_duplicate?, Authorization.can?(scope, :duplicate, plan))
+        |> assign(
+          :form,
+          action == :edit && to_form(WorkoutPlan.changeset(plan, %{}), as: "workout_plan")
+        )
+
+      {:denied, denied} ->
+        assign(socket, :denied, denied)
+    end
+  end
+
+  defp fetch_plan(scope, action, id) do
+    with {:ok, uuid} <- Ecto.UUID.cast(id),
+         %WorkoutPlan{} = plan <- Workouts.get_workout_plan(uuid),
+         :ok <- Authorization.authorize(scope, action, plan) do
+      {:ok, plan}
+    else
+      {:error, _} = error -> {:denied, Access.denial(scope, error)}
+      _ -> {:denied, Access.denial(scope, {:error, :not_found})}
+    end
+  end
+
+  defp in_tab(plans, "mine", user_id),
+    do: Enum.filter(plans, &(&1.trainer_id == user_id and not &1.is_template))
+
+  defp in_tab(plans, "shared", user_id),
+    do: Enum.filter(plans, &(&1.trainer_id != user_id and &1.is_public))
+
+  defp in_tab(plans, "templates", _user_id), do: Enum.filter(plans, & &1.is_template)
+
+  @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <%= case @live_action do %>
-          <% :index -> %>
-            <.workouts_index
-              workout_plans={@workout_plans}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :new -> %>
-            <.workouts_new
-              form={@form}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :show -> %>
-            <.workouts_show
-              workout_plan={@workout_plan}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :edit -> %>
-            <.workouts_edit
-              form={@form}
-              workout_plan={@workout_plan}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-        <% end %>
+    <Layouts.app flash={@flash} current_scope={@current_scope} active={:workouts}>
+      <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
+      <div :if={!@denied}>
+        <.workouts_index :if={@live_action == :index} {assigns} />
+        <.workouts_form :if={@live_action in [:new, :edit] && @form} {assigns} />
+        <.workouts_show :if={@live_action == :show && @workout_plan} {assigns} />
       </div>
     </Layouts.app>
     """
   end
 
-  attr :workout_plans, :list, default: []
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def workouts_index(assigns) do
+  defp workouts_index(assigns) do
     ~H"""
-    <div>
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Workout Plans</h1>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">
-            Create and manage workout plans for your clients
-          </p>
-        </div>
-        <.link
-          navigate={~p"/trainer/workouts/new"}
-          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-        >
-          <.icon name="hero-plus-circle" class="w-5 h-5 inline mr-2" /> New Workout Plan
-        </.link>
-      </div>
+    <.page_header>
+      Workouts
+      <:subtitle>
+        <b class="text-ink">{@total} {if @total == 1, do: "plan", else: "plans"}.</b>
+        Build once, assign to many clients.
+      </:subtitle>
+    </.page_header>
 
-      <%= if Enum.empty?(@workout_plans) do %>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-          <.icon name="hero-dumbbell" class="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No workout plans yet
-          </h3>
-          <p class="text-gray-500 dark:text-gray-400 mb-6">
-            Create your first workout plan to get started
-          </p>
-          <.link
-            navigate={~p"/trainer/workouts/new"}
-            class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-          >
-            <.icon name="hero-plus-circle" class="w-5 h-5 mr-2" /> Create Workout Plan
-          </.link>
-        </div>
-      <% else %>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <%= for plan <- @workout_plans do %>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow hover:shadow-lg transition-shadow">
-              <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                  <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-                    {plan.name}
-                  </h3>
-                  <%= if plan.is_template do %>
-                    <span class="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded">
-                      Template
-                    </span>
-                  <% end %>
-                </div>
-                <p class="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                  {plan.description || "No description"}
-                </p>
-                <div class="flex items-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  <span>{plan.duration_weeks} weeks</span>
-                  <span class="mx-2">•</span>
-                  <span class="capitalize">{plan.difficulty}</span>
-                </div>
-                <div class="flex space-x-2">
-                  <.link
-                    navigate={~p"/trainer/workouts/#{plan.id}"}
-                    class="flex-1 px-3 py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 text-sm"
-                  >
-                    View
-                  </.link>
-                  <%= if plan.trainer_id == assigns.current_scope.user.id do %>
-                    <.link
-                      navigate={~p"/trainer/workouts/#{plan.id}/edit"}
-                      class="flex-1 px-3 py-2 bg-gray-600 text-white text-center rounded-lg hover:bg-gray-700 text-sm"
-                    >
-                      Edit
-                    </.link>
-                  <% end %>
-                </div>
-              </div>
-            </div>
+    <.sign_group label="Plans">
+      <:actions>
+        <.sign_action :if={@can_create?} id="new-plan" primary navigate={~p"/trainer/workouts/new"}>
+          New plan
+        </.sign_action>
+        <span :if={!@can_create?} class="flex items-center gap-3 text-sm text-ink-2">
+          Paused until payment clears
+          <.sign_action id="new-plan" aria-disabled="true">New plan</.sign_action>
+        </span>
+      </:actions>
+      <nav aria-label="Plan type" class="flex gap-2 px-4 pb-3 sm:px-[26px]">
+        <.link
+          :for={
+            {label, value} <- [{"Mine", "mine"}, {"Shared", "shared"}, {"Templates", "templates"}]
+          }
+          patch={~p"/trainer/workouts?tab=#{value}"}
+          aria-current={@tab == value && "true"}
+          class={[
+            "rounded-control border-2 px-3 py-1 text-xs font-bold uppercase tracking-[.06em]",
+            @tab == value && "border-white bg-white text-field-0",
+            @tab != value && "border-line/50 text-ink-2 hover:border-white hover:text-white"
+          ]}
+        >
+          {label}
+        </.link>
+      </nav>
+      <div id="plans" phx-update="stream">
+        <div
+          id="plans-empty"
+          class="hidden border-b border-line/40 px-4 py-6 text-ink-2 only:block sm:px-[26px]"
+        >
+          <%= case @tab do %>
+            <% "mine" -> %>
+              No workout plans yet. Build your own, or start from a template.
+            <% "shared" -> %>
+              Nobody has shared a plan with the team yet.
+            <% "templates" -> %>
+              No templates yet. Mark a plan as a template to reuse it.
           <% end %>
         </div>
-      <% end %>
-    </div>
+        <.sign
+          :for={{id, plan} <- @streams.plans}
+          id={id}
+          icon={:workouts}
+          time={Calendar.strftime(plan.updated_at, "%-d %b")}
+          time_label="Updated"
+        >
+          <:title>{plan.name}</:title>
+          {plan.duration_weeks} weeks · {plan.difficulty}
+          <:actions>
+            <.sign_action navigate={~p"/trainer/workouts/#{plan.id}"}>Open</.sign_action>
+          </:actions>
+        </.sign>
+      </div>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def workouts_new(assigns) do
+  defp workouts_form(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/workouts"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plans
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Workout Plan</h1>
+    <.page_header>
+      {if @live_action == :new, do: "New plan", else: "Edit plan"}
+      <:subtitle>
+        {if @live_action == :new,
+          do: "Weeks, difficulty and who can see it.",
+          else: @workout_plan.name}
+      </:subtitle>
+    </.page_header>
+
+    <.form
+      for={@form}
+      id="workout-form"
+      phx-submit={if @live_action == :new, do: "save", else: "update"}
+      phx-change="validate"
+      class="max-w-2xl px-4 py-6 sm:px-[26px]"
+    >
+      <.input field={@form[:name]} type="text" label="Plan name" required />
+      <.input field={@form[:description]} type="textarea" label="Description" />
+      <div class="grid gap-x-6 sm:grid-cols-2">
+        <.input
+          field={@form[:duration_weeks]}
+          type="number"
+          label="Duration (weeks)"
+          min="1"
+          required
+        />
+        <.input
+          field={@form[:difficulty]}
+          type="select"
+          label="Difficulty"
+          prompt="Choose"
+          options={[
+            {"Beginner", "beginner"},
+            {"Intermediate", "intermediate"},
+            {"Advanced", "advanced"}
+          ]}
+          required
+        />
       </div>
+      <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
+      <.input
+        field={@form[:is_public]}
+        type="checkbox"
+        label="Share with other trainers in the organisation"
+      />
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="workout-plan-form"
-          phx-submit="save"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Plan Name"
-            required
-          />
-
-          <.input
-            field={@form[:description]}
-            type="textarea"
-            label="Description"
-            rows="4"
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:duration_weeks]}
-              type="number"
-              label="Duration (weeks)"
-              required
-            />
-
-            <.input
-              field={@form[:difficulty]}
-              type="select"
-              label="Difficulty"
-              options={[
-                {"Beginner", "beginner"},
-                {"Intermediate", "intermediate"},
-                {"Advanced", "advanced"}
-              ]}
-              required
-            />
-          </div>
-
-          <div class="flex items-center space-x-4">
-            <.input
-              field={@form[:is_template]}
-              type="checkbox"
-              label="Save as template"
-            />
-            <.input
-              field={@form[:is_public]}
-              type="checkbox"
-              label="Make public (visible to all trainers in organization)"
-            />
-          </div>
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/workouts"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              Create Plan
-            </.button>
-          </div>
-        </.form>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <.button type="submit" variant="primary">
+          {if @live_action == :new, do: "Create plan", else: "Save"}
+        </.button>
+        <.button navigate={
+          if @live_action == :new,
+            do: ~p"/trainer/workouts",
+            else: ~p"/trainer/workouts/#{@workout_plan.id}"
+        }>
+          Cancel
+        </.button>
       </div>
-    </div>
+    </.form>
     """
   end
 
-  attr :workout_plan, :any, required: true
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def workouts_show(assigns) do
+  defp workouts_show(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/workouts"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
+    <.page_header>
+      {@workout_plan.name}
+      <:subtitle>{@workout_plan.description || "No description."}</:subtitle>
+      <:actions>
+        <.sign_action
+          :if={@can_update?}
+          id="edit-plan"
+          navigate={~p"/trainer/workouts/#{@workout_plan.id}/edit"}
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plans
-        </.link>
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{@workout_plan.name}</h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">
-              {@workout_plan.description || "No description"}
-            </p>
-          </div>
-          <%= if @workout_plan.trainer_id == assigns.current_scope.user.id do %>
-            <.link
-              navigate={~p"/trainer/workouts/#{@workout_plan.id}/edit"}
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Edit Plan
-            </.link>
-          <% end %>
-        </div>
-      </div>
+          Edit
+        </.sign_action>
+        <.sign_action :if={@can_duplicate?} id="duplicate-plan" phx-click="duplicate">
+          Duplicate
+        </.sign_action>
+      </:actions>
+    </.page_header>
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <dl class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Duration</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-              {@workout_plan.duration_weeks} weeks
-            </dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Difficulty</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white capitalize">
-              {@workout_plan.difficulty}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Template</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-              {if @workout_plan.is_template, do: "Yes", else: "No"}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Public</dt>
-            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-              {if @workout_plan.is_public, do: "Yes", else: "No"}
-            </dd>
-          </div>
-        </dl>
+    <.sign_group label="Details">
+      <div class="px-4 sm:px-[26px]">
+        <.list>
+          <:item title="Duration">{@workout_plan.duration_weeks} weeks</:item>
+          <:item title="Difficulty"><span class="capitalize">{@workout_plan.difficulty}</span></:item>
+          <:item title="Template">{if @workout_plan.is_template, do: "Yes", else: "No"}</:item>
+          <:item title="Shared">
+            {if @workout_plan.is_public, do: "Yes, with the organisation", else: "No"}
+          </:item>
+        </.list>
       </div>
-    </div>
+    </.sign_group>
+
+    <.sign_group :if={@can_delete?} label="Delete">
+      <.sign :if={!@confirm_delete?} id="delete-plan" icon={:alert} draw={false}>
+        <:title>Delete this plan</:title>
+        Clients keep their history; the plan stops showing for new sessions.
+        <:actions>
+          <.sign_action id="ask-delete" phx-click="ask_delete">Delete</.sign_action>
+        </:actions>
+      </.sign>
+      <.sign :if={@confirm_delete?} id="delete-confirm" icon={:alert} state={:next} draw={false}>
+        <:title>Delete {@workout_plan.name}?</:title>
+        This cannot be undone.
+        <:actions>
+          <.sign_action id="confirm-delete" primary phx-click="delete">Delete plan</.sign_action>
+          <.sign_action id="keep-plan" phx-click="keep">Keep</.sign_action>
+        </:actions>
+      </.sign>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :workout_plan, :any, required: true
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
-
-  def workouts_edit(assigns) do
-    ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/workouts/#{@workout_plan.id}"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Workout Plan
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Workout Plan</h1>
-      </div>
-
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="workout-plan-form"
-          phx-submit="update"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <.input
-            field={@form[:name]}
-            type="text"
-            label="Plan Name"
-            required
-          />
-
-          <.input
-            field={@form[:description]}
-            type="textarea"
-            label="Description"
-            rows="4"
-          />
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:duration_weeks]}
-              type="number"
-              label="Duration (weeks)"
-              required
-            />
-
-            <.input
-              field={@form[:difficulty]}
-              type="select"
-              label="Difficulty"
-              options={[
-                {"Beginner", "beginner"},
-                {"Intermediate", "intermediate"},
-                {"Advanced", "advanced"}
-              ]}
-              required
-            />
-          </div>
-
-          <div class="flex items-center space-x-4">
-            <.input
-              field={@form[:is_template]}
-              type="checkbox"
-              label="Save as template"
-            />
-            <.input
-              field={@form[:is_public]}
-              type="checkbox"
-              label="Make public"
-            />
-          </div>
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/workouts/#{@workout_plan.id}"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-            >
-              Update Plan
-            </.button>
-          </div>
-        </.form>
-      </div>
-    </div>
-    """
-  end
-
-  def handle_event("validate", %{"workout_plan" => plan_params}, socket) do
-    user = socket.assigns.current_scope.user
-
-    attrs =
-      plan_params
-      |> Map.put("organization_id", user.organization_id)
-      |> Map.put("trainer_id", user.id)
-
+  @impl true
+  def handle_event("validate", %{"workout_plan" => params}, socket) do
     changeset =
       case socket.assigns.live_action do
-        :new ->
-          WorkoutPlan.changeset(%WorkoutPlan{}, attrs)
-
-        :edit ->
-          WorkoutPlan.changeset(socket.assigns.workout_plan, attrs)
+        :new -> WorkoutPlan.changeset(%WorkoutPlan{}, own(params, socket))
+        :edit -> WorkoutPlan.update_changeset(socket.assigns.workout_plan, params)
       end
       |> Map.put(:action, :validate)
 
     {:noreply, assign(socket, :form, to_form(changeset, as: "workout_plan"))}
   end
 
-  def handle_event("save", %{"workout_plan" => plan_params}, socket) do
-    user = socket.assigns.current_scope.user
+  def handle_event("save", %{"workout_plan" => params}, socket) do
+    scope = socket.assigns.current_scope
 
-    attrs =
-      plan_params
-      |> Map.put("organization_id", user.organization_id)
-      |> Map.put("trainer_id", user.id)
-
-    case Workouts.create_workout_plan(attrs) do
-      {:ok, workout_plan} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Workout plan created successfully")
-         |> push_navigate(to: ~p"/trainer/workouts/#{workout_plan.id}")}
-
-      {:error, changeset} ->
+    with :ok <- Authorization.authorize(scope, :create, :workout_plan),
+         {:ok, plan} <-
+           Workouts.create_workout_plan(own(params, socket)) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Plan created.")
+       |> push_navigate(to: ~p"/trainer/workouts/#{plan.id}")}
+    else
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: "workout_plan"))}
+
+      error ->
+        {:noreply, Access.flash_denial(socket, error)}
     end
   end
 
-  def handle_event("update", %{"workout_plan" => plan_params}, socket) do
-    case Workouts.update_workout_plan(socket.assigns.workout_plan, plan_params) do
-      {:ok, workout_plan} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Workout plan updated successfully")
-         |> push_navigate(to: ~p"/trainer/workouts/#{workout_plan.id}")}
+  def handle_event("update", %{"workout_plan" => params}, socket) do
+    scope = socket.assigns.current_scope
+    plan = socket.assigns.workout_plan
 
-      {:error, changeset} ->
+    with :ok <- Authorization.authorize(scope, :update, plan),
+         {:ok, plan} <- Workouts.update_workout_plan(plan, params) do
+      {:noreply,
+       socket |> put_flash(:info, "Saved.") |> push_navigate(to: ~p"/trainer/workouts/#{plan.id}")}
+    else
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: "workout_plan"))}
+
+      error ->
+        {:noreply, Access.flash_denial(socket, error)}
     end
+  end
+
+  def handle_event("duplicate", _params, socket) do
+    scope = socket.assigns.current_scope
+    original = socket.assigns.workout_plan
+
+    attrs = %{
+      "name" => "#{original.name} (Copy)",
+      "description" => original.description,
+      "duration_weeks" => original.duration_weeks,
+      "difficulty" => original.difficulty,
+      "is_template" => false
+    }
+
+    with :ok <- Authorization.authorize(scope, :duplicate, original),
+         :ok <- Authorization.authorize(scope, :create, :workout_plan),
+         {:ok, copy} <- Workouts.create_workout_plan(own(attrs, socket)) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Duplicated.")
+       |> push_navigate(to: ~p"/trainer/workouts/#{copy.id}")}
+    else
+      error -> {:noreply, Access.flash_denial(socket, error)}
+    end
+  end
+
+  def handle_event("ask_delete", _params, socket),
+    do: {:noreply, assign(socket, :confirm_delete?, true)}
+
+  def handle_event("keep", _params, socket),
+    do: {:noreply, assign(socket, :confirm_delete?, false)}
+
+  def handle_event("delete", _params, socket) do
+    plan = socket.assigns.workout_plan
+
+    with :ok <- Authorization.authorize(socket.assigns.current_scope, :delete, plan),
+         {:ok, _plan} <- Workouts.delete_workout_plan(plan) do
+      {:noreply,
+       socket |> put_flash(:info, "Plan deleted.") |> push_navigate(to: ~p"/trainer/workouts")}
+    else
+      error -> {:noreply, socket |> assign(:confirm_delete?, false) |> Access.flash_denial(error)}
+    end
+  end
+
+  defp own(params, socket) do
+    user = socket.assigns.current_scope.user
+
+    params
+    |> Map.put("organization_id", user.organization_id)
+    |> Map.put("trainer_id", user.id)
   end
 end

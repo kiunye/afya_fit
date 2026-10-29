@@ -3,6 +3,7 @@ defmodule AfyaFit.Tasks do
   The Tasks context.
   """
   import Ecto.Query, warn: false
+  alias AfyaFit.Authorization
   alias AfyaFit.Authorization.Scope
   alias AfyaFit.Repo
   alias AfyaFit.Tasks.{Task, TaskCompletion, TaskRecurrence}
@@ -20,32 +21,9 @@ defmodule AfyaFit.Tasks do
     Repo.all(query)
   end
 
-  @doc """
-  Lists the tasks the scope's user may see: every task for platform admins, the
-  organization's tasks for organization admins, a trainer's own and linked
-  clients' tasks, and a client's own tasks.
-  """
-  def list_tasks_for(%Scope{user: user} = scope) do
-    in_org = from t in Task, where: t.organization_id == ^user.organization_id
-
-    case Scope.role(scope) do
-      :admin ->
-        Repo.all(Task)
-
-      :org_admin ->
-        Repo.all(in_org)
-
-      :trainer ->
-        client_ids = MapSet.to_list(scope.client_ids)
-        Repo.all(from t in in_org, where: t.trainer_id == ^user.id or t.client_id in ^client_ids)
-
-      :client ->
-        Repo.all(from t in in_org, where: t.client_id == ^user.id)
-
-      _ ->
-        []
-    end
-  end
+  @doc "Lists the tasks the scope may see (see `Authorization.visible/2`)."
+  def list_tasks_for(%Scope{} = scope),
+    do: scope |> Authorization.visible(:task) |> Repo.all()
 
   @doc "Lists the tasks assigned to `client`."
   def list_client_tasks(%{id: client_id, organization_id: organization_id}) do
@@ -64,7 +42,7 @@ defmodule AfyaFit.Tasks do
 
   def update_task(%Task{} = task, attrs) do
     task
-    |> Task.changeset(attrs)
+    |> Task.update_changeset(attrs)
     |> Repo.update()
   end
 

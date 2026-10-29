@@ -22,10 +22,13 @@ defmodule AfyaFit.Authorization.Scope do
   }
 
   defstruct user: nil,
+            organization: nil,
+            owner_name: nil,
             tier: "free",
             organization_status: "active",
             subscription_status: nil,
             period_end: nil,
+            cancel_at_period_end: false,
             client_ids: MapSet.new(),
             client_count: 0
 
@@ -33,10 +36,13 @@ defmodule AfyaFit.Authorization.Scope do
 
   @type t :: %__MODULE__{
           user: User.t(),
+          organization: struct() | nil,
+          owner_name: String.t() | nil,
           tier: String.t(),
           organization_status: String.t() | nil,
           subscription_status: String.t() | nil,
           period_end: DateTime.t() | nil,
+          cancel_at_period_end: boolean(),
           client_ids: MapSet.t(binary()),
           client_count: non_neg_integer()
         }
@@ -44,7 +50,7 @@ defmodule AfyaFit.Authorization.Scope do
   @doc """
   Builds a scope without touching the database.
 
-  Options: `:tier`, `:organization_status`, `:subscription_status`,
+  Options: `:organization`, `:tier`, `:organization_status`, `:subscription_status`,
   `:period_end`, `:client_ids` (a list) and `:client_count`.
   """
   @spec new(User.t(), keyword()) :: t()
@@ -70,14 +76,32 @@ defmodule AfyaFit.Authorization.Scope do
       )
 
     new(user,
-      tier: organization && organization.plan_type,
+      organization: organization,
+      owner_name: owner_name(user.organization_id),
+      tier: effective_tier(organization, subscription),
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,
       period_end: subscription && subscription.current_period_end,
+      cancel_at_period_end: (subscription && subscription.cancel_at_period_end) || false,
       client_ids: linked_client_ids(user),
       client_count: count_clients(user.organization_id)
     )
   end
+
+  @doc """
+  The plan an organization is entitled to. The subscription is the source of
+  truth because it is what the organization pays for and what billing updates;
+  the organization's own `plan_type` only applies while it has no subscription.
+  """
+  @spec effective_tier(struct() | nil, struct() | nil) :: String.t()
+  def effective_tier(_organization, %{plan_type: plan_type}), do: plan_type
+  def effective_tier(%{plan_type: plan_type}, nil), do: plan_type
+  def effective_tier(nil, nil), do: "free"
+
+  @doc "Whether the organization may write right now, and why."
+  @spec billing(t(), DateTime.t()) :: AfyaFit.Authorization.BillingStatus.t()
+  def billing(%__MODULE__{} = scope, now \\ DateTime.utc_now()),
+    do: AfyaFit.Authorization.BillingStatus.build(scope, now)
 
   @spec role(t()) :: role()
   def role(%__MODULE__{user: %User{role: role}}), do: Map.get(@roles, role, :none)
@@ -96,6 +120,23 @@ defmodule AfyaFit.Authorization.Scope do
       :org_admin -> not is_nil(client_id)
       :trainer -> MapSet.member?(scope.client_ids, client_id)
       _ -> false
+    end
+  end
+
+  # The person to ask about billing: the organization admin, else the longest-serving trainer.
+  defp owner_name(organization_id) do
+    from(u in User,
+      where:
+        u.organization_id == ^organization_id and u.role in ["org_admin", "trainer"] and
+          is_nil(u.deleted_at),
+      order_by: [asc: u.role, asc: u.inserted_at],
+      limit: 1,
+      select: {u.first_name, u.last_name}
+    )
+    |> Repo.one()
+    |> case do
+      {first, last} -> String.trim("#{first} #{last}")
+      nil -> nil
     end
   end
 

@@ -27,7 +27,7 @@ defmodule AfyaFit.Authorization do
   """
 
   alias AfyaFit.Accounts.User
-  alias AfyaFit.Authorization.{Entitlements, Permissions, Policy, Scope}
+  alias AfyaFit.Authorization.{BillingStatus, Entitlements, Permissions, Policy, Scope}
 
   @struct_types %{
     AfyaFit.Workouts.WorkoutPlan => :workout_plan,
@@ -77,6 +77,13 @@ defmodule AfyaFit.Authorization do
     authorize(scope, action, subject, record, opts) == :ok
   end
 
+  @doc """
+  The query of every `type` record the requester may see. It states the same
+  attribute rules as `authorize/5`, so lists and single-record checks agree.
+  """
+  @spec visible(Scope.t(), atom()) :: Ecto.Query.t()
+  def visible(%Scope{} = scope, type), do: Policy.visible(type, scope)
+
   @doc "Resource types and actions the requester's role allows, ignoring attributes and tier."
   @spec permissions(Scope.t()) :: %{atom() => [atom()]}
   def permissions(%Scope{} = scope), do: scope |> Scope.role() |> Permissions.for_role()
@@ -118,7 +125,7 @@ defmodule AfyaFit.Authorization do
   defp check_billing(_scope, _role, :subscription, _action, _now), do: :ok
 
   defp check_billing(scope, _role, _type, action, now) do
-    if Permissions.read_action?(action) or Entitlements.billing_state(scope, now) == :active do
+    if Permissions.read_action?(action) or BillingStatus.writable?(Scope.billing(scope, now)) do
       :ok
     else
       {:error, {:subscription_inactive, scope.subscription_status || scope.organization_status}}

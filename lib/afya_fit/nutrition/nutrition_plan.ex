@@ -42,4 +42,13 @@ defmodule AfyaFit.Nutrition.NutritionPlan do
     ])
     |> validate_required([:organization_id, :trainer_id, :name])
   end
+
+  @ownership [:organization_id, :trainer_id]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:organization_id, :trainer_id`) can never change.
+  """
+  def update_changeset(nutrition_plan, attrs),
+    do: changeset(nutrition_plan, AfyaFit.Ownership.without(attrs, @ownership))
 end

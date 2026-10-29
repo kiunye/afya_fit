@@ -1,426 +1,358 @@
 defmodule AfyaFitWeb.TrainerLive.Clients do
+  @moduledoc """
+  Clients: the list of people a trainer coaches, and the forms to add or edit one.
+  """
   use AfyaFitWeb, :live_view
 
+  import AfyaFitWeb.SignComponents
+
   alias AfyaFit.Accounts.User
+  alias AfyaFit.Authorization
+  alias AfyaFit.Authorization.Entitlements
   alias AfyaFit.Clients
+  alias AfyaFitWeb.Access
 
+  @statuses ~w(active paused archived)
+
+  @impl true
   def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
+    socket =
+      socket
+      |> Access.guard(:list, :client)
+      |> assign(:page_title, "Clients")
+      |> assign(:limit, nil)
+      |> assign(:form, nil)
+      |> assign(:client, nil)
+      |> assign(:status, nil)
 
-    if user.role != "trainer" do
-      {:ok,
-       socket
-       |> put_flash(:error, "Access denied. Trainer role required.")
-       |> redirect(to: ~p"/")}
-    else
-      changeset = User.registration_changeset(%User{}, %{})
-      form = to_form(changeset, as: "client")
-
-      {:ok,
-       socket
-       |> assign(:clients, [])
-       |> assign(:form, form)
-       |> assign(:page_title, "Clients")}
-    end
+    {:ok, socket}
   end
 
+  @impl true
   def handle_params(params, _uri, socket) do
-    user = socket.assigns.current_scope.user
-
-    case socket.assigns.live_action do
-      :index ->
-        clients = Clients.list_trainer_clients(user.id, %{}) |> Enum.map(& &1.client)
-        {:noreply, assign(socket, :clients, clients)}
-
-      :new ->
-        changeset = User.registration_changeset(%User{}, %{})
-        form = to_form(changeset, as: "client")
-        {:noreply, assign(socket, :form, form)}
-
-      :show ->
-        client = Clients.get_client!(user, params["id"])
-        {:noreply, assign(socket, :client, client)}
-
-      :edit ->
-        client = Clients.get_client!(user, params["id"])
-        changeset = User.changeset(client, %{})
-        form = to_form(changeset, as: "client")
-        {:noreply, assign(socket, :client, client) |> assign(:form, form)}
+    if socket.assigns.denied do
+      {:noreply, socket}
+    else
+      {:noreply, apply_action(socket, socket.assigns.live_action, params)}
     end
   end
 
+  defp apply_action(socket, :index, params) do
+    scope = socket.assigns.current_scope
+    status = if params["status"] in @statuses, do: params["status"]
+    filters = if status, do: %{status: status}, else: %{}
+    clients = Clients.list_clients_for(scope, filters)
+
+    socket
+    |> assign(:status, status)
+    |> assign(:client_count, scope.client_count)
+    |> assign(:client_limit, Entitlements.client_limit(scope.tier))
+    |> assign(:add_state, add_state(scope))
+    |> maybe_open_limit(params)
+    |> assign(:empty?, clients == [])
+    |> stream(:clients, clients, reset: true)
+  end
+
+  defp apply_action(socket, :new, _params) do
+    scope = socket.assigns.current_scope
+
+    case Authorization.authorize(scope, :create, :client) do
+      :ok ->
+        assign(socket, :form, to_form(User.registration_changeset(%User{}, %{}), as: "client"))
+
+      error ->
+        socket |> deny(error) |> push_navigate(to: ~p"/trainer/clients?limit=1")
+    end
+  end
+
+  defp apply_action(socket, action, %{"id" => id}) when action in [:show, :edit] do
+    scope = socket.assigns.current_scope
+
+    with {:ok, client} <-
+           Clients.fetch_for(scope, if(action == :show, do: :read, else: :update), id) do
+      socket = assign(socket, :client, client)
+
+      if action == :edit,
+        do: assign(socket, :form, to_form(User.profile_changeset(client, %{}), as: "client")),
+        else:
+          assign(
+            socket,
+            :can_upgrade?,
+            Authorization.can?(socket.assigns.current_scope, :manage, :subscription)
+          )
+    else
+      error -> assign(socket, :denied, Access.denial(scope, error))
+    end
+  end
+
+  # `?limit=1` reopens the limit dialog after a redirect from a blocked action.
+  defp maybe_open_limit(socket, %{"limit" => "1"}) do
+    scope = socket.assigns.current_scope
+
+    if socket.assigns.add_state == :limit,
+      do:
+        assign(socket, :limit, %{can_upgrade: Authorization.can?(scope, :manage, :subscription)}),
+      else: socket
+  end
+
+  defp maybe_open_limit(socket, _params), do: socket
+
+  # What the "Add client" action does right now: :ok, :limit (opens the dialog)
+  # or :paused (read-only account, stays visible but unavailable).
+  defp add_state(scope) do
+    case Authorization.authorize(scope, :create, :client) do
+      :ok -> :ok
+      {:error, {:upgrade_required, _}} -> :limit
+      {:error, {:subscription_inactive, _}} -> :paused
+      {:error, _} -> :hidden
+    end
+  end
+
+  # A plan limit opens the dialog; every other denial is a flash.
+  defp deny(socket, error) do
+    case Access.denial(socket.assigns.current_scope, error) do
+      {:upgrade, details} -> assign(socket, :limit, details)
+      _other -> Access.flash_denial(socket, error)
+    end
+  end
+
+  @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <%= case @live_action do %>
-          <% :index -> %>
-            <.clients_index
-              clients={@clients}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :new -> %>
-            <.clients_new
-              form={@form}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :show -> %>
-            <.clients_show
-              client={@client}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-          <% :edit -> %>
-            <.clients_edit
-              form={@form}
-              client={@client}
-              current_scope={@current_scope}
-              live_action={@live_action}
-            />
-        <% end %>
+    <Layouts.app flash={@flash} current_scope={@current_scope} active={:clients}>
+      <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
+      <div :if={!@denied}>
+        <.clients_index :if={@live_action == :index} {assigns} />
+        <.clients_form :if={@live_action in [:new, :edit]} {assigns} />
+        <.clients_show :if={@live_action == :show && @client} {assigns} />
       </div>
+
+      <.limit_dialog
+        :if={@limit}
+        id="limit-dialog"
+        title="Client limit reached"
+        current_label="Free, now"
+        current_value={"#{Entitlements.client_limit(@current_scope.tier)} clients"}
+        upgraded_value={"#{Entitlements.client_limit("pro")} clients"}
+        can_upgrade={@limit.can_upgrade}
+        owner_name={@current_scope.owner_name}
+        on_cancel={JS.push("close_limit")}
+      >
+        {@current_scope.organization && @current_scope.organization.name} is on Free, which has
+        room for {Entitlements.client_limit(@current_scope.tier)} clients. Add another by moving to Pro.
+      </.limit_dialog>
     </Layouts.app>
     """
   end
 
   defp clients_index(assigns) do
     ~H"""
-    <div>
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Clients</h1>
-          <p class="mt-2 text-gray-600 dark:text-gray-400">
-            Manage your clients and their fitness journeys
-          </p>
-        </div>
-        <.link
-          navigate={~p"/trainer/clients/new"}
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <.icon name="hero-user-plus" class="w-5 h-5 inline mr-2" /> Add Client
-        </.link>
-      </div>
+    <.page_header>
+      Clients
+      <:subtitle>
+        <b class="text-ink">{@client_count} of {limit_text(@client_limit)} places used.</b>
+        {plan_sentence(@current_scope.tier)}
+      </:subtitle>
+    </.page_header>
 
-      <%= if Enum.empty?(@clients) do %>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
-          <.icon name="hero-users" class="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">No clients yet</h3>
-          <p class="text-gray-500 dark:text-gray-400 mb-6">
-            Get started by adding your first client
-          </p>
-          <.link
-            navigate={~p"/trainer/clients/new"}
-            class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            <.icon name="hero-user-plus" class="w-5 h-5 mr-2" /> Add Client
-          </.link>
+    <.sign_group label="Your clients">
+      <:actions>
+        <.add_client_action state={@add_state} />
+      </:actions>
+      <nav aria-label="Filter" class="flex gap-2 px-4 pb-3 sm:px-[26px]">
+        <.link
+          :for={
+            {label, value} <- [
+              {"All", nil},
+              {"Active", "active"},
+              {"Paused", "paused"},
+              {"Archived", "archived"}
+            ]
+          }
+          patch={if value, do: ~p"/trainer/clients?status=#{value}", else: ~p"/trainer/clients"}
+          aria-current={@status == value && "true"}
+          class={[
+            "rounded-control border-2 px-3 py-1 text-xs font-bold uppercase tracking-[.06em]",
+            @status == value && "border-white bg-white text-field-0",
+            @status != value && "border-line/50 text-ink-2 hover:border-white hover:text-white"
+          ]}
+        >
+          {label}
+        </.link>
+      </nav>
+      <div id="clients" phx-update="stream">
+        <div
+          id="clients-empty"
+          class="hidden border-b border-line/40 px-4 py-6 text-ink-2 only:block sm:px-[26px]"
+        >
+          <%= if @status do %>
+            No {@status} clients.
+            <.link patch={~p"/trainer/clients"} class="font-bold text-ink underline">Show all</.link>
+          <% else %>
+            Add your first client. They get a workout plan, a nutrition plan and a place to log progress.
+          <% end %>
         </div>
-      <% else %>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Name
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Email
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Phone
-                </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <%= for client <- @clients do %>
-                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex items-center">
-                      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
-                        <span class="text-gray-600 dark:text-gray-300 font-medium">
-                          {String.first(client.first_name || "")}
-                        </span>
-                      </div>
-                      <div class="ml-4">
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">
-                          {client.first_name} {client.last_name}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-500 dark:text-gray-400">{client.email}</div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm text-gray-500 dark:text-gray-400">
-                      {client.phone || "—"}
-                    </div>
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <.link
-                      navigate={~p"/trainer/clients/#{client.id}"}
-                      class="text-blue-600 hover:text-blue-900 dark:text-blue-400 mr-4"
-                    >
-                      View
-                    </.link>
-                    <.link
-                      navigate={~p"/trainer/clients/#{client.id}/edit"}
-                      class="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400"
-                    >
-                      Edit
-                    </.link>
-                  </td>
-                </tr>
-              <% end %>
-            </tbody>
-          </table>
-        </div>
-      <% end %>
-    </div>
+        <.sign
+          :for={{id, client} <- @streams.clients}
+          id={id}
+          icon={:clients}
+          time={Calendar.strftime(client.inserted_at, "%-d %b")}
+          time_label="Added"
+        >
+          <:title>{client.first_name} {client.last_name}</:title>
+          {client.email}{if client.phone, do: " · #{client.phone}"}
+          <:actions>
+            <.sign_action navigate={~p"/trainer/clients/#{client.id}"}>Open</.sign_action>
+          </:actions>
+        </.sign>
+      </div>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
+  attr :state, :atom, required: true
 
-  def clients_new(assigns) do
+  defp add_client_action(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/clients"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Clients
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Add New Client</h1>
-        <p class="mt-2 text-gray-600 dark:text-gray-400">
-          Create a new client account in your organization
-        </p>
+    <.sign_action :if={@state == :ok} id="add-client" primary navigate={~p"/trainer/clients/new"}>
+      Add client
+    </.sign_action>
+    <.sign_action :if={@state == :limit} id="add-client" primary phx-click="add_client">
+      Add client
+    </.sign_action>
+    <span :if={@state == :paused} class="flex items-center gap-3 text-sm text-ink-2">
+      Paused until payment clears
+      <.sign_action id="add-client" aria-disabled="true">Add client</.sign_action>
+    </span>
+    """
+  end
+
+  defp clients_form(assigns) do
+    ~H"""
+    <.page_header>
+      {if @live_action == :new, do: "Add client", else: "Edit client"}
+      <:subtitle>
+        {if @live_action == :new,
+          do: "We email an invitation when you save.",
+          else: "#{@client.first_name} #{@client.last_name}"}
+      </:subtitle>
+    </.page_header>
+
+    <.form
+      for={@form}
+      id="client-form"
+      phx-submit={if @live_action == :new, do: "save", else: "update"}
+      phx-change="validate"
+      class="max-w-2xl px-4 py-6 sm:px-[26px]"
+    >
+      <div class="grid gap-x-6 sm:grid-cols-2">
+        <.input field={@form[:first_name]} type="text" label="First name" required />
+        <.input field={@form[:last_name]} type="text" label="Last name" required />
       </div>
+      <.input field={@form[:email]} type="email" label="Email" required />
+      <.input
+        :if={@live_action == :new}
+        field={@form[:password]}
+        type="password"
+        label="Password"
+        required
+      />
+      <.input field={@form[:phone]} type="text" label="Phone" />
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="client-form"
-          phx-submit="save"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:first_name]}
-              type="text"
-              label="First Name"
-              required
-            />
-            <.input
-              field={@form[:last_name]}
-              type="text"
-              label="Last Name"
-              required
-            />
-          </div>
-
-          <.input
-            field={@form[:email]}
-            type="email"
-            label="Email"
-            required
-          />
-
-          <.input
-            field={@form[:password]}
-            type="password"
-            label="Password"
-            required
-          />
-
-          <.input
-            field={@form[:phone]}
-            type="text"
-            label="Phone"
-          />
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/clients"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Create Client
-            </.button>
-          </div>
-        </.form>
+      <div class="mt-6 flex flex-wrap gap-3">
+        <.button type="submit" variant="primary">
+          {if @live_action == :new, do: "Create client", else: "Save"}
+        </.button>
+        <.button navigate={
+          if @live_action == :new, do: ~p"/trainer/clients", else: ~p"/trainer/clients/#{@client.id}"
+        }>
+          Cancel
+        </.button>
       </div>
-    </div>
+    </.form>
     """
   end
 
   defp clients_show(assigns) do
     ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/clients"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
+    <.page_header>
+      {@client.first_name} {@client.last_name}
+      <:subtitle>{@client.email}</:subtitle>
+      <:actions>
+        <.sign_action navigate={~p"/trainer/clients/#{@client.id}/edit"}>Edit</.sign_action>
+      </:actions>
+    </.page_header>
+
+    <.sign_group label="Details">
+      <div class="px-4 sm:px-[26px]">
+        <.list>
+          <:item title="Phone">{@client.phone || "Not provided"}</:item>
+          <:item title="Time zone">{@client.timezone}</:item>
+        </.list>
+      </div>
+    </.sign_group>
+
+    <.sign_group label="Plans and progress">
+      <.sign id="client-progress" icon={:progress} draw={false}>
+        <:title>Progress</:title>
+        Measurements and trends
+        <:actions>
+          <.sign_action navigate={~p"/trainer/progress/#{@client.id}"}>Open</.sign_action>
+        </:actions>
+      </.sign>
+      <.sign id="client-workouts" icon={:workouts} draw={false}>
+        <:title>Workouts</:title>
+        Assign a plan from your library
+        <:actions>
+          <.sign_action navigate={~p"/trainer/workouts"}>Assign</.sign_action>
+        </:actions>
+      </.sign>
+      <%= if Entitlements.allows?(@current_scope.tier, :nutrition_plans) do %>
+        <.sign id="client-nutrition" icon={:nutrition} draw={false}>
+          <:title>Nutrition</:title>
+          Meal plans with calories and macros
+          <:actions>
+            <.sign_action navigate={~p"/trainer/nutrition"}>Open</.sign_action>
+          </:actions>
+        </.sign>
+      <% else %>
+        <.closed_sign
+          id="client-nutrition"
+          icon={:nutrition}
+          title="Nutrition plans"
+          can_upgrade={@can_upgrade?}
+          owner_name={@current_scope.owner_name}
         >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Clients
-        </.link>
-        <div class="flex justify-between items-center">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-              {@client.first_name} {@client.last_name}
-            </h1>
-            <p class="mt-2 text-gray-600 dark:text-gray-400">{@client.email}</p>
-          </div>
-          <.link
-            navigate={~p"/trainer/clients/#{@client.id}/edit"}
-            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          >
-            Edit Client
-          </.link>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Client Information
-          </h2>
-          <dl class="space-y-4">
-            <div>
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-white">{@client.email}</dd>
-            </div>
-            <div>
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                {@client.phone || "Not provided"}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Timezone</dt>
-              <dd class="mt-1 text-sm text-gray-900 dark:text-white">{@client.timezone}</dd>
-            </div>
-          </dl>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-          <div class="space-y-3">
-            <.link
-              navigate={~p"/trainer/progress/#{@client.id}"}
-              class="block w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-center"
-            >
-              View Progress
-            </.link>
-            <.link
-              navigate={~p"/trainer/workouts"}
-              class="block w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-center"
-            >
-              Assign Workout
-            </.link>
-          </div>
-        </div>
-      </div>
-    </div>
+          Meal plans with calories and macros.
+        </.closed_sign>
+      <% end %>
+    </.sign_group>
     """
   end
 
-  attr :form, :any, required: true
-  attr :client, :any, required: true
-  attr :current_scope, :map, required: true
-  attr :live_action, :atom, required: true
+  defp limit_text(:infinity), do: "unlimited"
+  defp limit_text(n), do: to_string(n)
 
-  def clients_edit(assigns) do
-    ~H"""
-    <div>
-      <div class="mb-6">
-        <.link
-          navigate={~p"/trainer/clients/#{@client.id}"}
-          class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mb-4 inline-flex items-center"
-        >
-          <.icon name="hero-arrow-left" class="w-4 h-4 mr-2" /> Back to Client
-        </.link>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Edit Client</h1>
-      </div>
+  defp plan_sentence("free"), do: "Pro has 25."
+  defp plan_sentence("pro"), do: "Enterprise has no limit."
+  defp plan_sentence(_tier), do: ""
 
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <.form
-          for={@form}
-          id="client-form"
-          phx-submit="update"
-          phx-change="validate"
-          class="space-y-6"
-        >
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <.input
-              field={@form[:first_name]}
-              type="text"
-              label="First Name"
-              required
-            />
-            <.input
-              field={@form[:last_name]}
-              type="text"
-              label="Last Name"
-              required
-            />
-          </div>
-
-          <.input
-            field={@form[:email]}
-            type="email"
-            label="Email"
-            required
-          />
-
-          <.input
-            field={@form[:phone]}
-            type="text"
-            label="Phone"
-          />
-
-          <div class="flex justify-end space-x-4">
-            <.link
-              navigate={~p"/trainer/clients/#{@client.id}"}
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </.link>
-            <.button
-              type="submit"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Update Client
-            </.button>
-          </div>
-        </.form>
-      </div>
-    </div>
-    """
+  @impl true
+  def handle_event("add_client", _params, socket) do
+    case Authorization.authorize(socket.assigns.current_scope, :create, :client) do
+      :ok -> {:noreply, push_navigate(socket, to: ~p"/trainer/clients/new")}
+      error -> {:noreply, deny(socket, error)}
+    end
   end
+
+  def handle_event("close_limit", _params, socket), do: {:noreply, assign(socket, :limit, nil)}
 
   def handle_event("validate", %{"client" => client_params}, socket) do
     changeset =
       case socket.assigns.live_action do
-        :new ->
-          User.registration_changeset(%User{}, client_params)
-
-        :edit ->
-          User.changeset(socket.assigns.client, client_params)
+        :new -> User.registration_changeset(%User{}, client_params)
+        :edit -> User.profile_changeset(socket.assigns.client, client_params)
       end
       |> Map.put(:action, :validate)
 
@@ -428,30 +360,39 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   end
 
   def handle_event("save", %{"client" => client_params}, socket) do
-    user = socket.assigns.current_scope.user
+    scope = socket.assigns.current_scope
 
-    case Clients.create_client(user, client_params) do
-      {:ok, _client} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Client created successfully")
-         |> push_navigate(to: ~p"/trainer/clients")}
-
-      {:error, changeset} ->
+    with :ok <- Authorization.authorize(scope, :create, :client),
+         {:ok, _client} <- Clients.create_client(scope.user, client_params) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Client added.")
+       |> push_navigate(to: ~p"/trainer/clients")}
+    else
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: "client"))}
+
+      error ->
+        {:noreply, socket |> deny(error) |> push_patch(to: ~p"/trainer/clients")}
     end
   end
 
   def handle_event("update", %{"client" => client_params}, socket) do
-    case Clients.update_client(socket.assigns.client, client_params) do
-      {:ok, _client} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Client updated successfully")
-         |> push_navigate(to: ~p"/trainer/clients/#{socket.assigns.client.id}")}
+    scope = socket.assigns.current_scope
+    client = socket.assigns.client
 
-      {:error, changeset} ->
+    with :ok <- Authorization.authorize(scope, :update, client),
+         {:ok, _client} <- Clients.update_client(client, client_params) do
+      {:noreply,
+       socket
+       |> put_flash(:info, "Saved.")
+       |> push_navigate(to: ~p"/trainer/clients/#{client.id}")}
+    else
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset, as: "client"))}
+
+      error ->
+        {:noreply, deny(socket, error)}
     end
   end
 end

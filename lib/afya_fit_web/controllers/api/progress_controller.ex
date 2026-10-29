@@ -1,19 +1,16 @@
 defmodule AfyaFitWeb.API.ProgressController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Authorization, Clients, Tracking}
+  alias AfyaFit.{Authorization, Clients, Tracking}
 
   # Authentication is handled in router pipeline
 
   action_fallback AfyaFitWeb.API.FallbackController
 
-  # Ownership of an entry cannot be changed through the API.
-  @protected_fields ["client_id", "trainer_id"]
-
   def index(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, _client} <- fetch_client(scope, client_id),
+    with {:ok, _client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :list, :progress_entry) do
       render(conn, :index, progress_entries: Tracking.list_progress_entries(client_id))
     end
@@ -22,7 +19,7 @@ defmodule AfyaFitWeb.API.ProgressController do
   def create(conn, %{"client_id" => client_id, "progress_entry" => progress_params}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, client} <- fetch_client(scope, client_id),
+    with {:ok, client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :create, :progress_entry),
          attrs = new_entry_attrs(scope, client, progress_params),
          {:ok, progress_entry} <- Tracking.create_progress_entry(attrs) do
@@ -43,7 +40,7 @@ defmodule AfyaFitWeb.API.ProgressController do
          {:ok, progress_entry} <-
            Tracking.update_progress_entry(
              progress_entry,
-             Map.drop(progress_params, @protected_fields)
+             progress_params
            ) do
       render(conn, :show, progress_entry: progress_entry)
     end
@@ -59,7 +56,7 @@ defmodule AfyaFitWeb.API.ProgressController do
   def analytics(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, _client} <- fetch_client(scope, client_id),
+    with {:ok, _client} <- Clients.fetch_for(scope, :read, client_id),
          :ok <- Authorization.authorize(scope, :analytics, :progress_entry) do
       progress_entries = Tracking.list_progress_entries(client_id)
 
@@ -69,15 +66,6 @@ defmodule AfyaFitWeb.API.ProgressController do
         body_fat_change: calculate_body_fat_change(progress_entries),
         entries_by_month: group_by_month(progress_entries)
       })
-    end
-  end
-
-  # The client whose data is requested must be reachable by the requester.
-  defp fetch_client(scope, client_id) do
-    client = Accounts.get_user!(client_id)
-
-    with :ok <- Authorization.authorize(scope, :read, client) do
-      if client.role == "client", do: {:ok, client}, else: {:error, :not_found}
     end
   end
 

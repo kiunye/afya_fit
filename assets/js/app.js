@@ -25,31 +25,6 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/afya_fit"
 import topbar from "../vendor/topbar"
 
-// Sidebar hook for LiveView
-const SidebarHook = {
-  mounted() {
-    // Initialize sidebar state on mobile
-    if (window.innerWidth < 1024) {
-      this.el.classList.add("-translate-x-full")
-    }
-    
-    // Set up toggle function
-    this.toggle = () => {
-      this.el.classList.toggle("-translate-x-full")
-    }
-    
-    // Make it available globally
-    window.toggleSidebar = this.toggle.bind(this)
-  },
-  
-  updated() {
-    // Re-initialize on updates
-    if (window.innerWidth < 1024) {
-      this.el.classList.add("-translate-x-full")
-    }
-  }
-}
-
 // Particles hook for floating particle effects
 const ParticlesHook = {
   mounted() {
@@ -93,7 +68,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
   hooks: {
     ...colocatedHooks,
-    Sidebar: SidebarHook,
     Particles: ParticlesHook
   },
 })
@@ -117,32 +91,6 @@ window.addEventListener("phx:set-theme", (e) => {
   const theme = e.target.dataset.phxTheme
   localStorage.setItem("phx:theme", theme)
   document.documentElement.setAttribute("data-theme", theme)
-})
-
-// Fallback toggle function for non-LiveView contexts
-function toggleSidebar() {
-  const sidebar = document.getElementById("sidebar")
-  if (sidebar) {
-    sidebar.classList.toggle("-translate-x-full")
-  }
-}
-
-// Make toggleSidebar available globally as fallback
-if (!window.toggleSidebar) {
-  window.toggleSidebar = toggleSidebar
-}
-
-// Close sidebar when clicking outside on mobile
-document.addEventListener("click", (e) => {
-  const sidebar = document.getElementById("sidebar")
-  const toggleButtons = document.querySelectorAll("button[data-sidebar-toggle]")
-  const isToggleButton = Array.from(toggleButtons).some(btn => btn.contains(e.target))
-  
-  if (sidebar && !sidebar.contains(e.target) && !isToggleButton) {
-    if (window.innerWidth < 1024) {
-      sidebar.classList.add("-translate-x-full")
-    }
-  }
 })
 
 // The lines below enable quality of life phoenix_live_reload

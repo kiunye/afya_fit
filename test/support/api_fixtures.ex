@@ -73,6 +73,15 @@ defmodule AfyaFitWeb.APIFixtures do
     |> Repo.insert!()
   end
 
+  @doc "Logs `user` into a browser session, for controller and LiveView tests."
+  def log_in(conn, %User{} = user) do
+    token = Accounts.generate_user_session_token(user)
+
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> put_session(:user_token, token)
+  end
+
   @doc "Adds a bearer token for `user` to the connection."
   def authenticate(conn, %User{} = user) do
     token = Accounts.generate_user_session_token(user)

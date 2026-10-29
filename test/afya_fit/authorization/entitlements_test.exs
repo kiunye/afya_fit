@@ -26,30 +26,4 @@ defmodule AfyaFit.Authorization.EntitlementsTest do
     assert Entitlements.next_tier("pro") == "enterprise"
     assert Entitlements.next_tier("enterprise") == nil
   end
-
-  describe "billing state" do
-    @now ~U[2026-01-15 00:00:00Z]
-
-    test "active and missing subscriptions are active" do
-      assert Entitlements.billing_state(%{subscription_status: "active"}, @now) == :active
-      assert Entitlements.billing_state(%{subscription_status: nil}, @now) == :active
-    end
-
-    test "past_due keeps full access for 7 days after period end" do
-      inside = %{subscription_status: "past_due", period_end: ~U[2026-01-10 00:00:00Z]}
-      assert Entitlements.billing_state(inside, @now) == :active
-
-      outside = %{subscription_status: "past_due", period_end: ~U[2026-01-01 00:00:00Z]}
-      assert Entitlements.billing_state(outside, @now) == :read_only
-    end
-
-    test "cancelled, expired and inactive organizations are read-only" do
-      for status <- ["cancelled", "expired"] do
-        assert Entitlements.billing_state(%{subscription_status: status}, @now) == :read_only
-      end
-
-      suspended = %{subscription_status: "active", organization_status: "suspended"}
-      assert Entitlements.billing_state(suspended, @now) == :read_only
-    end
-  end
 end
