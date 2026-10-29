@@ -142,7 +142,7 @@ defmodule AfyaFitWeb.Router do
     put "/clients/:id", ClientController, :update
     delete "/clients/:id", ClientController, :delete
     post "/clients/:id/invite", ClientController, :invite
-    get "/clients/:id/progress", ProgressController, :index
+    get "/clients/:client_id/progress", ProgressController, :index
 
     # Workout Plans
     get "/workout-plans", WorkoutPlanController, :index
