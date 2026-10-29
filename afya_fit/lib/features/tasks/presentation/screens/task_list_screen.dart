@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/tasks/providers/task_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -11,9 +12,7 @@ class TaskListScreen extends HookConsumerWidget {
     final tasksAsync = ref.watch(tasksProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tasks'),
-      ),
+      appBar: AppBar(title: const Text('Tasks')),
       body: tasksAsync.when(
         data: (tasks) {
           final pendingTasks = tasks.where((task) {
@@ -45,8 +44,8 @@ class TaskListScreen extends HookConsumerWidget {
                   Text(
                     'Create your first task to get started',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -64,52 +63,42 @@ class TaskListScreen extends HookConsumerWidget {
                   Text(
                     'Pending Tasks',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  ...pendingTasks.map((task) => _TaskCard(
-                        task: task,
-                        onComplete: () async {
-                          final repository = ref.read(taskRepositoryProvider);
-                          try {
-                            await repository.completeTask(
-                              task['id'] as String,
+                  ...pendingTasks.map(
+                    (task) => _TaskCard(
+                      task: task,
+                      onComplete: () async {
+                        final repository = ref.read(taskRepositoryProvider);
+                        try {
+                          await repository.completeTask(task['id'] as String);
+                          ref.invalidate(tasksProvider);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Task completed!')),
                             );
-                            ref.invalidate(tasksProvider);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Task completed!'),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error: $e'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
                           }
-                        },
-                      )),
+                        } catch (e) {
+                          await showApiError(context, ref, e);
+                        }
+                      },
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
                 if (completedTasks.isNotEmpty) ...[
                   Text(
                     'Completed Tasks',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 12),
-                  ...completedTasks.map((task) => _TaskCard(
-                        task: task,
-                        isCompleted: true,
-                      )),
+                  ...completedTasks.map(
+                    (task) => _TaskCard(task: task, isCompleted: true),
+                  ),
                 ],
               ],
             ),
@@ -178,10 +167,7 @@ class _TaskCard extends StatelessWidget {
         child: Row(
           children: [
             if (!isCompleted && onComplete != null)
-              Checkbox(
-                value: false,
-                onChanged: (_) => onComplete?.call(),
-              )
+              Checkbox(value: false, onChanged: (_) => onComplete?.call())
             else if (isCompleted)
               const Icon(Icons.check_circle, color: Colors.green),
             const SizedBox(width: 12),
@@ -192,21 +178,21 @@ class _TaskCard extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : null,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      decoration: isCompleted
+                          ? TextDecoration.lineThrough
+                          : null,
+                    ),
                   ),
                   if (description != null && description.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       description,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            decoration: isCompleted
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
+                        decoration: isCompleted
+                            ? TextDecoration.lineThrough
+                            : null,
+                      ),
                     ),
                   ],
                   if (dueDate != null) ...[
@@ -221,10 +207,11 @@ class _TaskCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           DateFormat('MMM dd, yyyy').format(dueDate),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                         ),
                       ],

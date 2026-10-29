@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/access_provider.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/nutrition/providers/nutrition_provider.dart';
 import 'package:afya_fit/features/nutrition/presentation/screens/nutrition_form_screen.dart';
 import 'package:afya_fit/features/nutrition/presentation/screens/nutrition_detail_screen.dart';
@@ -12,9 +14,7 @@ class NutritionListScreen extends HookConsumerWidget {
     final nutritionAsync = ref.watch(nutritionPlansProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Nutrition Plans'),
-      ),
+      appBar: AppBar(title: const Text('Nutrition Plans')),
       body: nutritionAsync.when(
         data: (plans) {
           if (plans.isEmpty) {
@@ -36,8 +36,8 @@ class NutritionListScreen extends HookConsumerWidget {
                   Text(
                     'Create your first nutrition plan to get started',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -75,17 +75,28 @@ class NutritionListScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const NutritionFormScreen(),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton:
+          ref.watch(accessProvider).value?.can('nutrition_plan', 'create') ==
+              true
+          ? FloatingActionButton(
+              onPressed: () => runGated(
+                context,
+                ref,
+                resource: 'nutrition_plan',
+                action: 'create',
+                feature: 'nutrition_plans',
+                onAllowed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const NutritionFormScreen(),
+                    ),
+                  );
+                },
+              ),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }
@@ -108,7 +119,8 @@ class _NutritionCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => NutritionDetailScreen(nutritionPlanId: plan['id'] as String),
+              builder: (_) =>
+                  NutritionDetailScreen(nutritionPlanId: plan['id'] as String),
             ),
           );
         },
@@ -125,8 +137,8 @@ class _NutritionCard extends StatelessWidget {
                     child: Text(
                       name,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   if (dailyCalories > 0)

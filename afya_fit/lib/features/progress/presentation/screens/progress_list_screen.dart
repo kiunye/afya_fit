@@ -1,27 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/access_provider.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/progress/providers/progress_provider.dart';
 import 'package:afya_fit/features/progress/presentation/screens/progress_entry_form_screen.dart';
-import 'package:afya_fit/features/auth/providers/user_provider.dart';
 import 'package:intl/intl.dart';
 
 class ProgressListScreen extends HookConsumerWidget {
   final String clientId;
 
-  const ProgressListScreen({
-    super.key,
-    required this.clientId,
-  });
+  const ProgressListScreen({super.key, required this.clientId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Use empty string for clientId if not provided (for customers viewing their own progress)
-    final progressAsync = ref.watch(progressEntriesProvider(clientId.isEmpty ? '' : clientId));
+    final progressAsync = ref.watch(
+      progressEntriesProvider(clientId.isEmpty ? '' : clientId),
+    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Progress Tracking'),
-      ),
+      appBar: AppBar(title: const Text('Progress Tracking')),
       body: progressAsync.when(
         data: (entries) {
           if (entries.isEmpty) {
@@ -41,12 +39,12 @@ class ProgressListScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    clientId.isEmpty 
+                    clientId.isEmpty
                         ? 'Start tracking your progress'
                         : 'Start tracking your client\'s progress',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -84,33 +82,35 @@ class ProgressListScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: Builder(
-        builder: (context) {
-          final userAsync = ref.watch(currentUserProvider);
-          return userAsync.when(
-            data: (user) {
-              // Only show FAB for clients (customers) viewing their own progress
-              if (clientId.isEmpty && user?.role == 'client') {
-                return FloatingActionButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ProgressEntryFormScreen(),
-                      ),
-                    );
-                  },
-                  child: const Icon(Icons.add),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-            loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
-          );
-        },
-      ),
+      // Clients add entries to their own progress; coaches record them from a client.
+      floatingActionButton: _showsAddButton(ref)
+          ? FloatingActionButton(
+              onPressed: () => runGated(
+                context,
+                ref,
+                resource: 'progress_entry',
+                action: 'create',
+                onAllowed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ProgressEntryFormScreen(),
+                    ),
+                  );
+                },
+              ),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
+  }
+
+  bool _showsAddButton(WidgetRef ref) {
+    final access = ref.watch(accessProvider).value;
+    return clientId.isEmpty &&
+        access != null &&
+        access.isClient &&
+        access.can('progress_entry', 'create');
   }
 }
 
@@ -145,16 +145,16 @@ class _ProgressCard extends StatelessWidget {
             if (date != null)
               Text(
                 DateFormat('MMM dd, yyyy').format(date),
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               )
             else
               Text(
                 'Progress Entry',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             const SizedBox(height: 12),
             Row(
@@ -182,10 +182,7 @@ class _ProgressCard extends StatelessWidget {
             ),
             if (notes != null && notes.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(
-                notes,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              Text(notes, style: Theme.of(context).textTheme.bodyMedium),
             ],
           ],
         ),
@@ -212,26 +209,22 @@ class _MetricItem extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+            Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );

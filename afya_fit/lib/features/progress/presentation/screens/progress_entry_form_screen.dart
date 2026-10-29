@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/progress/providers/progress_provider.dart';
 import 'package:intl/intl.dart';
 
@@ -15,9 +16,7 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
     DateTime? selectedDate = DateTime.now();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Progress Entry'),
-      ),
+      appBar: AppBar(title: const Text('Add Progress Entry')),
       body: Form(
         key: formKey,
         child: SingleChildScrollView(
@@ -48,7 +47,7 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Weight
               TextFormField(
                 controller: weightController,
@@ -69,7 +68,7 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Body Fat
               TextFormField(
                 controller: bodyFatController,
@@ -90,7 +89,7 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
                 },
               ),
               const SizedBox(height: 16),
-              
+
               // Notes
               TextFormField(
                 controller: notesController,
@@ -102,7 +101,7 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
                 maxLines: 4,
               ),
               const SizedBox(height: 24),
-              
+
               ElevatedButton(
                 onPressed: () async {
                   if (formKey.currentState!.validate()) {
@@ -112,29 +111,26 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
                         if (weightController.text.isNotEmpty)
                           'weight': double.parse(weightController.text),
                         if (bodyFatController.text.isNotEmpty)
-                          'body_fat_percentage': double.parse(bodyFatController.text),
+                          'body_fat_percentage': double.parse(
+                            bodyFatController.text,
+                          ),
                         if (notesController.text.isNotEmpty)
                           'notes': notesController.text.trim(),
                       };
 
                       final repository = ref.read(progressRepositoryProvider);
                       await repository.createMyProgressEntry(progressData);
-                      
+
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Progress entry added successfully')),
+                          const SnackBar(
+                            content: Text('Progress entry added successfully'),
+                          ),
                         );
                         Navigator.pop(context);
                       }
                     } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                      await showApiError(context, ref, e);
                     }
                   }
                 },
@@ -150,4 +146,3 @@ class ProgressEntryFormScreen extends HookConsumerWidget {
     );
   }
 }
-

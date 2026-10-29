@@ -1,7 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:afya_fit/core/providers/api_provider.dart';
 import 'package:afya_fit/features/workouts/data/repositories/workout_repository.dart';
-import 'package:afya_fit/features/auth/providers/user_provider.dart';
+import 'package:afya_fit/core/access/access_provider.dart';
 
 part 'workout_provider.g.dart';
 
@@ -13,19 +13,12 @@ WorkoutRepository workoutRepository(Ref ref) {
 @riverpod
 Future<List<Map<String, dynamic>>> workoutPlans(Ref ref) async {
   final repository = ref.read(workoutRepositoryProvider);
-  final userAsync = ref.read(currentUserProvider);
-  
-  // If user is a client, use /me/workouts endpoint
-  return userAsync.when(
-    data: (user) {
-      if (user?.role == 'client') {
-        return repository.getMyWorkouts();
-      }
-      return repository.getWorkoutPlans();
-    },
-    loading: () => repository.getWorkoutPlans(), // Fallback
-    error: (_, __) => repository.getWorkoutPlans(), // Fallback
-  );
+  final access = await ref.watch(accessProvider.future);
+
+  // Clients read their own assignments; coaches read the plan library.
+  return access.isClient
+      ? repository.getMyWorkouts()
+      : repository.getWorkoutPlans();
 }
 
 @riverpod
