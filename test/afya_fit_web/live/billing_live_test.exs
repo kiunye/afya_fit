@@ -24,11 +24,6 @@ defmodule AfyaFitWeb.BillingLiveTest do
     end
   end
 
-  test "the old trainer subscription path still opens billing", %{conn: conn, owner: owner} do
-    {:ok, view, _} = conn |> log_in(owner) |> live(~p"/trainer/subscription")
-    assert has_element?(view, "#billing")
-  end
-
   describe "an organization on the Free plan" do
     test "offers the upgrade and has no invoices", %{conn: conn, owner: owner} do
       {:ok, view, _} = conn |> log_in(owner) |> live(~p"/billing")

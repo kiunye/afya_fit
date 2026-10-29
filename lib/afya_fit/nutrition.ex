@@ -8,10 +8,6 @@ defmodule AfyaFit.Nutrition do
   alias AfyaFit.Nutrition.{NutritionMeal, NutritionPlan}
   alias AfyaFit.Repo
 
-  def list_nutrition_plans do
-    Repo.all(NutritionPlan)
-  end
-
   @doc "Lists the nutrition plans the scope may read (see `Authorization.visible/2`)."
   def list_nutrition_plans_for(%Scope{} = scope),
     do: scope |> Authorization.visible(:nutrition_plan) |> Repo.all()

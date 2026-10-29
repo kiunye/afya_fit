@@ -17,10 +17,6 @@ defmodule AfyaFit.Workouts do
 
   # WORKOUT PLANS
 
-  def list_workout_plans do
-    Repo.all(WorkoutPlan)
-  end
-
   @doc "Lists the workout plans the scope may read (see `Authorization.visible/2`)."
   def list_workout_plans_for(%Scope{} = scope),
     do: scope |> Authorization.visible(:workout_plan) |> Repo.all()

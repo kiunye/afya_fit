@@ -98,7 +98,6 @@ defmodule AfyaFitWeb.Router do
       # Organization admin: team and billing
       live "/team", TeamLive, :index
       live "/billing", BillingLive, :index
-      live "/trainer/subscription", BillingLive, :index
 
       # Admin routes
       live "/admin/dashboard", AdminLive.Dashboard, :index
@@ -205,7 +204,6 @@ defmodule AfyaFitWeb.Router do
     delete "/subscriptions", SubscriptionController, :cancel
     get "/subscriptions/invoices", SubscriptionController, :invoices
     post "/payments/initialize", PaymentController, :initialize
-
   end
 
   # Admin routes with role check
