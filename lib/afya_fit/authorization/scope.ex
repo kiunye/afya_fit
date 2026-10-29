@@ -22,6 +22,7 @@ defmodule AfyaFit.Authorization.Scope do
   }
 
   defstruct user: nil,
+            organization: nil,
             tier: "free",
             organization_status: "active",
             subscription_status: nil,
@@ -33,6 +34,7 @@ defmodule AfyaFit.Authorization.Scope do
 
   @type t :: %__MODULE__{
           user: User.t(),
+          organization: struct() | nil,
           tier: String.t(),
           organization_status: String.t() | nil,
           subscription_status: String.t() | nil,
@@ -44,7 +46,7 @@ defmodule AfyaFit.Authorization.Scope do
   @doc """
   Builds a scope without touching the database.
 
-  Options: `:tier`, `:organization_status`, `:subscription_status`,
+  Options: `:organization`, `:tier`, `:organization_status`, `:subscription_status`,
   `:period_end`, `:client_ids` (a list) and `:client_count`.
   """
   @spec new(User.t(), keyword()) :: t()
@@ -70,6 +72,7 @@ defmodule AfyaFit.Authorization.Scope do
       )
 
     new(user,
+      organization: organization,
       tier: organization && organization.plan_type,
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,

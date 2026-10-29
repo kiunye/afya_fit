@@ -20,6 +20,7 @@ defmodule AfyaFitWeb.UserAuth do
   end
 
   alias AfyaFit.Accounts
+  alias AfyaFit.Authorization.Scope
 
   # Make the remember me cookie expire in 100 days.
   # If you want bump expiration or extend the user's session,
@@ -106,7 +107,7 @@ defmodule AfyaFitWeb.UserAuth do
   def fetch_current_scope_for_user(conn, _opts) do
     {user_token, conn} = ensure_user_token(conn)
     user = user_token && Accounts.get_user_by_session_token(user_token)
-    assign(conn, :current_scope, %{user: user})
+    assign(conn, :current_scope, build_scope(user))
   end
 
   defp ensure_user_token(conn) do
@@ -194,11 +195,14 @@ defmodule AfyaFitWeb.UserAuth do
     end
   end
 
+  # Logged-out visitors get a bare scope; users get the full authorization scope.
+  defp build_scope(nil), do: %{user: nil}
+  defp build_scope(user), do: Scope.load(user)
+
   defp mount_scope(socket, session) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
       if user_token = session["user_token"] do
-        user = Accounts.get_user_by_session_token(user_token)
-        %{user: user}
+        user_token |> Accounts.get_user_by_session_token() |> build_scope()
       else
         %{user: nil}
       end
