@@ -24,6 +24,10 @@ if System.get_env("PHX_SERVER") do
 end
 
 # Runtime configuration for all environments
+if support_email = System.get_env("SUPPORT_EMAIL") do
+  config :afya_fit, :support_email, support_email
+end
+
 if config_env() in [:dev, :test] do
   # Development and test database configuration
   # Read from Docker secrets first, then environment variables

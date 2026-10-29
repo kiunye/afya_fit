@@ -111,8 +111,12 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   # A plan limit opens the dialog; every other denial is a flash.
   defp deny(socket, error) do
     case Access.denial(socket.assigns.current_scope, error) do
-      {:upgrade, details} -> assign(socket, :limit, details)
-      _other -> Access.flash_denial(socket, error)
+      {:upgrade, details} ->
+        Access.record_block(socket.assigns.current_scope, error)
+        assign(socket, :limit, details)
+
+      _other ->
+        Access.flash_denial(socket, error)
     end
   end
 
@@ -121,13 +125,12 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:clients}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
-
       <div :if={!@denied}>
         <.clients_index :if={@live_action == :index} {assigns} />
         <.clients_form :if={@live_action in [:new, :edit]} {assigns} />
         <.clients_show :if={@live_action == :show && @client} {assigns} />
       </div>
-
+      
       <.limit_dialog
         :if={@limit}
         id="limit-dialog"
@@ -151,15 +154,15 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     <.page_header>
       Clients
       <:subtitle>
-        <b class="text-ink">{@client_count} of {limit_text(@client_limit)} places used.</b>
-        {plan_sentence(@current_scope.tier)}
+        <b class="text-ink">{@client_count} of {limit_text(@client_limit)} places used.</b> {plan_sentence(
+          @current_scope.tier
+        )}
       </:subtitle>
     </.page_header>
 
     <.sign_group label="Your clients">
-      <:actions>
-        <.add_client_action state={@add_state} />
-      </:actions>
+      <:actions><.add_client_action state={@add_state} /></:actions>
+      
       <nav aria-label="Filter" class="flex gap-2 px-4 pb-3 sm:px-[26px]">
         <.link
           :for={
@@ -181,6 +184,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           {label}
         </.link>
       </nav>
+      
       <div id="clients" phx-update="stream">
         <div
           id="clients-empty"
@@ -193,6 +197,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
             Add your first client. They get a workout plan, a nutrition plan and a place to log progress.
           <% end %>
         </div>
+        
         <.sign
           :for={{id, client} <- @streams.clients}
           id={id}
@@ -201,7 +206,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           time_label="Added"
         >
           <:title>{client.first_name} {client.last_name}</:title>
-          {client.email}{if client.phone, do: " · #{client.phone}"}
+           {client.email}{if client.phone, do: " · #{client.phone}"}
           <:actions>
             <.sign_action navigate={~p"/trainer/clients/#{client.id}"}>Open</.sign_action>
           </:actions>
@@ -218,9 +223,11 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     <.sign_action :if={@state == :ok} id="add-client" primary navigate={~p"/trainer/clients/new"}>
       Add client
     </.sign_action>
+
     <.sign_action :if={@state == :limit} id="add-client" primary phx-click="add_client">
       Add client
     </.sign_action>
+
     <span :if={@state == :paused} class="flex items-center gap-3 text-sm text-ink-2">
       Paused until payment clears
       <.sign_action id="add-client" aria-disabled="true">Add client</.sign_action>
@@ -250,16 +257,14 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
         <.input field={@form[:first_name]} type="text" label="First name" required />
         <.input field={@form[:last_name]} type="text" label="Last name" required />
       </div>
-      <.input field={@form[:email]} type="email" label="Email" required />
+       <.input field={@form[:email]} type="email" label="Email" required />
       <.input
         :if={@live_action == :new}
         field={@form[:password]}
         type="password"
         label="Password"
         required
-      />
-      <.input field={@form[:phone]} type="text" label="Phone" />
-
+      /> <.input field={@form[:phone]} type="text" label="Phone" />
       <div class="mt-6 flex flex-wrap gap-3">
         <.button type="submit" variant="primary">
           {if @live_action == :new, do: "Create client", else: "Save"}
@@ -279,6 +284,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     <.page_header>
       {@client.first_name} {@client.last_name}
       <:subtitle>{@client.email}</:subtitle>
+      
       <:actions>
         <.sign_action navigate={~p"/trainer/clients/#{@client.id}/edit"}>Edit</.sign_action>
       </:actions>
@@ -288,6 +294,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
       <div class="px-4 sm:px-[26px]">
         <.list>
           <:item title="Phone">{@client.phone || "Not provided"}</:item>
+          
           <:item title="Time zone">{@client.timezone}</:item>
         </.list>
       </div>
@@ -301,6 +308,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           <.sign_action navigate={~p"/trainer/progress/#{@client.id}"}>Open</.sign_action>
         </:actions>
       </.sign>
+      
       <.sign id="client-workouts" icon={:workouts} draw={false}>
         <:title>Workouts</:title>
         Assign a plan from your library
@@ -308,6 +316,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           <.sign_action navigate={~p"/trainer/workouts"}>Assign</.sign_action>
         </:actions>
       </.sign>
+      
       <%= if Entitlements.allows?(@current_scope.tier, :nutrition_plans) do %>
         <.sign id="client-nutrition" icon={:nutrition} draw={false}>
           <:title>Nutrition</:title>
