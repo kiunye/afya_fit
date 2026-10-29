@@ -3,10 +3,10 @@ defmodule AfyaFit.Repo.Wrap do
   Runs a module's entry points inside the tenant context RLS needs, without
   touching each function.
 
-    * `use AfyaFit.Repo.Wrap, :job` wraps `perform/1` in `Repo.unscoped/1`
+    * `use AfyaFit.Repo.Wrap, :job` wraps `perform/1` in `RLS.unscoped/1`
       (jobs sweep across organizations);
     * `use AfyaFit.Repo.Wrap, :live_view` wraps `mount/3`, `handle_params/3`,
-      `handle_event/3` and `handle_info/2` in `Repo.with_scope/2`, using the
+      `handle_event/3` and `handle_info/2` in `RLS.with_scope/2`, using the
       socket's `current_scope`.
 
   It overrides the functions at compile time, so it must come after the
@@ -50,7 +50,7 @@ defmodule AfyaFit.Repo.Wrap do
 
   defp wrapper(:job, args) do
     quote do
-      AfyaFit.Repo.unscoped(fn -> super(unquote_splicing(args)) end)
+      AfyaFit.RLS.unscoped(fn -> super(unquote_splicing(args)) end)
     end
   end
 
@@ -58,7 +58,7 @@ defmodule AfyaFit.Repo.Wrap do
     socket = List.last(args)
 
     quote do
-      AfyaFit.Repo.with_scope(unquote(socket).assigns[:current_scope], fn ->
+      AfyaFit.RLS.with_scope(unquote(socket).assigns[:current_scope], fn ->
         super(unquote_splicing(args))
       end)
     end

@@ -48,9 +48,9 @@ defmodule AfyaFit.DataCase do
   Fixtures run as the system; requests and views scope themselves.
   """
   def enforce_rls_if_configured do
-    if AfyaFit.Repo.enforce?() do
-      Ecto.Adapters.SQL.query!(AfyaFit.Repo, "SET LOCAL ROLE #{AfyaFit.Repo.app_role()}", [])
-      AfyaFit.Repo.put_ambient_context({nil, "system"})
+    if AfyaFit.RLS.enforce?() do
+      Ecto.Adapters.SQL.query!(AfyaFit.Repo, "SET LOCAL ROLE #{AfyaFit.RLS.app_role()}", [])
+      AfyaFit.RLS.put_ambient_context({nil, "system"})
     end
   end
 

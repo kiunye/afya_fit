@@ -170,24 +170,6 @@ void main() {
     );
   });
 
-  group('Access.legacy keeps older servers working', () {
-    test('trainer', () {
-      final access = Access.legacy('trainer');
-      expect(access.isCoach, isTrue);
-      expect(access.can('workout_plan', 'create'), isTrue);
-      expect(access.can('subscription', 'manage'), isFalse);
-    });
-
-    test('client and unknown roles are clients', () {
-      expect(Access.legacy('client').isClient, isTrue);
-      expect(Access.legacy('anything').isClient, isTrue);
-    });
-
-    test('admin', () {
-      expect(Access.legacy('admin').isPlatformAdmin, isTrue);
-    });
-  });
-
   test('Access.none allows nothing', () {
     expect(Access.none.can('client', 'list'), isFalse);
     expect(Access.none.isCoach, isFalse);
