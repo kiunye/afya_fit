@@ -41,6 +41,21 @@ defmodule AfyaFit.AccountsRegistrationTest do
       assert organization.name == "Gym #{n}"
     end
 
+    test "the person who starts an organization owns it as its org_admin" do
+      n = System.unique_integer([:positive])
+
+      assert {:ok, user} =
+               Accounts.register_with_organization(
+                 params(%{
+                   "role" => "trainer",
+                   "organization_name" => "Gym #{n}",
+                   "organization_subdomain" => "gym-#{n}"
+                 })
+               )
+
+      assert Repo.get!(User, user.id).role == "org_admin"
+    end
+
     test "an invalid organization creates nothing and reports the organization's errors" do
       assert {:error, %Ecto.Changeset{} = changeset} =
                Accounts.register_with_organization(

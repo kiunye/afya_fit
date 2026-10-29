@@ -104,7 +104,7 @@ defmodule AfyaFit.Accounts do
   @doc """
   Self-registration, shared by the API and the web form.
 
-    * `"trainer"` creates the organization and the user who owns it,
+    * `"trainer"` creates the organization and makes the user its `org_admin`,
     * `"client"` joins an existing organization by its subdomain,
     * any other role is rejected: privileged roles are never self-assigned.
 
@@ -138,7 +138,34 @@ defmodule AfyaFit.Accounts do
     {:error, changeset}
   end
 
-  # The person who signs up as a trainer starts their own free organization.
+  @doc """
+  Makes the earliest trainer of every organization that has no `org_admin`
+  its `org_admin`. Used to backfill organizations created before sign-up made
+  the owner an `org_admin`; running it again changes nothing.
+
+  Returns the ids of the users it promoted.
+  """
+  def promote_first_trainers do
+    with_admin =
+      from(u in User, where: u.role == "org_admin", select: u.organization_id)
+
+    firsts =
+      from(u in User,
+        where: u.role == "trainer" and u.organization_id not in subquery(with_admin),
+        distinct: u.organization_id,
+        order_by: [asc: u.organization_id, asc: u.inserted_at, asc: u.id],
+        select: u.id
+      )
+
+    {_count, ids} =
+      from(u in User, where: u.id in subquery(firsts), select: u.id)
+      |> Repo.update_all(set: [role: "org_admin", updated_at: DateTime.utc_now()])
+
+    ids
+  end
+
+  # The person who signs up as a trainer starts their own free organization and
+  # owns it as its `org_admin`. The role is set here, never taken from the form.
   defp register_organization_owner(params) do
     organization_attrs = %{
       "name" => params["organization_name"],
@@ -153,7 +180,9 @@ defmodule AfyaFit.Accounts do
       Organization.changeset(%Organization{}, organization_attrs)
     )
     |> Ecto.Multi.insert(:user, fn %{organization: organization} ->
-      User.registration_changeset(%User{}, Map.put(params, "organization_id", organization.id))
+      %User{}
+      |> User.registration_changeset(Map.put(params, "organization_id", organization.id))
+      |> Ecto.Changeset.put_change(:role, "org_admin")
     end)
     |> Repo.transaction()
     |> case do
