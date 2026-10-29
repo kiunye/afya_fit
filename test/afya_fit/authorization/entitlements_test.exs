@@ -51,5 +51,24 @@ defmodule AfyaFit.Authorization.EntitlementsTest do
       suspended = %{subscription_status: "active", organization_status: "suspended"}
       assert Entitlements.billing_state(suspended, @now) == :read_only
     end
+
+    test "cancelled at period end keeps access until the paid period ends" do
+      cancelled = %{
+        subscription_status: "cancelled",
+        cancel_at_period_end: true,
+        period_end: ~U[2026-02-01 00:00:00Z]
+      }
+
+      assert Entitlements.billing_state(cancelled, @now) == :active
+
+      assert Entitlements.billing_state(cancelled, ~U[2026-02-02 00:00:00Z]) == :read_only
+    end
+
+    test "cancelled without a paid period left is read-only" do
+      assert Entitlements.billing_state(
+               %{subscription_status: "cancelled", cancel_at_period_end: false},
+               @now
+             ) == :read_only
+    end
   end
 end

@@ -43,18 +43,27 @@ defmodule AfyaFit.Authorization.Entitlements do
 
   Takes any map carrying `:subscription_status`, `:organization_status` and
   `:period_end`. A `past_due` subscription keeps full access for 7 days after
-  its period ended; cancelled and expired subscriptions, and organizations that
+  its period ended; a subscription cancelled at period end keeps access until
+  that date; otherwise cancelled and expired subscriptions, and organizations that
   are not active, are read-only.
   """
   @spec billing_state(map(), DateTime.t()) :: :active | :read_only
   def billing_state(scope, now) do
     cond do
       Map.get(scope, :organization_status, "active") not in [nil, "active"] -> :read_only
-      Map.get(scope, :subscription_status) in ["cancelled", "expired"] -> :read_only
+      Map.get(scope, :subscription_status) == "cancelled" -> cancelled_state(scope, now)
+      Map.get(scope, :subscription_status) == "expired" -> :read_only
       Map.get(scope, :subscription_status) == "past_due" -> past_due_state(scope, now)
       true -> :active
     end
   end
+
+  # A plan cancelled "at period end" keeps working until the period it paid for ends.
+  defp cancelled_state(%{cancel_at_period_end: true, period_end: %DateTime{} = period_end}, now) do
+    if DateTime.compare(now, period_end) == :lt, do: :active, else: :read_only
+  end
+
+  defp cancelled_state(_scope, _now), do: :read_only
 
   defp past_due_state(%{period_end: %DateTime{} = period_end}, now) do
     if DateTime.diff(now, period_end, :second) <= @grace_seconds, do: :active, else: :read_only

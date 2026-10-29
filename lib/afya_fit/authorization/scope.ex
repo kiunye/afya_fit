@@ -28,6 +28,7 @@ defmodule AfyaFit.Authorization.Scope do
             organization_status: "active",
             subscription_status: nil,
             period_end: nil,
+            cancel_at_period_end: false,
             client_ids: MapSet.new(),
             client_count: 0
 
@@ -41,6 +42,7 @@ defmodule AfyaFit.Authorization.Scope do
           organization_status: String.t() | nil,
           subscription_status: String.t() | nil,
           period_end: DateTime.t() | nil,
+          cancel_at_period_end: boolean(),
           client_ids: MapSet.t(binary()),
           client_count: non_neg_integer()
         }
@@ -80,6 +82,7 @@ defmodule AfyaFit.Authorization.Scope do
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,
       period_end: subscription && subscription.current_period_end,
+      cancel_at_period_end: (subscription && subscription.cancel_at_period_end) || false,
       client_ids: linked_client_ids(user),
       client_count: count_clients(user.organization_id)
     )
