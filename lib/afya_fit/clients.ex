@@ -209,6 +209,17 @@ defmodule AfyaFit.Clients do
   end
 
   @doc """
+  The id of the trainer currently coaching `client_id`, or `default` when the
+  client has no active link.
+  """
+  def primary_trainer_id(client_id, default) do
+    case Repo.get_by(TrainerClient, client_id: client_id, status: "active") do
+      nil -> default
+      %TrainerClient{trainer_id: trainer_id} -> trainer_id
+    end
+  end
+
+  @doc """
   Checks if a trainer has access to a client.
   """
   def trainer_has_client?(trainer_id, client_id) do
