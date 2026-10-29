@@ -56,6 +56,9 @@ defmodule AfyaFit.Workouts do
 
   def get_workout_plan!(id), do: Repo.get!(WorkoutPlan, id)
 
+  @doc "Gets a workout plan, or `nil`."
+  def get_workout_plan(id), do: Repo.get(WorkoutPlan, id)
+
   def create_workout_plan(attrs \\ %{}) do
     %WorkoutPlan{}
     |> WorkoutPlan.changeset(attrs)
