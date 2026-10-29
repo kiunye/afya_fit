@@ -1,30 +1,10 @@
 defmodule AfyaFitWeb.CoreComponents do
   @moduledoc """
-  Provides core UI components.
+  Provides core UI components: flash, button, inputs, header, table and list.
 
-  At first glance, this module may seem daunting, but its goal is to provide
-  core building blocks for your application, such as tables, forms, and
-  inputs. The components consist mostly of markup and are well-documented
-  with doc strings and declarative assigns. You may customize and style
-  them in any way you want, based on your application growth and needs.
-
-  The foundation for styling is Tailwind CSS, a utility-first CSS framework,
-  augmented with daisyUI, a Tailwind CSS plugin that provides UI components
-  and themes. Here are useful references:
-
-    * [daisyUI](https://daisyui.com/docs/intro/) - a good place to get
-      started and see the available components.
-
-    * [Tailwind CSS](https://tailwindcss.com) - the foundational framework
-      we build on. You will use it for layout, sizing, flexbox, grid, and
-      spacing.
-
-    * [Heroicons](https://heroicons.com) - see `icon/1` for usage.
-
-    * [Phoenix.Component](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html) -
-      the component system used by Phoenix. Some components, such as `<.link>`
-      and `<.form>`, are defined there.
-
+  Styling is Tailwind CSS v4 only, using the design tokens declared in
+  `assets/css/app.css` (see `docs/design/DIRECTION.md`): one green field, one
+  orange `signal` accent, white `paper` for things that float.
   """
   use Phoenix.Component
   use Gettext, backend: AfyaFitWeb.Gettext
@@ -58,23 +38,26 @@ defmodule AfyaFitWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="fixed right-4 top-4 z-50 w-80 max-w-[calc(100vw-2rem)] sm:w-96"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
+        "flex items-start gap-3 rounded-tile border-[3px] border-field-0 bg-paper p-4 text-field-0",
+        "shadow-[6px_6px_0_var(--color-field-0)]",
+        @kind == :error && "border-l-[10px] border-l-signal"
       ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
+        <.icon :if={@kind == :info} name="hero-information-circle" class="mt-0.5 size-5 shrink-0" />
+        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0" />
+        <div class="min-w-0 flex-1 text-sm">
+          <p :if={@title} class="font-bold">{@title}</p>
           <p>{msg}</p>
         </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
+        <button
+          type="button"
+          class="-m-1 shrink-0 cursor-pointer p-1 opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-field-0"
+          aria-label={gettext("close")}
+        >
+          <.icon name="hero-x-mark" class="size-5" />
         </button>
       </div>
     </div>
@@ -84,38 +67,53 @@ defmodule AfyaFitWeb.CoreComponents do
   @doc """
   Renders a button with navigation support.
 
+  `variant="primary"` is the one orange action on a screen; the default is an
+  outlined button. Use `aria-disabled="true"` (not `disabled`) for paused
+  actions and say why next to them.
+
   ## Examples
 
       <.button>Send!</.button>
       <.button phx-click="go" variant="primary">Send!</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
-  attr :class, :string
-  attr :variant, :string, values: ~w(primary)
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form)
+
+  attr :class, :any, default: nil
+  attr :variant, :string, values: ~w(primary default), default: "default"
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
-    variants = %{"primary" => "btn-primary", nil => "btn-primary btn-soft"}
-
-    assigns =
-      assign_new(assigns, :class, fn ->
-        ["btn", Map.fetch!(variants, assigns[:variant])]
-      end)
+    assigns = assign(assigns, :classes, [button_class(assigns.variant), assigns.class])
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
-      <.link class={@class} {@rest}>
+      <.link class={@classes} {@rest}>
         {render_slot(@inner_block)}
       </.link>
       """
     else
       ~H"""
-      <button class={@class} {@rest}>
+      <button class={@classes} {@rest}>
         {render_slot(@inner_block)}
       </button>
       """
     end
+  end
+
+  defp button_class(variant) do
+    [
+      "inline-flex min-h-9 items-center justify-center gap-2 rounded-control border-[3px] px-4 py-1.5",
+      "cursor-pointer text-[13px] font-bold uppercase tracking-[.03em] transition-colors",
+      "focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-white",
+      "aria-disabled:cursor-not-allowed aria-disabled:border-dashed aria-disabled:border-ink-2",
+      "aria-disabled:bg-transparent aria-disabled:text-ink-2 disabled:cursor-not-allowed disabled:opacity-60",
+      variant == "primary" &&
+        "border-signal bg-signal text-signal-ink hover:border-white hover:bg-white hover:text-field-0",
+      variant != "primary" &&
+        "border-line bg-transparent text-ink hover:border-white hover:bg-white hover:text-field-0"
+    ]
   end
 
   @doc """
@@ -187,20 +185,19 @@ defmodule AfyaFitWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
+    <div class="mb-3">
+      <label class="flex cursor-pointer items-center gap-3 text-sm font-medium">
         <input type="hidden" name={@name} value="false" disabled={@rest[:disabled]} />
-        <span class="label">
-          <input
-            type="checkbox"
-            id={@id}
-            name={@name}
-            value="true"
-            checked={@checked}
-            class={@class || "checkbox checkbox-sm"}
-            {@rest}
-          />{@label}
-        </span>
+        <input
+          type="checkbox"
+          id={@id}
+          name={@name}
+          value="true"
+          checked={@checked}
+          class={@class || "size-5 shrink-0 cursor-pointer accent-signal"}
+          {@rest}
+        />
+        {@label}
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -209,13 +206,13 @@ defmodule AfyaFitWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-3">
+      <label class="block">
+        <span :if={@label} class="mb-1 block text-sm font-bold">{@label}</span>
         <select
           id={@id}
           name={@name}
-          class={[@class || "w-full select", @errors != [] && (@error_class || "select-error")]}
+          class={[@class || field_class(), @errors != [] && (@error_class || "border-signal")]}
           multiple={@multiple}
           {@rest}
         >
@@ -230,15 +227,15 @@ defmodule AfyaFitWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-3">
+      <label class="block">
+        <span :if={@label} class="mb-1 block text-sm font-bold">{@label}</span>
         <textarea
           id={@id}
           name={@name}
           class={[
-            @class || "w-full textarea",
-            @errors != [] && (@error_class || "textarea-error")
+            @class || field_class("min-h-24"),
+            @errors != [] && (@error_class || "border-signal")
           ]}
           {@rest}
         >{Form.normalize_value("textarea", @value)}</textarea>
@@ -251,18 +248,15 @@ defmodule AfyaFitWeb.CoreComponents do
   # All other inputs text, datetime-local, url, password, etc. are handled here...
   def input(assigns) do
     ~H"""
-    <div class="fieldset mb-2">
-      <label>
-        <span :if={@label} class="label mb-1">{@label}</span>
+    <div class="mb-3">
+      <label class="block">
+        <span :if={@label} class="mb-1 block text-sm font-bold">{@label}</span>
         <input
           type={@type}
           name={@name}
           id={@id}
           value={Form.normalize_value(@type, @value)}
-          class={[
-            @class || "w-full input",
-            @errors != [] && (@error_class || "input-error")
-          ]}
+          class={[@class || field_class(), @errors != [] && (@error_class || "border-signal")]}
           {@rest}
         />
       </label>
@@ -271,11 +265,21 @@ defmodule AfyaFitWeb.CoreComponents do
     """
   end
 
-  # Helper used by inputs to generate form errors
+  defp field_class(extra \\ nil) do
+    [
+      "w-full rounded-control border-[3px] border-line/70 bg-field-0 px-3 py-2 text-base text-ink",
+      "placeholder:text-ink-2/70 focus:border-white focus:outline-2 focus:outline-offset-2 focus:outline-white",
+      "disabled:cursor-not-allowed disabled:border-dashed disabled:text-ink-2",
+      extra
+    ]
+  end
+
+  # Helper used by inputs to generate form errors. The orange mark carries the
+  # state; the message stays white so it keeps its contrast on the green field.
   defp error(assigns) do
     ~H"""
-    <p class="mt-1.5 flex gap-2 items-center text-sm text-error">
-      <.icon name="hero-exclamation-circle" class="size-5" />
+    <p class="mt-1.5 flex items-start gap-2 text-sm font-medium text-ink">
+      <.icon name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0 text-signal" />
       {render_slot(@inner_block)}
     </p>
     """
@@ -290,12 +294,15 @@ defmodule AfyaFitWeb.CoreComponents do
 
   def header(assigns) do
     ~H"""
-    <header class={[@actions != [] && "flex items-center justify-between gap-6", "pb-4"]}>
+    <header class={[
+      "border-b-[3px] border-line pb-4",
+      @actions != [] && "flex flex-wrap items-end justify-between gap-6"
+    ]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8">
+        <h1 class="text-3xl font-black uppercase leading-none tracking-tight sm:text-5xl">
           {render_slot(@inner_block)}
         </h1>
-        <p :if={@subtitle != []} class="text-sm text-base-content/70">
+        <p :if={@subtitle != []} class="mt-2 text-ink-2">
           {render_slot(@subtitle)}
         </p>
       </div>
@@ -325,6 +332,7 @@ defmodule AfyaFitWeb.CoreComponents do
 
   slot :col, required: true do
     attr :label, :string
+    attr :numeric, :boolean
   end
 
   slot :action, doc: "the slot for showing user actions in the last table column"
@@ -336,34 +344,52 @@ defmodule AfyaFitWeb.CoreComponents do
       end
 
     ~H"""
-    <table class="table table-zebra">
-      <thead>
-        <tr>
-          <th :for={col <- @col}>{col[:label]}</th>
-          <th :if={@action != []}>
-            <span class="sr-only">{gettext("Actions")}</span>
-          </th>
-        </tr>
-      </thead>
-      <tbody id={@id} phx-update={is_struct(@rows, LiveStream) && "stream"}>
-        <tr :for={row <- @rows} id={@row_id && @row_id.(row)}>
-          <td
-            :for={col <- @col}
-            phx-click={@row_click && @row_click.(row)}
-            class={@row_click && "hover:cursor-pointer"}
+    <div class="overflow-x-auto">
+      <table class="w-full border-collapse text-left">
+        <thead>
+          <tr class="border-b-[3px] border-line">
+            <th
+              :for={col <- @col}
+              class={[
+                "px-3 py-2 text-xs font-bold uppercase tracking-[.08em] text-ink-2",
+                col[:numeric] && "text-right"
+              ]}
+            >
+              {col[:label]}
+            </th>
+            <th :if={@action != []} class="px-3 py-2">
+              <span class="sr-only">{gettext("Actions")}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody id={@id} phx-update={is_struct(@rows, LiveStream) && "stream"}>
+          <tr
+            :for={row <- @rows}
+            id={@row_id && @row_id.(row)}
+            class="border-b border-line/40 hover:bg-field-2"
           >
-            {render_slot(col, @row_item.(row))}
-          </td>
-          <td :if={@action != []} class="w-0 font-semibold">
-            <div class="flex gap-4">
-              <%= for action <- @action do %>
-                {render_slot(action, @row_item.(row))}
-              <% end %>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+            <td
+              :for={col <- @col}
+              phx-click={@row_click && @row_click.(row)}
+              class={[
+                "px-3 py-3.5 text-[15px]",
+                @row_click && "cursor-pointer",
+                col[:numeric] && "text-right tabular-nums"
+              ]}
+            >
+              {render_slot(col, @row_item.(row))}
+            </td>
+            <td :if={@action != []} class="w-0 px-3 py-3.5 font-bold">
+              <div class="flex gap-4">
+                <%= for action <- @action do %>
+                  {render_slot(action, @row_item.(row))}
+                <% end %>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     """
   end
 
@@ -383,12 +409,10 @@ defmodule AfyaFitWeb.CoreComponents do
 
   def list(assigns) do
     ~H"""
-    <ul class="list">
-      <li :for={item <- @item} class="list-row">
-        <div class="list-col-grow">
-          <div class="font-bold">{item.title}</div>
-          <div>{render_slot(item)}</div>
-        </div>
+    <ul class="divide-y divide-line/40">
+      <li :for={item <- @item} class="py-3">
+        <div class="text-xs font-bold uppercase tracking-[.08em] text-ink-2">{item.title}</div>
+        <div class="mt-1">{render_slot(item)}</div>
       </li>
     </ul>
     """
