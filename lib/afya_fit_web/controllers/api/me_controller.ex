@@ -1,9 +1,17 @@
 defmodule AfyaFitWeb.API.MeController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Accounts, Billing, Clients, Tracking, Workouts}
+  alias AfyaFit.{Accounts, Authorization, Billing, Clients, Tracking, Workouts}
 
   # Authentication is handled in router pipeline
+
+  plug AfyaFitWeb.API.AuthorizePlug,
+       [
+         resource: :client_subscription,
+         actions: %{update_subscription_reminders: :update},
+         default: :read
+       ]
+       when action in [:subscription, :update_subscription_reminders]
 
   action_fallback AfyaFitWeb.API.FallbackController
 
@@ -63,15 +71,8 @@ defmodule AfyaFitWeb.API.MeController do
     # For clients, we need to find their trainer
     trainer_id =
       case current_user.role do
-        "client" ->
-          # Find active trainer-client relationship for this client
-          case Repo.get_by(TrainerClient, client_id: current_user.id, status: "active") do
-            nil -> current_user.id
-            trainer_client -> trainer_client.trainer_id
-          end
-
-        _ ->
-          current_user.id
+        "client" -> Clients.primary_trainer_id(current_user.id, current_user.id)
+        _ -> current_user.id
       end
 
     attrs =
@@ -79,18 +80,12 @@ defmodule AfyaFitWeb.API.MeController do
       |> Map.put("client_id", current_user.id)
       |> Map.put("trainer_id", trainer_id)
 
-    case Tracking.create_progress_entry(attrs) do
-      {:ok, progress_entry} ->
-        conn
-        |> put_status(:created)
-        |> put_view(AfyaFitWeb.API.MeView)
-        |> render(:show, progress_entry: progress_entry)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: changeset)
+    with :ok <- Authorization.authorize(conn.assigns.current_scope, :create, :progress_entry),
+         {:ok, progress_entry} <- Tracking.create_progress_entry(attrs) do
+      conn
+      |> put_status(:created)
+      |> put_view(AfyaFitWeb.API.MeView)
+      |> render(:show, progress_entry: progress_entry)
     end
   end
 
