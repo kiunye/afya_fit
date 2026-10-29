@@ -13,6 +13,10 @@ defmodule AfyaFitWeb.API.ErrorView do
     %{error: "Forbidden"}
   end
 
+  def render("402.json", %{error: error, details: details}) do
+    Map.put(details, :error, error)
+  end
+
   def render("406.json", _assigns) do
     %{error: "Not Acceptable - The requested format is not supported"}
   end

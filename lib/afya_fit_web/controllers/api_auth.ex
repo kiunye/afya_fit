@@ -10,6 +10,7 @@ defmodule AfyaFitWeb.APIAuth do
   import Plug.Conn
   import Phoenix.Controller
   alias AfyaFit.Accounts
+  alias AfyaFit.Authorization.Scope
 
   def init(opts), do: opts
 
@@ -24,7 +25,9 @@ defmodule AfyaFitWeb.APIAuth do
             |> halt()
 
           user ->
-            assign(conn, :current_user, user)
+            conn
+            |> assign(:current_user, user)
+            |> assign(:current_scope, Scope.load(user))
         end
 
       _ ->
