@@ -3,6 +3,7 @@ defmodule AfyaFit.Workers.ClientSubscriptionReminderWorker do
   Oban worker for sending client subscription expiry reminder emails.
   """
   use Oban.Worker, queue: :default, max_attempts: 3
+  use AfyaFit.Repo.Wrap, :job
 
   alias AfyaFit.{Accounts, Billing, Organizations}
   alias AfyaFitWeb.Emails

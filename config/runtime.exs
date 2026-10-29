@@ -28,6 +28,14 @@ if support_email = System.get_env("SUPPORT_EMAIL") do
   config :afya_fit, :support_email, support_email
 end
 
+# Row-level security: run as the non-owner role so Postgres enforces tenant
+# isolation. Run migrations with RLS_ENFORCE unset, since they need the owner.
+if config_env() != :test and System.get_env("RLS_ENFORCE") in ["true", "1"] do
+  config :afya_fit, AfyaFit.RLS,
+    enforce: true,
+    app_role: System.get_env("RLS_APP_ROLE") || "afya_fit_app"
+end
+
 if config_env() in [:dev, :test] do
   # Development and test database configuration
   # Read from Docker secrets first, then environment variables

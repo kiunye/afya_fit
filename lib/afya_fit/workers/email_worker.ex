@@ -11,6 +11,7 @@ defmodule AfyaFit.Workers.EmailWorker do
   The email functions should handle maps or structs.
   """
   use Oban.Worker, queue: :emails, max_attempts: 3
+  use AfyaFit.Repo.Wrap, :job
 
   alias AfyaFit.Mailer
 

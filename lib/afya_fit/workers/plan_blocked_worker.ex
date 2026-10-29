@@ -13,6 +13,7 @@ defmodule AfyaFit.Workers.PlanBlockedWorker do
       keys: [:organization_id, :kind, :feature],
       states: [:available, :scheduled, :executing, :retryable, :completed]
     ]
+  use AfyaFit.Repo.Wrap, :job
 
   alias AfyaFit.Mailer
   alias AfyaFitWeb.SupportEmail

@@ -4,6 +4,7 @@ defmodule AfyaFit.Workers.TaskReminderWorker do
   Runs daily to send reminders for tasks due today or tomorrow.
   """
   use Oban.Worker, queue: :tasks, max_attempts: 3
+  use AfyaFit.Repo.Wrap, :job
 
   import Ecto.Query
   alias AfyaFit.Repo
