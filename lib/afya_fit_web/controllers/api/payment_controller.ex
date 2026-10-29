@@ -6,6 +6,8 @@ defmodule AfyaFitWeb.API.PaymentController do
 
   # Authentication is handled in router pipeline
 
+  plug AfyaFitWeb.API.AuthorizePlug, resource: :subscription, default: :manage
+
   action_fallback AfyaFitWeb.API.FallbackController
 
   def initialize(conn, %{"payment" => payment_params}) do

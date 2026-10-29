@@ -1,130 +1,80 @@
 defmodule AfyaFitWeb.API.NutritionPlanController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Clients, Nutrition}
+  alias AfyaFit.{Accounts, Authorization, Nutrition}
+  alias AfyaFit.Authorization.Scope
 
   # Authentication is handled in router pipeline
 
   action_fallback AfyaFitWeb.API.FallbackController
 
   def index(conn, _params) do
-    current_user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
 
-    nutrition_plans =
-      Nutrition.list_nutrition_plans()
-      |> Enum.filter(fn plan ->
-        plan.organization_id == current_user.organization_id &&
-          (plan.trainer_id == current_user.id || plan.client_id == current_user.id ||
-             current_user.role == "admin")
-      end)
-
-    render(conn, :index, nutrition_plans: nutrition_plans)
+    with :ok <- Authorization.authorize(scope, :list, :nutrition_plan) do
+      render(conn, :index, nutrition_plans: Nutrition.list_nutrition_plans_for(scope))
+    end
   end
 
   def create(conn, %{"nutrition_plan" => nutrition_plan_params}) do
-    current_user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
 
     attrs =
       nutrition_plan_params
-      |> Map.put("organization_id", current_user.organization_id)
-      |> Map.put("trainer_id", current_user.id)
+      |> Map.put("organization_id", scope.user.organization_id)
+      |> Map.put("trainer_id", scope.user.id)
 
-    # Verify client access if client_id is provided
-    if client_id = Map.get(attrs, "client_id") do
-      unless Clients.trainer_has_client?(current_user.id, client_id) do
-        conn
-        |> put_status(:forbidden)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"403")
-        |> halt()
-      end
-    end
-
-    case Nutrition.create_nutrition_plan(attrs) do
-      {:ok, nutrition_plan} ->
-        conn
-        |> put_status(:created)
-        |> render(:show, nutrition_plan: nutrition_plan)
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: changeset)
+    with :ok <- Authorization.authorize(scope, :create, :nutrition_plan),
+         :ok <- authorize_client(scope, attrs["client_id"]),
+         {:ok, nutrition_plan} <- Nutrition.create_nutrition_plan(attrs) do
+      conn
+      |> put_status(:created)
+      |> render(:show, nutrition_plan: nutrition_plan)
     end
   end
 
   def show(conn, %{"id" => id}) do
-    current_user = conn.assigns.current_user
     nutrition_plan = Nutrition.get_nutrition_plan!(id)
 
-    # Verify access
-    if nutrition_plan.organization_id == current_user.organization_id &&
-         (nutrition_plan.trainer_id == current_user.id ||
-            nutrition_plan.client_id == current_user.id || current_user.role == "admin") do
+    with :ok <- Authorization.authorize(conn.assigns.current_scope, :read, nutrition_plan) do
       render(conn, :show, nutrition_plan: nutrition_plan)
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
     end
   end
 
   def update(conn, %{"id" => id, "nutrition_plan" => nutrition_plan_params}) do
-    current_user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
     nutrition_plan = Nutrition.get_nutrition_plan!(id)
 
-    # Verify ownership
-    if nutrition_plan.trainer_id == current_user.id || current_user.role == "admin" do
-      case Nutrition.update_nutrition_plan(nutrition_plan, nutrition_plan_params) do
-        {:ok, nutrition_plan} ->
-          render(conn, :show, nutrition_plan: nutrition_plan)
-
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> put_view(AfyaFitWeb.API.ErrorView)
-          |> render(:"422", changeset: changeset)
-      end
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
+    with :ok <- Authorization.authorize(scope, :update, nutrition_plan),
+         :ok <- authorize_client(scope, nutrition_plan_params["client_id"]),
+         {:ok, nutrition_plan} <-
+           Nutrition.update_nutrition_plan(nutrition_plan, nutrition_plan_params) do
+      render(conn, :show, nutrition_plan: nutrition_plan)
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    current_user = conn.assigns.current_user
     nutrition_plan = Nutrition.get_nutrition_plan!(id)
 
-    # Verify ownership
-    if nutrition_plan.trainer_id == current_user.id || current_user.role == "admin" do
-      Nutrition.delete_nutrition_plan(nutrition_plan)
+    with :ok <- Authorization.authorize(conn.assigns.current_scope, :delete, nutrition_plan),
+         {:ok, _nutrition_plan} <- Nutrition.delete_nutrition_plan(nutrition_plan) do
       send_resp(conn, :no_content, "")
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
     end
   end
 
   def client_nutrition(conn, %{"client_id" => client_id}) do
-    current_user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
+    client = Accounts.get_user!(client_id)
 
-    # Verify client access
-    if current_user.role == "trainer" do
-      Clients.get_client!(current_user, client_id)
+    with :ok <- Authorization.authorize(scope, :read, client) do
+      render(conn, :index, nutrition_plans: Nutrition.list_client_nutrition_plans(client))
     end
+  end
 
-    nutrition_plans =
-      Nutrition.list_nutrition_plans()
-      |> Enum.filter(fn plan ->
-        plan.organization_id == current_user.organization_id && plan.client_id == client_id
-      end)
+  # A plan may only be assigned to a client the requester coaches.
+  defp authorize_client(_scope, nil), do: :ok
 
-    render(conn, :index, nutrition_plans: nutrition_plans)
+  defp authorize_client(scope, client_id) do
+    if Scope.manages_client?(scope, client_id), do: :ok, else: {:error, :forbidden}
   end
 end

@@ -1,137 +1,104 @@
 defmodule AfyaFitWeb.API.ClientWorkoutController do
   use AfyaFitWeb, :controller
 
-  alias AfyaFit.{Clients, Repo, Workouts}
+  alias AfyaFit.{Accounts, Authorization, Repo, Workouts}
 
   # Authentication is handled in router pipeline
 
   action_fallback AfyaFitWeb.API.FallbackController
 
+  # Who an assignment belongs to, and who made it, cannot be changed through the API.
+  @protected_fields ["client_id", "assigned_by"]
+
   def index(conn, %{"client_id" => client_id}) do
-    current_user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
 
-    # Verify client access
-    Clients.get_client!(current_user, client_id)
+    with {:ok, _client} <- fetch_client(scope, client_id),
+         :ok <- Authorization.authorize(scope, :list, :client_workout) do
+      client_workouts =
+        client_id
+        |> Workouts.list_client_workouts_by_client()
+        |> Repo.preload([:workout_plan, :client])
 
-    client_workouts =
-      Workouts.list_client_workouts_by_client(client_id)
-      |> Enum.filter(fn cw ->
-        # Load workout plan to check organization
-        cw = Repo.preload(cw, :workout_plan)
-        cw.workout_plan.organization_id == current_user.organization_id
-      end)
-      |> Repo.preload([:workout_plan, :client])
-
-    json(conn, %{data: Enum.map(client_workouts, &format_client_workout/1)})
+      json(conn, %{data: Enum.map(client_workouts, &format_client_workout/1)})
+    end
   end
 
   def create(conn, %{"client_id" => client_id, "client_workout" => workout_params}) do
-    current_user = conn.assigns.current_user
-
-    # Verify client access
-    Clients.get_client!(current_user, client_id)
+    scope = conn.assigns.current_scope
 
     attrs =
       workout_params
       |> Map.put("client_id", client_id)
-      |> Map.put("assigned_by", current_user.id)
+      |> Map.put("assigned_by", scope.user.id)
 
-    case Workouts.create_client_workout(attrs) do
-      {:ok, client_workout} ->
-        client_workout =
-          client_workout
-          |> Repo.preload([:workout_plan, :client])
+    with {:ok, _client} <- fetch_client(scope, client_id),
+         :ok <- Authorization.authorize(scope, :create, :client_workout),
+         :ok <- authorize_plan(scope, attrs["workout_plan_id"]),
+         {:ok, client_workout} <- Workouts.create_client_workout(attrs) do
+      client_workout = Repo.preload(client_workout, [:workout_plan, :client])
 
-        conn
-        |> put_status(:created)
-        |> json(%{data: format_client_workout(client_workout)})
-
-      {:error, changeset} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: changeset)
+      conn
+      |> put_status(:created)
+      |> json(%{data: format_client_workout(client_workout)})
     end
   end
 
   def update(conn, %{"id" => id, "client_workout" => workout_params}) do
-    current_user = conn.assigns.current_user
-    client_workout = Workouts.get_client_workout!(id)
+    scope = conn.assigns.current_scope
+    attrs = Map.drop(workout_params, @protected_fields)
 
-    # Verify access via workout plan organization
-    client_workout = Repo.preload(client_workout, :workout_plan)
-
-    if client_workout.workout_plan.organization_id == current_user.organization_id &&
-         (client_workout.assigned_by == current_user.id || current_user.role == "admin") do
-      case Workouts.update_client_workout(client_workout, workout_params) do
-        {:ok, client_workout} ->
-          client_workout = Repo.preload(client_workout, [:workout_plan, :client])
-          json(conn, %{data: format_client_workout(client_workout)})
-
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> put_view(AfyaFitWeb.API.ErrorView)
-          |> render(:"422", changeset: changeset)
-      end
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
+    with {:ok, client_workout} <- fetch_client_workout(conn, :update, id),
+         :ok <- authorize_plan(scope, attrs["workout_plan_id"]),
+         {:ok, client_workout} <- Workouts.update_client_workout(client_workout, attrs) do
+      client_workout = Repo.preload(client_workout, [:workout_plan, :client])
+      json(conn, %{data: format_client_workout(client_workout)})
     end
   end
 
   def delete(conn, %{"id" => id}) do
-    current_user = conn.assigns.current_user
-    client_workout = Workouts.get_client_workout!(id)
-
-    # Verify access
-    client_workout = Repo.preload(client_workout, :workout_plan)
-
-    if client_workout.workout_plan.organization_id == current_user.organization_id &&
-         (client_workout.assigned_by == current_user.id || current_user.role == "admin") do
-      Workouts.delete_client_workout(client_workout)
+    with {:ok, client_workout} <- fetch_client_workout(conn, :delete, id),
+         {:ok, _client_workout} <- Workouts.delete_client_workout(client_workout) do
       send_resp(conn, :no_content, "")
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
     end
   end
 
   def complete(conn, %{"id" => id}) do
-    current_user = conn.assigns.current_user
-    client_workout = Workouts.get_client_workout!(id)
+    attrs = %{"status" => "completed", "completed_at" => DateTime.utc_now()}
 
-    # Verify access - clients can complete their own workouts, trainers can mark any as complete
-    client_workout = Repo.preload(client_workout, :workout_plan)
+    with {:ok, client_workout} <- fetch_client_workout(conn, :complete, id),
+         {:ok, client_workout} <- Workouts.update_client_workout(client_workout, attrs) do
+      client_workout = Repo.preload(client_workout, [:workout_plan, :client])
+      json(conn, %{data: format_client_workout(client_workout)})
+    end
+  end
 
-    if client_workout.workout_plan.organization_id == current_user.organization_id &&
-         (client_workout.client_id == current_user.id ||
-            client_workout.assigned_by == current_user.id || current_user.role == "admin") do
-      attrs = %{
-        "status" => "completed",
-        "completed_at" => DateTime.utc_now()
-      }
+  # The client whose workouts are requested must be reachable by the requester.
+  defp fetch_client(scope, client_id) do
+    client = Accounts.get_user!(client_id)
 
-      case Workouts.update_client_workout(client_workout, attrs) do
-        {:ok, client_workout} ->
-          client_workout = Repo.preload(client_workout, [:workout_plan, :client])
-          json(conn, %{data: format_client_workout(client_workout)})
+    with :ok <- Authorization.authorize(scope, :read, client) do
+      if client.role == "client", do: {:ok, client}, else: {:error, :not_found}
+    end
+  end
 
-        {:error, changeset} ->
-          conn
-          |> put_status(:unprocessable_entity)
-          |> put_view(AfyaFitWeb.API.ErrorView)
-          |> render(:"422", changeset: changeset)
-      end
-    else
-      conn
-      |> put_status(:forbidden)
-      |> put_view(AfyaFitWeb.API.ErrorView)
-      |> render(:"403")
+  # Assignments carry no organization of their own, so the client is preloaded.
+  defp fetch_client_workout(conn, action, id) do
+    client_workout =
+      id |> Workouts.get_client_workout!() |> Repo.preload([:workout_plan, :client])
+
+    with :ok <- Authorization.authorize(conn.assigns.current_scope, action, client_workout) do
+      {:ok, client_workout}
+    end
+  end
+
+  # A plan can only be assigned if the requester may read it.
+  defp authorize_plan(_scope, nil), do: :ok
+
+  defp authorize_plan(scope, plan_id) do
+    case Repo.get(AfyaFit.Workouts.WorkoutPlan, plan_id) do
+      nil -> {:error, :not_found}
+      plan -> Authorization.authorize(scope, :read, plan)
     end
   end
 

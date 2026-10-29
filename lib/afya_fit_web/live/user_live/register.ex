@@ -177,8 +177,13 @@ defmodule AfyaFitWeb.UserLive.Register do
   end
 
   defp register_user_with_organization(user_params) do
-    # Fallback for other roles
-    Accounts.register_user(user_params)
+    # Only trainers and clients can self-register; privileged roles are never accepted
+    changeset =
+      %Accounts.User{}
+      |> Accounts.User.registration_changeset(Map.delete(user_params, "organization_id"))
+      |> Ecto.Changeset.add_error(:role, "must be trainer or client")
+
+    {:error, changeset}
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do

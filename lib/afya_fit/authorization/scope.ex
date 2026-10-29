@@ -101,7 +101,7 @@ defmodule AfyaFit.Authorization.Scope do
 
   defp linked_client_ids(%User{role: "trainer", id: trainer_id}) do
     from(tc in TrainerClient,
-      where: tc.trainer_id == ^trainer_id and tc.status == "active",
+      where: tc.trainer_id == ^trainer_id and tc.status in ["active", "paused"],
       select: tc.client_id
     )
     |> Repo.all()

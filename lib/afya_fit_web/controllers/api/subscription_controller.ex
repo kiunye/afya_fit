@@ -5,6 +5,11 @@ defmodule AfyaFitWeb.API.SubscriptionController do
 
   # Authentication is handled in router pipeline
 
+  plug AfyaFitWeb.API.AuthorizePlug,
+    resource: :subscription,
+    actions: %{show: :read, invoices: :read},
+    default: :manage
+
   action_fallback AfyaFitWeb.API.FallbackController
 
   def show(conn, _params) do
