@@ -6,6 +6,8 @@ defmodule AfyaFit.Accounts do
   import Ecto.Query, warn: false
   alias AfyaFit.Accounts.User
   alias AfyaFit.Accounts.UserToken
+  alias AfyaFit.Organizations
+  alias AfyaFit.Organizations.Organization
   alias AfyaFit.Repo
 
   ## User getters
@@ -97,6 +99,67 @@ defmodule AfyaFit.Accounts do
     %User{}
     |> User.registration_changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc """
+  Self-registration, shared by the API and the web form.
+
+    * `"trainer"` creates the organization and the user who owns it,
+    * `"client"` joins an existing organization by its subdomain,
+    * any other role is rejected: privileged roles are never self-assigned.
+
+  Returns `{:ok, user}` or `{:error, changeset}` (the organization's
+  changeset when the organization itself is invalid).
+  """
+  def register_with_organization(%{"role" => "trainer"} = params),
+    do: register_organization_owner(params)
+
+  def register_with_organization(%{"role" => "client"} = params) do
+    case Organizations.get_organization_by_subdomain(params["organization_subdomain"]) do
+      nil ->
+        changeset =
+          %User{}
+          |> User.registration_changeset(params)
+          |> Ecto.Changeset.add_error(:organization_subdomain, "not found")
+
+        {:error, changeset}
+
+      organization ->
+        params |> Map.put("organization_id", organization.id) |> register_user()
+    end
+  end
+
+  def register_with_organization(params) do
+    changeset =
+      %User{}
+      |> User.registration_changeset(Map.delete(params, "organization_id"))
+      |> Ecto.Changeset.add_error(:role, "must be trainer or client")
+
+    {:error, changeset}
+  end
+
+  # The person who signs up as a trainer starts their own free organization.
+  defp register_organization_owner(params) do
+    organization_attrs = %{
+      "name" => params["organization_name"],
+      "subdomain" => params["organization_subdomain"],
+      "plan_type" => "free",
+      "status" => "active"
+    }
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(
+      :organization,
+      Organization.changeset(%Organization{}, organization_attrs)
+    )
+    |> Ecto.Multi.insert(:user, fn %{organization: organization} ->
+      User.registration_changeset(%User{}, Map.put(params, "organization_id", organization.id))
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{user: user}} -> {:ok, user}
+      {:error, _step, changeset, _changes} -> {:error, changeset}
+    end
   end
 
   ## Session

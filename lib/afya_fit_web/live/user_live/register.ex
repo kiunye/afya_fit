@@ -2,7 +2,6 @@ defmodule AfyaFitWeb.UserLive.Register do
   use AfyaFitWeb, :live_view
 
   alias AfyaFit.Accounts
-  alias AfyaFit.Organizations
 
   def render(assigns) do
     ~H"""
@@ -18,7 +17,7 @@ defmodule AfyaFitWeb.UserLive.Register do
             instead.
           </:subtitle>
         </.header>
-
+        
         <.form
           for={@form}
           id="registration_form"
@@ -39,7 +38,6 @@ defmodule AfyaFitWeb.UserLive.Register do
             options={[{"Trainer", "trainer"}, {"Client", "client"}]}
             required
           />
-
           <%= if @show_organization_fields do %>
             <.input
               field={@form[:organization_name]}
@@ -69,7 +67,7 @@ defmodule AfyaFitWeb.UserLive.Register do
               Enter your trainer's organization subdomain to join their account.
             </p>
           <% end %>
-
+          
           <div>
             <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
           </div>
@@ -109,7 +107,7 @@ defmodule AfyaFitWeb.UserLive.Register do
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
-    case register_user_with_organization(user_params) do
+    case Accounts.register_with_organization(user_params) do
       {:ok, user} ->
         {:ok, _} =
           Accounts.deliver_user_confirmation_instructions(
@@ -120,70 +118,9 @@ defmodule AfyaFitWeb.UserLive.Register do
         changeset = Accounts.change_user_registration(user)
         {:noreply, socket |> assign(trigger_submit: true) |> assign_form(changeset)}
 
-      {:error, :organization, changeset, _} ->
-        {:noreply, assign_form(socket, changeset)}
-
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}
     end
-  end
-
-  @dialyzer {:nowarn_function, register_user_with_organization: 1}
-  defp register_user_with_organization(%{"role" => "trainer"} = user_params) do
-    # Trainers create their own organization
-    org_attrs = %{
-      "name" => user_params["organization_name"],
-      "subdomain" => user_params["organization_subdomain"],
-      "plan_type" => "free",
-      "status" => "active"
-    }
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.insert(
-      :organization,
-      Organizations.Organization.changeset(%Organizations.Organization{}, org_attrs)
-    )
-    |> Ecto.Multi.insert(:user, fn %{organization: org} ->
-      Accounts.User.registration_changeset(
-        %Accounts.User{},
-        Map.put(user_params, "organization_id", org.id)
-      )
-    end)
-    |> AfyaFit.Repo.transaction()
-    |> case do
-      {:ok, %{user: user}} -> {:ok, user}
-      {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
-      {:error, :user, changeset, _} -> {:error, changeset}
-    end
-  end
-
-  defp register_user_with_organization(%{"role" => "client"} = user_params) do
-    # Clients join an existing organization by subdomain
-    subdomain = user_params["organization_subdomain"]
-
-    case Organizations.get_organization_by_subdomain(subdomain) do
-      nil ->
-        changeset =
-          Accounts.User.registration_changeset(%Accounts.User{}, user_params)
-          |> Ecto.Changeset.add_error(:organization_subdomain, "not found")
-
-        {:error, changeset}
-
-      organization ->
-        user_params
-        |> Map.put("organization_id", organization.id)
-        |> Accounts.register_user()
-    end
-  end
-
-  defp register_user_with_organization(user_params) do
-    # Only trainers and clients can self-register; privileged roles are never accepted
-    changeset =
-      %Accounts.User{}
-      |> Accounts.User.registration_changeset(Map.delete(user_params, "organization_id"))
-      |> Ecto.Changeset.add_error(:role, "must be trainer or client")
-
-    {:error, changeset}
   end
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
