@@ -21,6 +21,9 @@ end
 # General application configuration
 import Config
 
+# Postgres row-level security. Off by default; see AfyaFit.Repo.
+config :afya_fit, AfyaFit.RLS, enforce: false, app_role: "afya_fit_app"
+
 config :afya_fit,
   ecto_repos: [AfyaFit.Repo],
   generators: [timestamp_type: :utc_datetime, binary_id: true],

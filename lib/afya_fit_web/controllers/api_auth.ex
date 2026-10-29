@@ -17,17 +17,17 @@ defmodule AfyaFitWeb.APIAuth do
   def call(conn, _opts) do
     case get_req_header(conn, "authorization") do
       ["Bearer " <> token] ->
-        case Accounts.get_user_by_session_token(token) do
+        case AfyaFit.Repo.unscoped(fn -> authenticate(token) end) do
           nil ->
             conn
             |> put_status(:unauthorized)
             |> json(%{error: "Invalid or expired token"})
             |> halt()
 
-          user ->
+          {user, scope} ->
             conn
             |> assign(:current_user, user)
-            |> assign(:current_scope, Scope.load(user))
+            |> assign(:current_scope, scope)
         end
 
       _ ->
@@ -35,6 +35,13 @@ defmodule AfyaFitWeb.APIAuth do
         |> put_status(:unauthorized)
         |> json(%{error: "Missing or invalid authorization header"})
         |> halt()
+    end
+  end
+
+  defp authenticate(token) do
+    case Accounts.get_user_by_session_token(token) do
+      nil -> nil
+      user -> {user, Scope.load(user)}
     end
   end
 

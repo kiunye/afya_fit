@@ -4,6 +4,7 @@ defmodule AfyaFit.Workers.TaskAutomationWorker do
   Runs daily to create new task instances for recurring tasks.
   """
   use Oban.Worker, queue: :tasks, max_attempts: 3
+  use AfyaFit.Repo.Wrap, :job
 
   import Ecto.Query
   alias AfyaFit.Repo

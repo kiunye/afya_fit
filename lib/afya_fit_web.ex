@@ -44,6 +44,25 @@ defmodule AfyaFitWeb do
 
       import Plug.Conn
 
+      # Run the action inside the requester's tenant context for row-level security.
+      def action(conn, _opts) do
+        AfyaFit.Repo.with_scope(conn.assigns[:current_scope], fn ->
+          apply(__MODULE__, action_name(conn), [conn, conn.params])
+        end)
+      rescue
+        # With RLS on, another tenant's rows do not exist for this request, so a
+        # missing record is the same "not found" the policies would have given.
+        Ecto.NoResultsError ->
+          if AfyaFit.Repo.enforce?() do
+            conn
+            |> put_status(:not_found)
+            |> put_view(html: AfyaFitWeb.ErrorHTML, json: AfyaFitWeb.ErrorJSON)
+            |> render(:"404")
+          else
+            reraise Ecto.NoResultsError, __STACKTRACE__
+          end
+      end
+
       unquote(verified_routes())
     end
   end
@@ -51,6 +70,7 @@ defmodule AfyaFitWeb do
   def live_view do
     quote do
       use Phoenix.LiveView
+      use AfyaFit.Repo.Wrap, :live_view
 
       unquote(html_helpers())
     end

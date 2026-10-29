@@ -8,6 +8,14 @@ import Config
 # Jobs are enqueued but never run in tests; assert on them with Oban.Testing.
 config :afya_fit, Oban, testing: :manual
 
+# `RLS_ENFORCE=true mix test` runs the suite as the non-owner role. Tests switch
+# role inside the sandbox transaction, so migrations still run as the owner.
+config :afya_fit, AfyaFit.RLS,
+  enforce: System.get_env("RLS_ENFORCE") == "true",
+  app_role: "afya_fit_app",
+  role_on_connect: false,
+  restore_context: true
+
 config :afya_fit, AfyaFit.Repo,
   username: System.get_env("POSTGRES_USER") || "postgres",
   password: System.get_env("POSTGRES_PASSWORD") || "postgres",

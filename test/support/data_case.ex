@@ -40,6 +40,18 @@ defmodule AfyaFit.DataCase do
   def setup_sandbox(tags) do
     pid = Sandbox.start_owner!(AfyaFit.Repo, shared: not tags[:async])
     on_exit(fn -> Sandbox.stop_owner(pid) end)
+    enforce_rls_if_configured()
+  end
+
+  @doc """
+  With `RLS_ENFORCE=true`, runs the test as the non-owner role, so RLS applies.
+  Fixtures run as the system; requests and views scope themselves.
+  """
+  def enforce_rls_if_configured do
+    if AfyaFit.Repo.enforce?() do
+      Ecto.Adapters.SQL.query!(AfyaFit.Repo, "SET LOCAL ROLE #{AfyaFit.Repo.app_role()}", [])
+      AfyaFit.Repo.put_ambient_context({nil, "system"})
+    end
   end
 
   @doc """

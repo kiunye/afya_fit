@@ -106,8 +106,8 @@ defmodule AfyaFitWeb.UserAuth do
   """
   def fetch_current_scope_for_user(conn, _opts) do
     {user_token, conn} = ensure_user_token(conn)
-    user = user_token && Accounts.get_user_by_session_token(user_token)
-    assign(conn, :current_scope, build_scope(user))
+    scope = AfyaFit.Repo.unscoped(fn -> load_scope(user_token) end)
+    assign(conn, :current_scope, scope)
   end
 
   defp ensure_user_token(conn) do
@@ -199,10 +199,13 @@ defmodule AfyaFitWeb.UserAuth do
   defp build_scope(nil), do: %{user: nil}
   defp build_scope(user), do: Scope.load(user)
 
+  defp load_scope(nil), do: build_scope(nil)
+  defp load_scope(token), do: token |> Accounts.get_user_by_session_token() |> build_scope()
+
   defp mount_scope(socket, session) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->
       if user_token = session["user_token"] do
-        user_token |> Accounts.get_user_by_session_token() |> build_scope()
+        AfyaFit.Repo.unscoped(fn -> load_scope(user_token) end)
       else
         %{user: nil}
       end

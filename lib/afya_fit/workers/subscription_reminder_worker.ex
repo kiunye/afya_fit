@@ -4,6 +4,7 @@ defmodule AfyaFit.Workers.SubscriptionReminderWorker do
   Runs daily to check for subscriptions expiring soon and send reminders.
   """
   use Oban.Worker, queue: :tasks, max_attempts: 3
+  use AfyaFit.Repo.Wrap, :job
 
   import Ecto.Query
   alias AfyaFit.Billing.Subscription
