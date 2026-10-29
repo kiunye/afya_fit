@@ -84,6 +84,21 @@ defmodule AfyaFit.Accounts.User do
   end
 
   @doc """
+  A changeset for editing someone's profile details. It casts only the fields a
+  trainer may change on a client; role, organization and credentials are never
+  touched.
+  """
+  def profile_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:email, :first_name, :last_name, :phone, :avatar_url, :timezone])
+    |> validate_required([:email, :first_name, :last_name])
+    |> validate_format(:email, ~r/^[^\s]+@[^\s]+$/, message: "must have the @ sign and no spaces")
+    |> validate_length(:email, max: 160)
+    |> unsafe_validate_unique(:email, AfyaFit.Repo)
+    |> unique_constraint(:email)
+  end
+
+  @doc """
   A changeset for adding a trainer to an organization. The role, organization
   and an unusable password are set by the caller; the trainer chooses a
   password from the emailed link.

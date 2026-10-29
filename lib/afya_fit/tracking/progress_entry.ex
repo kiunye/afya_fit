@@ -27,4 +27,13 @@ defmodule AfyaFit.Tracking.ProgressEntry do
     |> validate_required([:client_id, :trainer_id, :entry_date])
     |> unique_constraint([:client_id, :entry_date])
   end
+
+  @ownership [:client_id, :trainer_id]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:client_id, :trainer_id`) can never change.
+  """
+  def update_changeset(progress_entry, attrs),
+    do: changeset(progress_entry, AfyaFit.Ownership.without(attrs, @ownership))
 end

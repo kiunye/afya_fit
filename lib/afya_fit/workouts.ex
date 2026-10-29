@@ -46,7 +46,7 @@ defmodule AfyaFit.Workouts do
 
   def update_workout_plan(%WorkoutPlan{} = workout_plan, attrs) do
     workout_plan
-    |> WorkoutPlan.changeset(attrs)
+    |> WorkoutPlan.update_changeset(attrs)
     |> Repo.update()
   end
 
@@ -108,7 +108,7 @@ defmodule AfyaFit.Workouts do
 
   def update_client_workout(%ClientWorkout{} = client_workout, attrs) do
     client_workout
-    |> ClientWorkout.changeset(attrs)
+    |> ClientWorkout.update_changeset(attrs)
     |> Repo.update()
   end
 

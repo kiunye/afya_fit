@@ -171,14 +171,12 @@ defmodule AfyaFit.Clients do
     end
   end
 
-  @protected_fields ["role", "organization_id", "password_hash", "password"]
-
   @doc """
-  Updates a client user. Role, organization and credentials cannot be changed here.
+  Updates a client's profile details. Role, organization and credentials cannot be changed here.
   """
   def update_client(%User{} = client, attrs) do
     client
-    |> User.changeset(Map.drop(attrs, @protected_fields))
+    |> User.profile_changeset(attrs)
     |> Repo.update()
   end
 

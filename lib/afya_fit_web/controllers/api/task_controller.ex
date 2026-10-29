@@ -8,9 +8,6 @@ defmodule AfyaFitWeb.API.TaskController do
 
   action_fallback AfyaFitWeb.API.FallbackController
 
-  # Ownership of a task cannot be changed through the API.
-  @protected_fields ["organization_id", "trainer_id", "client_id"]
-
   def index(conn, _params) do
     scope = conn.assigns.current_scope
 
@@ -41,7 +38,7 @@ defmodule AfyaFitWeb.API.TaskController do
   def update(conn, %{"id" => id, "task" => task_params}) do
     scope = conn.assigns.current_scope
     task = Tasks.get_task!(id)
-    attrs = Map.drop(task_params, @protected_fields)
+    attrs = task_params
 
     with :ok <- Authorization.authorize(scope, :update, task),
          :ok <- authorize_automation(scope, attrs),

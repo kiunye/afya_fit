@@ -7,9 +7,6 @@ defmodule AfyaFitWeb.API.CalendarController do
 
   action_fallback AfyaFitWeb.API.FallbackController
 
-  # Ownership of an event cannot be changed through the API.
-  @protected_fields ["organization_id", "user_id"]
-
   def index(conn, params) do
     scope = conn.assigns.current_scope
     start_date = parse_date(params["start_date"])
@@ -56,7 +53,7 @@ defmodule AfyaFitWeb.API.CalendarController do
          {:ok, calendar_event} <-
            Schedule.update_calendar_event(
              calendar_event,
-             Map.drop(event_params, @protected_fields)
+             event_params
            ) do
       render(conn, :show, calendar_event: calendar_event)
     end

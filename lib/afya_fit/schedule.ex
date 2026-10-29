@@ -22,7 +22,7 @@ defmodule AfyaFit.Schedule do
 
   def update_calendar_event(%CalendarEvent{} = event, attrs) do
     event
-    |> CalendarEvent.changeset(attrs)
+    |> CalendarEvent.update_changeset(attrs)
     |> Repo.update()
   end
 

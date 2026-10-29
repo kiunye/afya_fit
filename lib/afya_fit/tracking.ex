@@ -22,7 +22,7 @@ defmodule AfyaFit.Tracking do
 
   def update_progress_entry(%ProgressEntry{} = progress_entry, attrs) do
     progress_entry
-    |> ProgressEntry.changeset(attrs)
+    |> ProgressEntry.update_changeset(attrs)
     |> Repo.update()
   end
 

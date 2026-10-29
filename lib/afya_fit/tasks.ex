@@ -42,7 +42,7 @@ defmodule AfyaFit.Tasks do
 
   def update_task(%Task{} = task, attrs) do
     task
-    |> Task.changeset(attrs)
+    |> Task.update_changeset(attrs)
     |> Repo.update()
   end
 

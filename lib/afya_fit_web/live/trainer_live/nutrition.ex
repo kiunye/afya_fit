@@ -12,9 +12,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
   alias AfyaFit.Nutrition.NutritionPlan
   alias AfyaFitWeb.Access
 
-  # Ownership of a plan cannot be changed from the form.
-  @protected_fields ["organization_id", "trainer_id"]
-
   @impl true
   def mount(_params, _session, socket) do
     socket =
@@ -297,12 +294,10 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
 
   @impl true
   def handle_event("validate", %{"nutrition_plan" => params}, socket) do
-    params = Map.drop(params, @protected_fields)
-
     changeset =
       case socket.assigns.live_action do
         :new -> NutritionPlan.changeset(%NutritionPlan{}, own(params, socket))
-        :edit -> NutritionPlan.changeset(socket.assigns.nutrition_plan, params)
+        :edit -> NutritionPlan.update_changeset(socket.assigns.nutrition_plan, params)
       end
       |> Map.put(:action, :validate)
 
@@ -311,7 +306,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
 
   def handle_event("save", %{"nutrition_plan" => params}, socket) do
     scope = socket.assigns.current_scope
-    params = Map.drop(params, @protected_fields)
 
     with :ok <- Authorization.authorize(scope, :create, :nutrition_plan),
          :ok <- check_client(scope, params["client_id"]),
@@ -335,7 +329,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
   def handle_event("update", %{"nutrition_plan" => params}, socket) do
     scope = socket.assigns.current_scope
     plan = socket.assigns.nutrition_plan
-    params = Map.drop(params, @protected_fields)
 
     with :ok <- Authorization.authorize(scope, :update, plan),
          :ok <- check_client(scope, params["client_id"]),
@@ -401,7 +394,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
     do: NutritionPlan.changeset(%NutritionPlan{}, own(params, socket))
 
   defp base_changeset(socket, params),
-    do: NutritionPlan.changeset(socket.assigns.nutrition_plan, params)
+    do: NutritionPlan.update_changeset(socket.assigns.nutrition_plan, params)
 
   defp own(params, socket) do
     user = socket.assigns.current_scope.user

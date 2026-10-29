@@ -73,7 +73,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
       socket = assign(socket, :client, client)
 
       if action == :edit,
-        do: assign(socket, :form, to_form(User.changeset(client, %{}), as: "client")),
+        do: assign(socket, :form, to_form(User.profile_changeset(client, %{}), as: "client")),
         else:
           assign(
             socket,
@@ -352,7 +352,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     changeset =
       case socket.assigns.live_action do
         :new -> User.registration_changeset(%User{}, client_params)
-        :edit -> User.changeset(socket.assigns.client, client_params)
+        :edit -> User.profile_changeset(socket.assigns.client, client_params)
       end
       |> Map.put(:action, :validate)
 

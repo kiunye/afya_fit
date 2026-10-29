@@ -7,9 +7,6 @@ defmodule AfyaFitWeb.API.ClientWorkoutController do
 
   action_fallback AfyaFitWeb.API.FallbackController
 
-  # Who an assignment belongs to, and who made it, cannot be changed through the API.
-  @protected_fields ["client_id", "assigned_by"]
-
   def index(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
 
@@ -46,7 +43,7 @@ defmodule AfyaFitWeb.API.ClientWorkoutController do
 
   def update(conn, %{"id" => id, "client_workout" => workout_params}) do
     scope = conn.assigns.current_scope
-    attrs = Map.drop(workout_params, @protected_fields)
+    attrs = workout_params
 
     with {:ok, client_workout} <- fetch_client_workout(conn, :update, id),
          :ok <- authorize_plan(scope, attrs["workout_plan_id"]),

@@ -46,4 +46,13 @@ defmodule AfyaFit.Tasks.Task do
     |> validate_inclusion(:priority, ["low", "medium", "high"])
     |> validate_inclusion(:status, ["pending", "in_progress", "completed", "cancelled"])
   end
+
+  @ownership [:organization_id, :trainer_id, :client_id]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:organization_id, :trainer_id, :client_id`) can never change.
+  """
+  def update_changeset(task, attrs),
+    do: changeset(task, AfyaFit.Ownership.without(attrs, @ownership))
 end

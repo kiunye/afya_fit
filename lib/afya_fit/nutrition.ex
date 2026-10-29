@@ -39,7 +39,7 @@ defmodule AfyaFit.Nutrition do
 
   def update_nutrition_plan(%NutritionPlan{} = nutrition_plan, attrs) do
     nutrition_plan
-    |> NutritionPlan.changeset(attrs)
+    |> NutritionPlan.update_changeset(attrs)
     |> Repo.update()
   end
 

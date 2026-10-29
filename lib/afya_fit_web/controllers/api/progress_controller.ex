@@ -7,9 +7,6 @@ defmodule AfyaFitWeb.API.ProgressController do
 
   action_fallback AfyaFitWeb.API.FallbackController
 
-  # Ownership of an entry cannot be changed through the API.
-  @protected_fields ["client_id", "trainer_id"]
-
   def index(conn, %{"client_id" => client_id}) do
     scope = conn.assigns.current_scope
 
@@ -43,7 +40,7 @@ defmodule AfyaFitWeb.API.ProgressController do
          {:ok, progress_entry} <-
            Tracking.update_progress_entry(
              progress_entry,
-             Map.drop(progress_params, @protected_fields)
+             progress_params
            ) do
       render(conn, :show, progress_entry: progress_entry)
     end

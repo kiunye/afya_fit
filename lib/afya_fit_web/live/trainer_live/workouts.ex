@@ -13,9 +13,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
 
   @tabs ~w(mine shared templates)
 
-  # Ownership of a plan cannot be changed from the form.
-  @protected_fields ["organization_id", "trainer_id"]
-
   @impl true
   def mount(_params, _session, socket) do
     socket =
@@ -310,12 +307,10 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
 
   @impl true
   def handle_event("validate", %{"workout_plan" => params}, socket) do
-    params = Map.drop(params, @protected_fields)
-
     changeset =
       case socket.assigns.live_action do
         :new -> WorkoutPlan.changeset(%WorkoutPlan{}, own(params, socket))
-        :edit -> WorkoutPlan.changeset(socket.assigns.workout_plan, params)
+        :edit -> WorkoutPlan.update_changeset(socket.assigns.workout_plan, params)
       end
       |> Map.put(:action, :validate)
 
@@ -327,7 +322,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
 
     with :ok <- Authorization.authorize(scope, :create, :workout_plan),
          {:ok, plan} <-
-           Workouts.create_workout_plan(own(Map.drop(params, @protected_fields), socket)) do
+           Workouts.create_workout_plan(own(params, socket)) do
       {:noreply,
        socket
        |> put_flash(:info, "Plan created.")
@@ -346,7 +341,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
     plan = socket.assigns.workout_plan
 
     with :ok <- Authorization.authorize(scope, :update, plan),
-         {:ok, plan} <- Workouts.update_workout_plan(plan, Map.drop(params, @protected_fields)) do
+         {:ok, plan} <- Workouts.update_workout_plan(plan, params) do
       {:noreply,
        socket |> put_flash(:info, "Saved.") |> push_navigate(to: ~p"/trainer/workouts/#{plan.id}")}
     else

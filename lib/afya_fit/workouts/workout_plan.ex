@@ -40,4 +40,13 @@ defmodule AfyaFit.Workouts.WorkoutPlan do
     |> validate_required([:organization_id, :trainer_id, :name])
     |> validate_inclusion(:difficulty, ["beginner", "intermediate", "advanced"])
   end
+
+  @ownership [:organization_id, :trainer_id]
+
+  @doc """
+  Changeset for editing an existing record: the same rules as `changeset/2`,
+  but ownership fields (`:organization_id, :trainer_id`) can never change.
+  """
+  def update_changeset(workout_plan, attrs),
+    do: changeset(workout_plan, AfyaFit.Ownership.without(attrs, @ownership))
 end
