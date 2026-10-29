@@ -6,6 +6,8 @@ defmodule AfyaFitWeb.API.AdminController do
   # Authentication is handled in router pipeline
   # Admin role check should be in router pipeline
 
+  plug AfyaFitWeb.API.AuthorizePlug, resource: :admin_panel, default: :access
+
   action_fallback AfyaFitWeb.API.FallbackController
 
   @doc """
