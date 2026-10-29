@@ -25,31 +25,6 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/afya_fit"
 import topbar from "../vendor/topbar"
 
-// Sidebar hook for LiveView
-const SidebarHook = {
-  mounted() {
-    // Initialize sidebar state on mobile
-    if (window.innerWidth < 1024) {
-      this.el.classList.add("-translate-x-full")
-    }
-    
-    // Set up toggle function
-    this.toggle = () => {
-      this.el.classList.toggle("-translate-x-full")
-    }
-    
-    // Make it available globally
-    window.toggleSidebar = this.toggle.bind(this)
-  },
-  
-  updated() {
-    // Re-initialize on updates
-    if (window.innerWidth < 1024) {
-      this.el.classList.add("-translate-x-full")
-    }
-  }
-}
-
 // Particles hook for floating particle effects
 const ParticlesHook = {
   mounted() {
@@ -93,7 +68,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
   hooks: {
     ...colocatedHooks,
-    Sidebar: SidebarHook,
     Particles: ParticlesHook
   },
 })
