@@ -4,6 +4,7 @@ defmodule AfyaFit.Clients do
   """
   import Ecto.Query, warn: false
   alias AfyaFit.Accounts.{TrainerClient, User}
+  alias AfyaFit.Authorization.Scope
   alias AfyaFit.Repo
 
   @doc """
@@ -151,13 +152,60 @@ defmodule AfyaFit.Clients do
     end
   end
 
+  @protected_fields ["role", "organization_id", "password_hash", "password"]
+
   @doc """
-  Updates a client user.
+  Updates a client user. Role, organization and credentials cannot be changed here.
   """
   def update_client(%User{} = client, attrs) do
     client
-    |> User.changeset(attrs)
+    |> User.changeset(Map.drop(attrs, @protected_fields))
     |> Repo.update()
+  end
+
+  @doc """
+  Lists the clients the scope's user may see: linked clients for trainers (limited
+  by `filters.status` when given) and every client in the organization for
+  organization admins and platform admins.
+  """
+  def list_clients_for(%Scope{user: user} = scope, filters \\ %{}) do
+    case Scope.role(scope) do
+      :trainer ->
+        links = list_trainer_clients(user.id, filters)
+
+        links =
+          if Map.has_key?(filters, :status),
+            do: links,
+            else: Enum.reject(links, &(&1.status == "archived"))
+
+        Enum.map(links, & &1.client)
+
+      role when role in [:org_admin, :admin] ->
+        list_organization_clients(user.organization_id, filters)
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Archives the trainer-client links of `client` that the scope's user may end:
+  their own link for trainers, every active link for organization admins.
+  """
+  def archive_client_links(%User{id: client_id}, %Scope{user: user} = scope) do
+    query = where(TrainerClient, [tc], tc.client_id == ^client_id and tc.status != "archived")
+
+    query =
+      if Scope.role(scope) == :trainer,
+        do: where(query, [tc], tc.trainer_id == ^user.id),
+        else: query
+
+    Repo.transaction(fn ->
+      for link <- Repo.all(query) do
+        {:ok, archived} = archive_trainer_client(link)
+        archived
+      end
+    end)
   end
 
   @doc """
