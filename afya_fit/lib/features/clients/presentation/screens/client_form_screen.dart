@@ -1,32 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/clients/providers/client_provider.dart';
 
 class ClientFormScreen extends HookConsumerWidget {
   final String? clientId;
   final Map<String, dynamic>? client;
 
-  const ClientFormScreen({
-    super.key,
-    this.clientId,
-    this.client,
-  });
+  const ClientFormScreen({super.key, this.clientId, this.client});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isEditing = clientId != null;
     final formKey = GlobalKey<FormState>();
-    
-    final firstNameController = TextEditingController(text: client?['first_name'] ?? '');
-    final lastNameController = TextEditingController(text: client?['last_name'] ?? '');
+
+    final firstNameController = TextEditingController(
+      text: client?['first_name'] ?? '',
+    );
+    final lastNameController = TextEditingController(
+      text: client?['last_name'] ?? '',
+    );
     final emailController = TextEditingController(text: client?['email'] ?? '');
     final phoneController = TextEditingController(text: client?['phone'] ?? '');
     final passwordController = TextEditingController();
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Client' : 'Add Client'),
-      ),
+      appBar: AppBar(title: Text(isEditing ? 'Edit Client' : 'Add Client')),
       body: Form(
         key: formKey,
         child: SingleChildScrollView(
@@ -119,38 +118,37 @@ class ClientFormScreen extends HookConsumerWidget {
                         'last_name': lastNameController.text.trim(),
                         'email': emailController.text.trim(),
                         if (!isEditing) 'password': passwordController.text,
-                        if (phoneController.text.isNotEmpty) 'phone': phoneController.text.trim(),
+                        if (phoneController.text.isNotEmpty)
+                          'phone': phoneController.text.trim(),
                       };
 
                       if (isEditing && clientId != null) {
-                        await ref.read(clientRepositoryProvider).updateClient(
-                              clientId!,
-                              clientData,
-                            );
+                        await ref
+                            .read(clientRepositoryProvider)
+                            .updateClient(clientId!, clientData);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Client updated successfully')),
+                            const SnackBar(
+                              content: Text('Client updated successfully'),
+                            ),
                           );
                           Navigator.pop(context);
                         }
                       } else {
-                        await ref.read(clientRepositoryProvider).createClient(clientData);
+                        await ref
+                            .read(clientRepositoryProvider)
+                            .createClient(clientData);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Client created successfully')),
+                            const SnackBar(
+                              content: Text('Client created successfully'),
+                            ),
                           );
                           Navigator.pop(context);
                         }
                       }
                     } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                      await showApiError(context, ref, e);
                     }
                   }
                 },
@@ -166,4 +164,3 @@ class ClientFormScreen extends HookConsumerWidget {
     );
   }
 }
-

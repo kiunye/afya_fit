@@ -1,70 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/access.dart';
 import 'package:afya_fit/features/auth/providers/auth_provider.dart';
 import 'package:afya_fit/features/dashboard/presentation/screens/dashboard_screen.dart';
-import 'package:afya_fit/features/workouts/presentation/screens/workout_list_screen.dart';
-import 'package:afya_fit/features/nutrition/presentation/screens/nutrition_list_screen.dart';
-import 'package:afya_fit/features/tasks/presentation/screens/task_list_screen.dart';
-import 'package:afya_fit/features/progress/presentation/screens/progress_list_screen.dart';
 import 'package:afya_fit/features/admin/presentation/screens/admin_trainers_screen.dart';
 import 'package:afya_fit/features/admin/presentation/screens/admin_clients_screen.dart';
 
-/// Role-based router that provides different navigation based on user role
+enum HomeKind { coach, client, platform }
+
+/// Picks the home screen from what the user can do, not from a role name, so a
+/// new kind of coach (such as an organization owner) needs no change here.
 class RoleRouter {
-  static Widget getHomeScreen(String? role) {
-    switch (role) {
-      case 'trainer':
-        return const DashboardScreen();
-      case 'client':
-        return const CustomerDashboardScreen();
-      case 'admin':
+  static HomeKind homeKindFor(Access access) {
+    if (access.isPlatformAdmin) return HomeKind.platform;
+    if (access.isClient) return HomeKind.client;
+    return HomeKind.coach;
+  }
+
+  static Widget getHomeScreen(Access access) {
+    switch (homeKindFor(access)) {
+      case HomeKind.platform:
         return const AdminDashboardScreen();
-      default:
+      case HomeKind.client:
+        return const CustomerDashboardScreen();
+      case HomeKind.coach:
         return const DashboardScreen();
     }
   }
-
-  static List<NavigationItem> getNavigationItems(String? role) {
-    switch (role) {
-      case 'trainer':
-        return [
-          NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
-          NavigationItem(icon: Icons.people, label: 'Clients', route: '/clients'),
-          NavigationItem(icon: Icons.fitness_center, label: 'Workouts', route: '/workouts'),
-          NavigationItem(icon: Icons.restaurant, label: 'Nutrition', route: '/nutrition'),
-          NavigationItem(icon: Icons.trending_up, label: 'Progress', route: '/progress'),
-        ];
-      case 'client':
-        return [
-          NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
-          NavigationItem(icon: Icons.fitness_center, label: 'Workouts', route: '/workouts'),
-          NavigationItem(icon: Icons.restaurant, label: 'Nutrition', route: '/nutrition'),
-          NavigationItem(icon: Icons.trending_up, label: 'Progress', route: '/progress'),
-          NavigationItem(icon: Icons.credit_card, label: 'Subscription', route: '/subscription'),
-        ];
-      case 'admin':
-        return [
-          NavigationItem(icon: Icons.dashboard, label: 'Dashboard', route: '/'),
-          NavigationItem(icon: Icons.people, label: 'Trainers', route: '/trainers'),
-          NavigationItem(icon: Icons.group, label: 'Clients', route: '/clients'),
-          NavigationItem(icon: Icons.credit_card, label: 'Subscription', route: '/subscription'),
-        ];
-      default:
-        return [];
-    }
-  }
-}
-
-class NavigationItem {
-  final IconData icon;
-  final String label;
-  final String route;
-
-  NavigationItem({
-    required this.icon,
-    required this.label,
-    required this.route,
-  });
 }
 
 // Customer Dashboard Screen
@@ -100,24 +62,24 @@ class CustomerDashboardScreen extends HookConsumerWidget {
               Text(
                 'Welcome back!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Here's your fitness journey overview.",
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 24),
 
               // Quick Actions
               Text(
                 'Quick Actions',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -242,24 +204,24 @@ class AdminDashboardScreen extends HookConsumerWidget {
               Text(
                 'Admin Dashboard',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Manage your organization: trainers and clients.",
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 24),
 
               // Quick Actions
               Text(
                 'Quick Actions',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -309,4 +271,3 @@ class AdminDashboardScreen extends HookConsumerWidget {
     );
   }
 }
-

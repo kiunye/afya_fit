@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/nutrition/providers/nutrition_provider.dart';
 
 class NutritionFormScreen extends HookConsumerWidget {
@@ -16,16 +17,22 @@ class NutritionFormScreen extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final isEditing = nutritionPlanId != null;
     final formKey = GlobalKey<FormState>();
-    
-    final nameController = TextEditingController(text: nutritionPlan?['name'] ?? '');
-    final descriptionController = TextEditingController(text: nutritionPlan?['description'] ?? '');
+
+    final nameController = TextEditingController(
+      text: nutritionPlan?['name'] ?? '',
+    );
+    final descriptionController = TextEditingController(
+      text: nutritionPlan?['description'] ?? '',
+    );
     final dailyCaloriesController = TextEditingController(
       text: nutritionPlan?['daily_calories']?.toString() ?? '',
     );
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Edit Nutrition Plan' : 'Create Nutrition Plan'),
+        title: Text(
+          isEditing ? 'Edit Nutrition Plan' : 'Create Nutrition Plan',
+        ),
       ),
       body: Form(
         key: formKey,
@@ -82,45 +89,54 @@ class NutritionFormScreen extends HookConsumerWidget {
                       final nutritionData = {
                         'name': nameController.text.trim(),
                         'description': descriptionController.text.trim(),
-                        'daily_calories': int.parse(dailyCaloriesController.text),
+                        'daily_calories': int.parse(
+                          dailyCaloriesController.text,
+                        ),
                       };
 
                       if (isEditing && nutritionPlanId != null) {
-                        await ref.read(nutritionRepositoryProvider).updateNutritionPlan(
+                        await ref
+                            .read(nutritionRepositoryProvider)
+                            .updateNutritionPlan(
                               nutritionPlanId!,
                               nutritionData,
                             );
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Nutrition plan updated successfully')),
+                            const SnackBar(
+                              content: Text(
+                                'Nutrition plan updated successfully',
+                              ),
+                            ),
                           );
                           Navigator.pop(context);
                         }
                       } else {
-                        await ref.read(nutritionRepositoryProvider).createNutritionPlan(nutritionData);
+                        await ref
+                            .read(nutritionRepositoryProvider)
+                            .createNutritionPlan(nutritionData);
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Nutrition plan created successfully')),
+                            const SnackBar(
+                              content: Text(
+                                'Nutrition plan created successfully',
+                              ),
+                            ),
                           );
                           Navigator.pop(context);
                         }
                       }
                     } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
+                      await showApiError(context, ref, e);
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-                child: Text(isEditing ? 'Update Nutrition Plan' : 'Create Nutrition Plan'),
+                child: Text(
+                  isEditing ? 'Update Nutrition Plan' : 'Create Nutrition Plan',
+                ),
               ),
             ],
           ),
@@ -129,4 +145,3 @@ class NutritionFormScreen extends HookConsumerWidget {
     );
   }
 }
-

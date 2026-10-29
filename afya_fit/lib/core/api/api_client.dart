@@ -60,7 +60,17 @@ class ApiClient {
       throw ApiException(
         statusCode: response.statusCode,
         message: _extractErrorMessage(response),
+        body: _decodeBody(response),
       );
+    }
+  }
+
+  /// The error body as a map, or null when it is not JSON.
+  Map<String, dynamic>? _decodeBody(http.Response response) {
+    try {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -132,6 +142,7 @@ class ApiClient {
       throw ApiException(
         statusCode: response.statusCode,
         message: _extractErrorMessage(response),
+        body: _decodeBody(response),
       );
     }
   }
@@ -198,6 +209,7 @@ class ApiClient {
       throw ApiException(
         statusCode: response.statusCode,
         message: _extractErrorMessage(response),
+        body: _decodeBody(response),
       );
     }
   }
@@ -207,7 +219,12 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
 
-  ApiException({required this.statusCode, required this.message});
+  /// The decoded error body, e.g. the feature and tier of a 402.
+  final Map<String, dynamic>? body;
+
+  ApiException({required this.statusCode, required this.message, this.body});
+
+  bool get isPaymentRequired => statusCode == 402;
 
   @override
   String toString() => 'ApiException: $statusCode - $message';
