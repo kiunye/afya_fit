@@ -37,6 +37,7 @@ defmodule AfyaFitWeb.TeamLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:team}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied} id="team">
         <.page_header>
           Team
@@ -47,14 +48,14 @@ defmodule AfyaFitWeb.TeamLive do
             Each sees only the clients you assign them.
           </:subtitle>
         </.page_header>
-        
+
         <.sign_group label="Trainers">
           <:actions>
             <.sign_action :if={!@form} id="add-trainer" primary phx-click="new_trainer">
               Add trainer
             </.sign_action>
           </:actions>
-          
+
           <.form
             :if={@form}
             for={@form}
@@ -66,18 +67,17 @@ defmodule AfyaFitWeb.TeamLive do
             <p class="mb-4 text-ink-2">
               They get an email to set a password. They can see only the clients you assign them.
             </p>
-            
             <div class="grid gap-x-6 sm:grid-cols-2">
               <.input field={@form[:first_name]} type="text" label="First name" required />
               <.input field={@form[:last_name]} type="text" label="Last name" required />
             </div>
-             <.input field={@form[:email]} type="email" label="Email" required />
+            <.input field={@form[:email]} type="email" label="Email" required />
             <div class="mt-4 flex gap-3">
               <.button type="submit" variant="primary">Add trainer</.button>
               <.button type="button" phx-click="cancel_new">Cancel</.button>
             </div>
           </.form>
-          
+
           <div id="members" phx-update="stream">
             <.sign
               :for={{id, member} <- @streams.members}
@@ -96,7 +96,7 @@ defmodule AfyaFitWeb.TeamLive do
                   Owner
                 </span>
               </:title>
-               {member.user.email}
+              {member.user.email}
               <:actions :if={member.user.role == "trainer"}>
                 <.sign_action
                   id={"remove-#{member.user.id}"}
@@ -108,7 +108,7 @@ defmodule AfyaFitWeb.TeamLive do
               </:actions>
             </.sign>
           </div>
-          
+
           <.sign
             :if={@confirm_remove}
             id="remove-confirm"
@@ -127,7 +127,6 @@ defmodule AfyaFitWeb.TeamLive do
               <.sign_action id="confirm-remove" primary phx-click="remove">
                 Remove trainer
               </.sign_action>
-              
               <.sign_action id="keep-trainer" phx-click="cancel_remove">Keep</.sign_action>
             </:actions>
           </.sign>

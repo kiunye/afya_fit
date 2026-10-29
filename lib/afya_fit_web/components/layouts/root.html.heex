@@ -7,10 +7,9 @@
     <.live_title default="Afya Fit" suffix=" · Fitness Management Platform">
       {assigns[:page_title]}
     </.live_title>
-     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
     </script>
-    
     <script>
       (() => {
         const setTheme = (theme) => {
@@ -26,6 +25,7 @@
       })();
     </script>
   </head>
-  
-  <body>{@inner_content}</body>
+  <body>
+    {@inner_content}
+  </body>
 </html>

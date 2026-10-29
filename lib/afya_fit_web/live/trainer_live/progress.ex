@@ -64,6 +64,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:progress}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied}>
         <.progress_index :if={@live_action == :index} {assigns} />
         <.progress_client :if={@live_action == :client && @client} {assigns} />
@@ -90,10 +91,9 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
         >
           No clients yet. Add a client to start tracking their progress.
         </div>
-        
         <.sign :for={{id, client} <- @streams.clients} id={id} icon={:progress}>
           <:title>{client.first_name} {client.last_name}</:title>
-           {client.email}
+          {client.email}
           <:actions>
             <.sign_action navigate={~p"/trainer/progress/#{client.id}"}>Open</.sign_action>
           </:actions>
@@ -110,9 +110,9 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
       <:subtitle>
         <b class="text-ink">
           {@analytics.total_entries} {if @analytics.total_entries == 1, do: "entry", else: "entries"}.
-        </b> {@client.email}
+        </b>
+        {@client.email}
       </:subtitle>
-      
       <:actions>
         <.sign_action navigate={~p"/trainer/clients/#{@client.id}"}>Client</.sign_action>
       </:actions>
@@ -129,7 +129,6 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
       >
         Weight and body-fat change over time. Your entries stay readable.
       </.closed_sign>
-      
       <div :if={@analytics?} id="analytics">
         <.sign
           id="weight-change"
@@ -141,7 +140,6 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
           <:title>Weight change</:title>
           First entry to latest
         </.sign>
-        
         <.sign
           id="body-fat-change"
           icon={:progress}
@@ -163,7 +161,6 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
         >
           No entries yet. Measurements appear here as they are logged.
         </div>
-        
         <.sign
           :for={{id, entry} <- @streams.entries}
           id={id}
@@ -173,7 +170,7 @@ defmodule AfyaFitWeb.TrainerLive.Progress do
           time_label={Calendar.strftime(entry.entry_date, "%Y")}
         >
           <:title>{weight_text(entry)}</:title>
-           {entry_detail(entry)}
+          {entry_detail(entry)}
         </.sign>
       </div>
     </.sign_group>

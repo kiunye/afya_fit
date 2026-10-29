@@ -8,7 +8,7 @@ defmodule AfyaFitWeb.UserLive.Confirm do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-sm">
         <.header>Confirm your account</.header>
-        
+
         <p :if={@current_user}>
           Account confirmed successfully.
           <.link navigate={~p"/users/log_in"} class="font-semibold text-brand hover:underline">
@@ -16,7 +16,7 @@ defmodule AfyaFitWeb.UserLive.Confirm do
           </.link>
           now.
         </p>
-        
+
         <p :if={!@current_user}>
           We are unable to confirm your account. It may be already confirmed, or the link may have expired.
         </p>
@@ -43,3 +43,7 @@ defmodule AfyaFitWeb.UserLive.Confirm do
     end
   end
 end
+
+
+
+

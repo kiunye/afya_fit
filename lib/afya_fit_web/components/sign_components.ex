@@ -126,27 +126,26 @@ defmodule AfyaFitWeb.SignComponents do
       <.tile icon={@icon} state={@state} draw={@draw} />
       <div class="min-w-0">
         <div :if={@time} class="text-2xl font-extrabold leading-none tabular-nums">{@time}</div>
-        
         <div :if={@time_label} class="mt-1 text-xs font-bold uppercase tracking-[.06em] text-ink-2">
           {@time_label}
         </div>
       </div>
-      
       <div class="col-span-2 min-w-0 sm:col-span-1">
         <div class="text-xl font-bold leading-tight">
-          {render_slot(@title)} <span :if={@state == :closed} class={tag_class()}>Pro</span>
+          {render_slot(@title)}
+          <span :if={@state == :closed} class={tag_class()}>Pro</span>
         </div>
-        
         <div :if={@inner_block != [] || @overdue} class="text-sm text-ink-2">
           <span
             :if={@overdue}
             class="mr-1.5 inline-block size-2.5 rounded-full bg-signal align-middle"
           >
-          </span> <span :if={@overdue} class="font-bold text-ink">Overdue</span>
-          <span :if={@overdue && @inner_block != []}> · </span> {render_slot(@inner_block)}
+          </span>
+          <span :if={@overdue} class="font-bold text-ink">Overdue</span>
+          <span :if={@overdue && @inner_block != []}> · </span>
+          {render_slot(@inner_block)}
         </div>
       </div>
-      
       <div
         :if={@actions != []}
         class="col-span-2 flex flex-wrap gap-2 sm:col-span-1 sm:justify-end"
@@ -187,10 +186,8 @@ defmodule AfyaFitWeb.SignComponents do
     <section aria-label={@label}>
       <div class="flex items-center gap-3 px-4 pb-2 pt-5 sm:px-[26px]">
         <h2 class="text-xs font-bold uppercase tracking-[.08em] text-ink-2">{@label}</h2>
-        
         <div :if={@actions != []} class="ml-auto">{render_slot(@actions)}</div>
       </div>
-      
       <div class="border-t border-line/40">{render_slot(@inner_block)}</div>
     </section>
     """
@@ -210,11 +207,9 @@ defmodule AfyaFitWeb.SignComponents do
       <h1 class="text-[32px] font-black uppercase leading-[.95] tracking-[-.01em] sm:text-5xl">
         {render_slot(@inner_block)}
       </h1>
-      
       <p :if={@subtitle != []} class="max-w-[44ch] text-ink-2 sm:ml-auto sm:text-right">
         {render_slot(@subtitle)}
       </p>
-      
       <div :if={@actions != []} class="flex gap-2">{render_slot(@actions)}</div>
     </header>
     """
@@ -237,7 +232,7 @@ defmodule AfyaFitWeb.SignComponents do
     ~H"""
     <.sign icon={@icon} state={:closed} draw={false} {@rest}>
       <:title>{@title}</:title>
-       {render_slot(@inner_block)}
+      {render_slot(@inner_block)}
       <span :if={!@can_upgrade && @owner_name} class="block">
         Ask {@owner_name} (owner) to upgrade.
       </span>
@@ -284,35 +279,32 @@ defmodule AfyaFitWeb.SignComponents do
         <div class="mb-3.5 grid size-[60px] place-items-center rounded-tile border-[3px] border-field-0">
           <.pictogram name={@icon} class="size-9" />
         </div>
-        
         <h2 id={"#{@id}-title"} class="mb-2 text-[26px] font-black uppercase leading-[1.05]">
           {@title}
         </h2>
-        
         <p class="mb-3.5 text-[#274c40]">{render_slot(@inner_block)}</p>
-        
         <div class="mb-4 grid grid-cols-2 rounded-control border-[3px] border-field-0">
           <div class="p-3">
             <small class="mb-1 block text-xs font-bold uppercase tracking-[.08em]">
               {@current_label}
-            </small> <b class="text-[28px] font-black leading-none">{@current_value}</b>
+            </small>
+            <b class="text-[28px] font-black leading-none">{@current_value}</b>
           </div>
-          
           <div class="border-l-[3px] border-field-0 bg-field-0 p-3 text-white">
             <small class="mb-1 block text-xs font-bold uppercase tracking-[.08em]">
               {@upgraded_label}
-            </small> <b class="text-[28px] font-black leading-none">{@upgraded_value}</b>
+            </small>
+            <b class="text-[28px] font-black leading-none">{@upgraded_value}</b>
           </div>
         </div>
-        
         <p :if={!@can_upgrade && @owner_name} class="mb-4 text-sm font-bold">
           Ask {@owner_name} (owner) to upgrade.
         </p>
-        
         <div class="flex flex-wrap gap-2.5">
           <.dialog_button :if={@can_upgrade} primary navigate={@upgrade_path}>
             Upgrade to Pro
-          </.dialog_button> <.dialog_button phx-click={@on_cancel}>Not now</.dialog_button>
+          </.dialog_button>
+          <.dialog_button phx-click={@on_cancel}>Not now</.dialog_button>
         </div>
       </.focus_wrap>
     </div>
@@ -384,13 +376,10 @@ defmodule AfyaFitWeb.SignComponents do
         <div class="grid size-[68px] place-items-center rounded-tile border-[3px] border-dashed border-line">
           <.pictogram name={:lock} class="size-10" />
         </div>
-        
         <h1 class="text-3xl font-black uppercase leading-none sm:text-4xl">
           {if @kind == :forbidden, do: "Not for your role", else: "Not found"}
         </h1>
-        
         <p class="text-lg text-ink-2">{@message}</p>
-        
         <div>
           <AfyaFitWeb.CoreComponents.button navigate={@back_path}>
             Back to home

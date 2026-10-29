@@ -220,7 +220,6 @@ defmodule AfyaFit.Billing do
 
         # Calculate period end based on plan type
         now = DateTime.utc_now()
-
         period_end =
           case plan_type do
             "monthly" -> DateTime.add(now, 30, :day)

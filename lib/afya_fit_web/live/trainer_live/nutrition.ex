@@ -112,6 +112,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:nutrition}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied}>
         <.nutrition_index :if={@live_action == :index} {assigns} />
         <.nutrition_form :if={@live_action in [:new, :edit] && @form} {assigns} />
@@ -141,13 +142,12 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
         >
           New plan
         </.sign_action>
-        
         <span :if={@create_state == :paused} class="flex items-center gap-3 text-sm text-ink-2">
           Paused until payment clears
           <.sign_action id="new-plan" aria-disabled="true">New plan</.sign_action>
         </span>
       </:actions>
-      
+
       <.closed_sign
         :if={@create_state == :closed}
         id="nutrition-closed"
@@ -158,7 +158,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
       >
         Meal plans with calories and macros for each client. Existing plans stay readable.
       </.closed_sign>
-      
+
       <div id="plans" phx-update="stream">
         <div
           id="plans-empty"
@@ -166,7 +166,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
         >
           No nutrition plans yet.
         </div>
-        
         <.sign
           :for={{id, plan} <- @streams.plans}
           id={id}
@@ -175,7 +174,7 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           time_label="Starts"
         >
           <:title>{plan.name}</:title>
-           {plan_detail(plan)}
+          {plan_detail(plan)}
           <:actions>
             <.sign_action navigate={~p"/trainer/nutrition/#{plan.id}"}>Open</.sign_action>
           </:actions>
@@ -218,10 +217,12 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           prompt="Choose a client"
           options={Enum.map(@clients, &{"#{&1.first_name} #{&1.last_name}", &1.id})}
           required
-        /> <.input field={@form[:start_date]} type="date" label="Start date" required />
+        />
+        <.input field={@form[:start_date]} type="date" label="Start date" required />
         <.input field={@form[:end_date]} type="date" label="End date" />
       </div>
-       <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
+      <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
+
       <div class="mt-6 flex flex-wrap gap-3">
         <.button type="submit" variant="primary">
           {if @live_action == :new, do: "Create plan", else: "Save"}
@@ -243,7 +244,6 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
     <.page_header>
       {@nutrition_plan.name}
       <:subtitle>{@nutrition_plan.description || "No description."}</:subtitle>
-      
       <:actions>
         <.sign_action
           :if={@can_update?}
@@ -262,14 +262,11 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
             {@nutrition_plan.client &&
               "#{@nutrition_plan.client.first_name} #{@nutrition_plan.client.last_name}"}
           </:item>
-          
           <:item title="Daily calories">{@nutrition_plan.daily_calories || "Not set"}</:item>
-          
           <:item title="Dates">
             {Calendar.strftime(@nutrition_plan.start_date, "%-d %b %Y")}{if @nutrition_plan.end_date,
               do: " to #{Calendar.strftime(@nutrition_plan.end_date, "%-d %b %Y")}"}
           </:item>
-          
           <:item title="Template">{if @nutrition_plan.is_template, do: "Yes", else: "No"}</:item>
         </.list>
       </div>
@@ -283,13 +280,11 @@ defmodule AfyaFitWeb.TrainerLive.Nutrition do
           <.sign_action id="ask-delete" phx-click="ask_delete">Delete</.sign_action>
         </:actions>
       </.sign>
-      
       <.sign :if={@confirm_delete?} id="delete-confirm" icon={:alert} state={:next} draw={false}>
         <:title>Delete {@nutrition_plan.name}?</:title>
         This cannot be undone.
         <:actions>
           <.sign_action id="confirm-delete" primary phx-click="delete">Delete plan</.sign_action>
-          
           <.sign_action id="keep-plan" phx-click="keep">Keep</.sign_action>
         </:actions>
       </.sign>

@@ -6,7 +6,8 @@ defmodule AfyaFit.Repo.Migrations.AddClientSubscriptions do
     create table(:client_subscriptions, primary_key: false) do
       add :id, :binary_id, primary_key: true
 
-      add :client_id, references(:users, on_delete: :delete_all, type: :binary_id), null: false
+      add :client_id, references(:users, on_delete: :delete_all, type: :binary_id),
+        null: false
 
       add :organization_id, references(:organizations, on_delete: :delete_all, type: :binary_id),
         null: false

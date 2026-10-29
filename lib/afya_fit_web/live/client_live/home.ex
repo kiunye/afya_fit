@@ -47,6 +47,7 @@ defmodule AfyaFitWeb.ClientLive.Home do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:home}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied} id="home">
         <.page_header>
           Home
@@ -57,13 +58,12 @@ defmodule AfyaFitWeb.ClientLive.Home do
             Your plan for this week.
           </:subtitle>
         </.page_header>
-        
+
         <.sign_group label="Workouts">
           <div id="workouts" phx-update="stream">
             <div id="workouts-empty" class="hidden px-4 py-6 text-ink-2 only:block sm:px-[26px]">
               Your trainer has not assigned a workout yet.
             </div>
-            
             <.sign
               :for={{id, cw} <- @streams.workouts}
               id={id}
@@ -72,17 +72,16 @@ defmodule AfyaFitWeb.ClientLive.Home do
               time_label="Starts"
             >
               <:title>{cw.workout_plan.name}</:title>
-               {String.capitalize(cw.status)}
+              {String.capitalize(cw.status)}
             </.sign>
           </div>
         </.sign_group>
-        
+
         <.sign_group label="Tasks">
           <div id="tasks" phx-update="stream">
             <div id="tasks-empty" class="hidden px-4 py-6 text-ink-2 only:block sm:px-[26px]">
               No tasks right now.
             </div>
-            
             <.sign
               :for={{id, task} <- @streams.tasks}
               id={id}
@@ -92,7 +91,7 @@ defmodule AfyaFitWeb.ClientLive.Home do
               time_label={task.due_date && "Due"}
             >
               <:title>{task.title}</:title>
-               {task.description}
+              {task.description}
             </.sign>
           </div>
         </.sign_group>

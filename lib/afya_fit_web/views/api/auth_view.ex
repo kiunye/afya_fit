@@ -6,3 +6,7 @@ defmodule AfyaFitWeb.API.AuthView do
     UserJSON.show(assigns)
   end
 end
+
+
+
+

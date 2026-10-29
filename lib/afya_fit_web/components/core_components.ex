@@ -50,10 +50,8 @@ defmodule AfyaFitWeb.CoreComponents do
         <.icon :if={@kind == :error} name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0" />
         <div class="min-w-0 flex-1 text-sm">
           <p :if={@title} class="font-bold">{@title}</p>
-          
           <p>{msg}</p>
         </div>
-        
         <button
           type="button"
           class="-m-1 shrink-0 cursor-pointer p-1 opacity-70 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-field-0"
@@ -91,11 +89,15 @@ defmodule AfyaFitWeb.CoreComponents do
 
     if rest[:href] || rest[:navigate] || rest[:patch] do
       ~H"""
-      <.link class={@classes} {@rest}>{render_slot(@inner_block)}</.link>
+      <.link class={@classes} {@rest}>
+        {render_slot(@inner_block)}
+      </.link>
       """
     else
       ~H"""
-      <button class={@classes} {@rest}>{render_slot(@inner_block)}</button>
+      <button class={@classes} {@rest}>
+        {render_slot(@inner_block)}
+      </button>
       """
     end
   end
@@ -194,7 +196,8 @@ defmodule AfyaFitWeb.CoreComponents do
           checked={@checked}
           class={@class || "size-5 shrink-0 cursor-pointer accent-signal"}
           {@rest}
-        /> {@label}
+        />
+        {@label}
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>
@@ -214,7 +217,7 @@ defmodule AfyaFitWeb.CoreComponents do
           {@rest}
         >
           <option :if={@prompt} value="">{@prompt}</option>
-           {Form.options_for_select(@options, @value)}
+          {Form.options_for_select(@options, @value)}
         </select>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
@@ -226,7 +229,8 @@ defmodule AfyaFitWeb.CoreComponents do
     ~H"""
     <div class="mb-3">
       <label class="block">
-        <span :if={@label} class="mb-1 block text-sm font-bold">{@label}</span> <textarea
+        <span :if={@label} class="mb-1 block text-sm font-bold">{@label}</span>
+        <textarea
           id={@id}
           name={@name}
           class={[
@@ -275,9 +279,8 @@ defmodule AfyaFitWeb.CoreComponents do
   defp error(assigns) do
     ~H"""
     <p class="mt-1.5 flex items-start gap-2 text-sm font-medium text-ink">
-      <.icon name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0 text-signal" /> {render_slot(
-        @inner_block
-      )}
+      <.icon name="hero-exclamation-circle" class="mt-0.5 size-5 shrink-0 text-signal" />
+      {render_slot(@inner_block)}
     </p>
     """
   end
@@ -299,10 +302,10 @@ defmodule AfyaFitWeb.CoreComponents do
         <h1 class="text-3xl font-black uppercase leading-none tracking-tight sm:text-5xl">
           {render_slot(@inner_block)}
         </h1>
-        
-        <p :if={@subtitle != []} class="mt-2 text-ink-2">{render_slot(@subtitle)}</p>
+        <p :if={@subtitle != []} class="mt-2 text-ink-2">
+          {render_slot(@subtitle)}
+        </p>
       </div>
-      
       <div class="flex-none">{render_slot(@actions)}</div>
     </header>
     """
@@ -354,13 +357,11 @@ defmodule AfyaFitWeb.CoreComponents do
             >
               {col[:label]}
             </th>
-            
             <th :if={@action != []} class="px-3 py-2">
               <span class="sr-only">{gettext("Actions")}</span>
             </th>
           </tr>
         </thead>
-        
         <tbody id={@id} phx-update={is_struct(@rows, LiveStream) && "stream"}>
           <tr
             :for={row <- @rows}
@@ -378,7 +379,6 @@ defmodule AfyaFitWeb.CoreComponents do
             >
               {render_slot(col, @row_item.(row))}
             </td>
-            
             <td :if={@action != []} class="w-0 px-3 py-3.5 font-bold">
               <div class="flex gap-4">
                 <%= for action <- @action do %>
@@ -412,7 +412,6 @@ defmodule AfyaFitWeb.CoreComponents do
     <ul class="divide-y divide-line/40">
       <li :for={item <- @item} class="py-3">
         <div class="text-xs font-bold uppercase tracking-[.08em] text-ink-2">{item.title}</div>
-        
         <div class="mt-1">{render_slot(item)}</div>
       </li>
     </ul>

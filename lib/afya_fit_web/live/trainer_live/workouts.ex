@@ -111,6 +111,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:workouts}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied}>
         <.workouts_index :if={@live_action == :index} {assigns} />
         <.workouts_form :if={@live_action in [:new, :edit] && @form} {assigns} />
@@ -135,13 +136,11 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
         <.sign_action :if={@can_create?} id="new-plan" primary navigate={~p"/trainer/workouts/new"}>
           New plan
         </.sign_action>
-        
         <span :if={!@can_create?} class="flex items-center gap-3 text-sm text-ink-2">
           Paused until payment clears
           <.sign_action id="new-plan" aria-disabled="true">New plan</.sign_action>
         </span>
       </:actions>
-      
       <nav aria-label="Plan type" class="flex gap-2 px-4 pb-3 sm:px-[26px]">
         <.link
           :for={
@@ -158,7 +157,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           {label}
         </.link>
       </nav>
-      
       <div id="plans" phx-update="stream">
         <div
           id="plans-empty"
@@ -173,7 +171,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
               No templates yet. Mark a plan as a template to reuse it.
           <% end %>
         </div>
-        
         <.sign
           :for={{id, plan} <- @streams.plans}
           id={id}
@@ -182,7 +179,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           time_label="Updated"
         >
           <:title>{plan.name}</:title>
-           {plan.duration_weeks} weeks · {plan.difficulty}
+          {plan.duration_weeks} weeks · {plan.difficulty}
           <:actions>
             <.sign_action navigate={~p"/trainer/workouts/#{plan.id}"}>Open</.sign_action>
           </:actions>
@@ -233,12 +230,13 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           required
         />
       </div>
-       <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
+      <.input field={@form[:is_template]} type="checkbox" label="Save as a template" />
       <.input
         field={@form[:is_public]}
         type="checkbox"
         label="Share with other trainers in the organisation"
       />
+
       <div class="mt-6 flex flex-wrap gap-3">
         <.button type="submit" variant="primary">
           {if @live_action == :new, do: "Create plan", else: "Save"}
@@ -260,7 +258,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
     <.page_header>
       {@workout_plan.name}
       <:subtitle>{@workout_plan.description || "No description."}</:subtitle>
-      
       <:actions>
         <.sign_action
           :if={@can_update?}
@@ -269,7 +266,6 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
         >
           Edit
         </.sign_action>
-        
         <.sign_action :if={@can_duplicate?} id="duplicate-plan" phx-click="duplicate">
           Duplicate
         </.sign_action>
@@ -280,11 +276,8 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
       <div class="px-4 sm:px-[26px]">
         <.list>
           <:item title="Duration">{@workout_plan.duration_weeks} weeks</:item>
-          
           <:item title="Difficulty"><span class="capitalize">{@workout_plan.difficulty}</span></:item>
-          
           <:item title="Template">{if @workout_plan.is_template, do: "Yes", else: "No"}</:item>
-          
           <:item title="Shared">
             {if @workout_plan.is_public, do: "Yes, with the organisation", else: "No"}
           </:item>
@@ -300,13 +293,11 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           <.sign_action id="ask-delete" phx-click="ask_delete">Delete</.sign_action>
         </:actions>
       </.sign>
-      
       <.sign :if={@confirm_delete?} id="delete-confirm" icon={:alert} state={:next} draw={false}>
         <:title>Delete {@workout_plan.name}?</:title>
         This cannot be undone.
         <:actions>
           <.sign_action id="confirm-delete" primary phx-click="delete">Delete plan</.sign_action>
-          
           <.sign_action id="keep-plan" phx-click="keep">Keep</.sign_action>
         </:actions>
       </.sign>

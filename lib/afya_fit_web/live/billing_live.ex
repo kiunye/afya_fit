@@ -44,12 +44,13 @@ defmodule AfyaFitWeb.BillingLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:billing}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied} id="billing">
         <.page_header>
           Billing
           <:subtitle>{summary(@subscription, @status, @current_scope)}</:subtitle>
         </.page_header>
-        
+
         <.sign_group label="Plan">
           <.sign
             id="plan"
@@ -58,12 +59,11 @@ defmodule AfyaFitWeb.BillingLive do
             time_label="Plan"
           >
             <:title>{plan_name(@subscription, @current_scope)} plan</:title>
-             {period_text(@subscription)}
+            {period_text(@subscription)}
             <:actions :if={@can_manage?}>
               <.sign_action :if={upgrade?(@subscription)} id="upgrade" primary phx-click="upgrade">
                 Upgrade to Pro
               </.sign_action>
-              
               <.sign_action
                 :if={fix_payment?(@status)}
                 id="update-payment"
@@ -74,7 +74,7 @@ defmodule AfyaFitWeb.BillingLive do
               </.sign_action>
             </:actions>
           </.sign>
-          
+
           <.sign
             :if={@subscription}
             id="status"
@@ -83,13 +83,16 @@ defmodule AfyaFitWeb.BillingLive do
             time={status_word(@status)}
             time_label="Status"
           >
-            <:title><.attention_dot :if={@status.reason} /> {status_headline(@status)}</:title>
-             {status_detail(@status)}
+            <:title>
+              <.attention_dot :if={@status.reason} />
+              {status_headline(@status)}
+            </:title>
+            {status_detail(@status)}
             <:actions :if={@can_manage? && cancellable?(@subscription, @status)}>
               <.sign_action id="cancel-plan" phx-click="ask_cancel">Cancel plan</.sign_action>
             </:actions>
           </.sign>
-          
+
           <.sign
             :if={@confirm_cancel?}
             id="cancel-confirm"
@@ -106,12 +109,11 @@ defmodule AfyaFitWeb.BillingLive do
               <.sign_action id="confirm-cancel" primary phx-click="cancel_subscription">
                 Cancel plan
               </.sign_action>
-              
               <.sign_action id="keep-plan" phx-click="keep_plan">Keep plan</.sign_action>
             </:actions>
           </.sign>
         </.sign_group>
-        
+
         <.sign_group label="Invoices">
           <div id="invoices" phx-update="stream">
             <div
@@ -120,7 +122,6 @@ defmodule AfyaFitWeb.BillingLive do
             >
               No invoices yet.
             </div>
-            
             <.sign
               :for={{id, invoice} <- @streams.invoices}
               id={id}
@@ -130,7 +131,7 @@ defmodule AfyaFitWeb.BillingLive do
               time_label="Due"
             >
               <:title>{invoice.invoice_number}</:title>
-               {format_amount(invoice.amount)} {invoice.currency} · {String.capitalize(invoice.status)}
+              {format_amount(invoice.amount)} {invoice.currency} · {String.capitalize(invoice.status)}
             </.sign>
           </div>
         </.sign_group>

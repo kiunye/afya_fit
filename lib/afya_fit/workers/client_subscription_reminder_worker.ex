@@ -8,9 +8,7 @@ defmodule AfyaFit.Workers.ClientSubscriptionReminderWorker do
   alias AfyaFitWeb.Emails
 
   @impl Oban.Worker
-  def perform(%Oban.Job{
-        args: %{"client_subscription_id" => client_id, "days_until_expiry" => days}
-      }) do
+  def perform(%Oban.Job{args: %{"client_subscription_id" => client_id, "days_until_expiry" => days}}) do
     subscription = Billing.get_client_subscription_by_client(client_id)
 
     if subscription && subscription.status == "active" do
@@ -23,14 +21,12 @@ defmodule AfyaFit.Workers.ClientSubscriptionReminderWorker do
       days_before = Map.get(prefs, "days_before_expiry", [7, 3, 1])
 
       if enabled && days in days_before do
-        email =
-          AfyaFitWeb.ClientSubscriptionEmail.expiry_reminder(
-            client,
-            organization,
-            subscription,
-            days
-          )
-
+        email = AfyaFitWeb.ClientSubscriptionEmail.expiry_reminder(
+          client,
+          organization,
+          subscription,
+          days
+        )
         AfyaFitWeb.Mailer.deliver(email)
       end
     end

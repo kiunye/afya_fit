@@ -46,17 +46,16 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:today}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
+
       <div :if={!@denied} id="today">
         <.page_header>
           Today · {Calendar.strftime(Date.utc_today(), "%a %-d %b")}
           <:subtitle>
-            <b class="text-ink">{@counts.done} done, {@counts.remaining} to go.</b> {needs_sentence(
-              @needs_count,
-              @client_count
-            )}
+            <b class="text-ink">{@counts.done} done, {@counts.remaining} to go.</b>
+            {needs_sentence(@needs_count, @client_count)}
           </:subtitle>
         </.page_header>
-        
+
         <.sign_group label="Sessions">
           <div id="sessions" phx-update="stream">
             <div
@@ -68,7 +67,6 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
                 Open workouts
               </.link>
             </div>
-            
             <.sign
               :for={{id, session} <- @streams.sessions}
               id={id}
@@ -78,13 +76,14 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
               time_label={state_label(session.state)}
             >
               <:title>{session.title}</:title>
-               {session.detail}
+              {session.detail}
               <:actions :if={session.client_id}>
-                <.sign_action navigate={~p"/trainer/clients/#{session.client_id}"}>Open</.sign_action>
+                <.sign_action navigate={~p"/trainer/clients/#{session.client_id}"}>
+                  Open
+                </.sign_action>
               </:actions>
             </.sign>
           </div>
-          
           <.closed_sign
             :if={!@calendar?}
             id="calendar-closed"
@@ -96,7 +95,7 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
             Book sessions and see them here.
           </.closed_sign>
         </.sign_group>
-        
+
         <.sign_group label="Needs you">
           <div id="needs" phx-update="stream">
             <div
@@ -105,7 +104,6 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
             >
               Nobody needs you right now.
             </div>
-            
             <.sign
               :for={{id, need} <- @streams.needs}
               id={id}
@@ -114,7 +112,7 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
               overdue={need.overdue}
             >
               <:title>{need.client.first_name} {need.client.last_name}</:title>
-               {need.reason}
+              {need.reason}
               <:actions>
                 <.sign_action
                   primary={need.overdue}

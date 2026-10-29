@@ -88,17 +88,19 @@ defmodule AfyaFitWeb.Layouts do
             src={~p"/images/afya-fit-logo.png"}
             alt=""
             class="size-8 rounded-control object-contain"
-          /> <span class="hidden max-w-full truncate text-xs font-bold lg:block">{@org_name}</span>
+          />
+          <span class="hidden max-w-full truncate text-xs font-bold lg:block">{@org_name}</span>
           <span class="sr-only lg:hidden">{@org_name}</span>
-        </.link> <.side_link :for={item <- @items} item={item} active={@active} />
+        </.link>
+        <.side_link :for={item <- @items} item={item} active={@active} />
         <div class="mt-auto border-t-[1.5px] border-line/40">
           <.side_link item={settings_item()} active={@active} />
           <div class="hidden px-2.5 py-3 text-xs leading-tight text-ink-2 lg:block">
             <b class="block truncate font-bold text-ink">
               {@scope.user.first_name} {@scope.user.last_name}
-            </b> {role_label(@scope)} · {plan_label(@scope)}
+            </b>
+            {role_label(@scope)} · {plan_label(@scope)}
           </div>
-          
           <form action={~p"/users/log_out"} method="post" class="px-2 pb-3">
             <input type="hidden" name="_method" value="delete" />
             <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
@@ -111,22 +113,22 @@ defmodule AfyaFitWeb.Layouts do
           </form>
         </div>
       </nav>
-      
+
       <div class="min-w-0">
         <.account_banner :if={@banner} state={@banner.state}>
           {@banner.message}
           <:action :if={@banner.action == :update_payment}>
             <.link navigate={~p"/billing"}>Update payment</.link>
           </:action>
-          
           <:action :if={match?({:ask, _}, @banner.action)}>
             {elem(@banner.action, 1)} can fix this
           </:action>
         </.account_banner>
-        
-        <main id="main">{render_slot(@inner_block)}</main>
+        <main id="main">
+          {render_slot(@inner_block)}
+        </main>
       </div>
-      
+
       <nav
         aria-label="Main"
         class="fixed inset-x-0 bottom-0 z-30 flex border-t-[3px] border-line bg-field-0 md:hidden"
@@ -142,10 +144,11 @@ defmodule AfyaFitWeb.Layouts do
           phx-click={JS.toggle(to: "#more-sheet", display: "block")}
           class="flex min-h-[60px] flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 px-0.5 py-2 text-xs font-bold uppercase tracking-normal text-ink-2 focus-visible:outline-3 focus-visible:outline-white"
         >
-          <.pictogram name={:more} class="size-7" /> <span>More</span>
+          <.pictogram name={:more} class="size-7" />
+          <span>More</span>
         </button>
       </nav>
-      
+
       <div
         id="more-sheet"
         class="fixed inset-x-0 bottom-[66px] z-30 hidden border-t-[3px] border-field-0 bg-paper text-field-0 md:hidden"
@@ -155,7 +158,8 @@ defmodule AfyaFitWeb.Layouts do
           navigate={item.path}
           class="flex items-center gap-4 border-b border-field-0/20 px-4 py-3.5 text-base font-bold focus-visible:outline-3 focus-visible:outline-field-0"
         >
-          <.pictogram name={item.icon} class="size-8" /> {item.label}
+          <.pictogram name={item.icon} class="size-8" />
+          {item.label}
         </.link>
         <form action={~p"/users/log_out"} method="post">
           <input type="hidden" name="_method" value="delete" />
@@ -169,7 +173,8 @@ defmodule AfyaFitWeb.Layouts do
         </form>
       </div>
     </div>
-     <.flash_group flash={@flash} />
+
+    <.flash_group flash={@flash} />
     """
   end
 
@@ -217,7 +222,8 @@ defmodule AfyaFitWeb.Layouts do
         @active != @item.key && "text-ink-2 focus-visible:outline-white"
       ]}
     >
-      <.pictogram name={@item.icon} class="size-7" /> <span>{@item.label}</span>
+      <.pictogram name={@item.icon} class="size-7" />
+      <span>{@item.label}</span>
     </.link>
     """
   end
@@ -284,7 +290,6 @@ defmodule AfyaFitWeb.Layouts do
               <%= unless @is_homepage do %>
                 <.theme_toggle />
               <% end %>
-              
               <div class="flex items-center gap-2">
                 <.link
                   navigate={~p"/users/log_in"}
@@ -313,10 +318,14 @@ defmodule AfyaFitWeb.Layouts do
           </div>
         </div>
       </header>
-      <!-- Main Content -->
-      <main class="flex-1">{render_slot(@inner_block)}</main>
+      
+    <!-- Main Content -->
+      <main class="flex-1">
+        {render_slot(@inner_block)}
+      </main>
     </div>
-     <.flash_group flash={@flash} />
+
+    <.flash_group flash={@flash} />
     """
   end
 
@@ -333,7 +342,9 @@ defmodule AfyaFitWeb.Layouts do
   def flash_group(assigns) do
     ~H"""
     <div id={@id} aria-live="polite">
-      <.flash kind={:info} flash={@flash} /> <.flash kind={:error} flash={@flash} />
+      <.flash kind={:info} flash={@flash} />
+      <.flash kind={:error} flash={@flash} />
+
       <.flash
         id="client-error"
         kind={:error}
@@ -345,7 +356,7 @@ defmodule AfyaFitWeb.Layouts do
         {gettext("Attempting to reconnect")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
-      
+
       <.flash
         id="server-error"
         kind={:error}
@@ -370,6 +381,7 @@ defmodule AfyaFitWeb.Layouts do
     ~H"""
     <div class="relative flex flex-row items-center rounded-full border-2 border-base-300 bg-base-300">
       <div class="absolute left-0 h-full w-1/2 rounded-full border border-base-200 bg-base-100 brightness-200 transition-[left] [[data-theme=dark]_&]:left-1/2" />
+
       <button
         class="flex w-1/2 cursor-pointer p-2"
         phx-click={JS.dispatch("phx:set-theme")}
@@ -378,6 +390,7 @@ defmodule AfyaFitWeb.Layouts do
       >
         <.icon name="hero-sun-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
+
       <button
         class="flex w-1/2 cursor-pointer p-2"
         phx-click={JS.dispatch("phx:set-theme")}
