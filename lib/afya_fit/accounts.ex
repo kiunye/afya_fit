@@ -61,6 +61,16 @@ defmodule AfyaFit.Accounts do
   def get_user!(id), do: Repo.get!(User, id)
 
   @doc """
+  Gets a user by id, or `nil` when there is none or the id is not a UUID.
+  """
+  def get_user(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> Repo.get(User, uuid)
+      :error -> nil
+    end
+  end
+
+  @doc """
   Lists users in an organization by role.
   """
   def list_organization_users(organization_id, role) do
