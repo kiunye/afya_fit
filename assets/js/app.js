@@ -93,32 +93,6 @@ window.addEventListener("phx:set-theme", (e) => {
   document.documentElement.setAttribute("data-theme", theme)
 })
 
-// Fallback toggle function for non-LiveView contexts
-function toggleSidebar() {
-  const sidebar = document.getElementById("sidebar")
-  if (sidebar) {
-    sidebar.classList.toggle("-translate-x-full")
-  }
-}
-
-// Make toggleSidebar available globally as fallback
-if (!window.toggleSidebar) {
-  window.toggleSidebar = toggleSidebar
-}
-
-// Close sidebar when clicking outside on mobile
-document.addEventListener("click", (e) => {
-  const sidebar = document.getElementById("sidebar")
-  const toggleButtons = document.querySelectorAll("button[data-sidebar-toggle]")
-  const isToggleButton = Array.from(toggleButtons).some(btn => btn.contains(e.target))
-  
-  if (sidebar && !sidebar.contains(e.target) && !isToggleButton) {
-    if (window.innerWidth < 1024) {
-      sidebar.classList.add("-translate-x-full")
-    }
-  }
-})
-
 // The lines below enable quality of life phoenix_live_reload
 // development features:
 //
