@@ -14,6 +14,36 @@ defmodule AfyaFit.Organizations do
 
   def get_organization!(id), do: Repo.get!(Organization, id)
 
+  @doc """
+  Every organization with how many trainers and clients it has, for the platform
+  admin overview. Organization admins count as trainers.
+  """
+  def list_summaries do
+    counts =
+      from(u in User,
+        where: is_nil(u.deleted_at),
+        group_by: [u.organization_id, u.role],
+        select: {u.organization_id, u.role, count(u.id)}
+      )
+      |> Repo.all()
+      |> Enum.group_by(&elem(&1, 0))
+
+    from(o in Organization, where: is_nil(o.deleted_at), order_by: [asc: o.name])
+    |> Repo.all()
+    |> Enum.map(fn org ->
+      roles = counts |> Map.get(org.id, []) |> Map.new(fn {_org, role, n} -> {role, n} end)
+
+      %{
+        id: org.id,
+        name: org.name,
+        plan_type: org.plan_type,
+        status: org.status,
+        trainers: Map.get(roles, "trainer", 0) + Map.get(roles, "org_admin", 0),
+        clients: Map.get(roles, "client", 0)
+      }
+    end)
+  end
+
   def create_organization(attrs \\ %{}) do
     %Organization{}
     |> Organization.changeset(attrs)

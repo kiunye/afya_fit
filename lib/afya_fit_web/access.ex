@@ -35,7 +35,7 @@ defmodule AfyaFitWeb.Access do
 
     items = [
       {:today, "Today", :today, ~p"/trainer/dashboard", :tab, [:trainer, :org_admin], nil},
-      {:home, "Home", :home, ~p"/", :tab, [:client], nil},
+      {:home, "Home", :home, ~p"/home", :tab, [:client], nil},
       {:clients, "Clients", :clients, ~p"/trainer/clients", :tab, [:trainer, :org_admin],
        {:list, :client}},
       {:workouts, "Workouts", :workouts, ~p"/trainer/workouts", :tab, [:trainer, :org_admin],
@@ -66,6 +66,22 @@ defmodule AfyaFitWeb.Access do
     do: Scope.role(scope) != :admin and not Entitlements.allows?(scope.tier, :nutrition_plans)
 
   defp pro?(_scope, _key), do: false
+
+  @doc """
+  Where a signed-in person starts: Today for coaches, Platform for platform
+  admins, Home for clients. `nil` for visitors.
+  """
+  @spec home_path(Scope.t() | map()) :: String.t() | nil
+  def home_path(%Scope{} = scope) do
+    case Scope.role(scope) do
+      role when role in [:trainer, :org_admin] -> ~p"/trainer/dashboard"
+      :admin -> ~p"/admin/dashboard"
+      :client -> ~p"/home"
+      _ -> nil
+    end
+  end
+
+  def home_path(_scope), do: nil
 
   @type banner :: %{
           state: :grace | :read_only,

@@ -5,8 +5,8 @@ defmodule AfyaFitWeb.UserLive.Settings do
 
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto max-w-2xl space-y-12">
+    <Layouts.app flash={@flash} current_scope={@current_scope} active={:settings}>
+      <div class="max-w-2xl space-y-12 px-4 py-6 sm:px-[26px]">
         <.header>Settings</.header>
 
         <div class="space-y-4">
