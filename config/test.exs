@@ -5,6 +5,9 @@ import Config
 # The MIX_TEST_PARTITION environment variable can be used
 # to provide built-in test partitioning in CI environment.
 # Run `mix help test` for more information.
+# Jobs are enqueued but never run in tests; assert on them with Oban.Testing.
+config :afya_fit, Oban, testing: :manual
+
 config :afya_fit, AfyaFit.Repo,
   username: System.get_env("POSTGRES_USER") || "postgres",
   password: System.get_env("POSTGRES_PASSWORD") || "postgres",

@@ -2,7 +2,7 @@ defmodule AfyaFitWeb.API.AuthController do
   use AfyaFitWeb, :controller
 
   alias AfyaFit.Accounts
-  alias AfyaFit.Organizations
+  alias AfyaFit.Authorization.Scope
 
   action_fallback AfyaFitWeb.API.FallbackController
 
@@ -40,17 +40,17 @@ defmodule AfyaFitWeb.API.AuthController do
         conn
         |> put_status(:ok)
         |> put_view(AfyaFitWeb.API.AuthView)
-        |> render(:show, user: user, token: token)
+        |> render(:show, user: user, token: token, scope: Scope.load(user))
     end
   end
 
   def show(conn, _params) do
-    user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
 
     conn
     |> put_status(:ok)
     |> put_view(AfyaFitWeb.API.AuthView)
-    |> render(:show, user: user, token: nil)
+    |> render(:show, user: scope.user, token: nil, scope: scope)
   end
 
   @doc """
@@ -77,9 +77,8 @@ defmodule AfyaFitWeb.API.AuthController do
     "token": "session_token_here"
   }
   """
-  @dialyzer {:nowarn_function, register: 2}
   def register(conn, %{"user" => user_params}) do
-    case register_user_with_organization(user_params) do
+    case Accounts.register_with_organization(user_params) do
       {:ok, user} ->
         # Generate session token
         token = Accounts.generate_user_session_token(user)
@@ -93,13 +92,7 @@ defmodule AfyaFitWeb.API.AuthController do
         conn
         |> put_status(:created)
         |> put_view(AfyaFitWeb.API.AuthView)
-        |> render(:show, user: user, token: token)
-
-      {:error, :organization, changeset, _} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> put_view(AfyaFitWeb.API.ErrorView)
-        |> render(:"422", changeset: changeset)
+        |> render(:show, user: user, token: token, scope: Scope.load(user))
 
       {:error, changeset} ->
         conn
@@ -107,63 +100,5 @@ defmodule AfyaFitWeb.API.AuthController do
         |> put_view(AfyaFitWeb.API.ErrorView)
         |> render(:"422", changeset: changeset)
     end
-  end
-
-  @dialyzer {:nowarn_function, register_user_with_organization: 1}
-  defp register_user_with_organization(%{"role" => "trainer"} = user_params) do
-    # Trainers create their own organization
-    org_attrs = %{
-      "name" => user_params["organization_name"],
-      "subdomain" => user_params["organization_subdomain"],
-      "plan_type" => "free",
-      "status" => "active"
-    }
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.insert(
-      :organization,
-      Organizations.Organization.changeset(%Organizations.Organization{}, org_attrs)
-    )
-    |> Ecto.Multi.insert(:user, fn %{organization: org} ->
-      Accounts.User.registration_changeset(
-        %Accounts.User{},
-        Map.put(user_params, "organization_id", org.id)
-      )
-    end)
-    |> AfyaFit.Repo.transaction()
-    |> case do
-      {:ok, %{user: user}} -> {:ok, user}
-      {:error, :organization, changeset, _} -> {:error, :organization, changeset, %{}}
-      {:error, :user, changeset, _} -> {:error, changeset}
-    end
-  end
-
-  defp register_user_with_organization(%{"role" => "client"} = user_params) do
-    # Clients join an existing organization by subdomain
-    subdomain = user_params["organization_subdomain"]
-
-    case Organizations.get_organization_by_subdomain(subdomain) do
-      nil ->
-        changeset =
-          Accounts.User.registration_changeset(%Accounts.User{}, user_params)
-          |> Ecto.Changeset.add_error(:organization_subdomain, "not found")
-
-        {:error, changeset}
-
-      organization ->
-        user_params
-        |> Map.put("organization_id", organization.id)
-        |> Accounts.register_user()
-    end
-  end
-
-  defp register_user_with_organization(user_params) do
-    # Only trainers and clients can self-register; privileged roles are never accepted
-    changeset =
-      %Accounts.User{}
-      |> Accounts.User.registration_changeset(Map.delete(user_params, "organization_id"))
-      |> Ecto.Changeset.add_error(:role, "must be trainer or client")
-
-    {:error, changeset}
   end
 end

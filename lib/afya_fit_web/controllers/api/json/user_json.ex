@@ -8,12 +8,9 @@ defmodule AfyaFitWeb.API.JSON.UserJSON do
   end
 
   def show(assigns) do
-    user = assigns.user
-
-    case Map.get(assigns, :token) do
-      nil -> %{data: data(user)}
-      token -> %{data: data(user), token: token}
-    end
+    %{data: data(assigns.user)}
+    |> put_if(:token, Map.get(assigns, :token))
+    |> put_if(:access, assigns |> Map.get(:scope) |> access())
   end
 
   defp data(%{id: id} = user) do
@@ -24,7 +21,8 @@ defmodule AfyaFitWeb.API.JSON.UserJSON do
       last_name: user.last_name,
       phone: user.phone,
       avatar_url: user.avatar_url,
-      role: user.role,
+      role: AfyaFit.Accounts.User.legacy_role(user),
+      account_role: user.role,
       timezone: user.timezone,
       email_verified: user.email_verified,
       organization_id: user.organization_id,
@@ -32,4 +30,10 @@ defmodule AfyaFitWeb.API.JSON.UserJSON do
       updated_at: user.updated_at
     }
   end
+
+  defp put_if(map, _key, nil), do: map
+  defp put_if(map, key, value), do: Map.put(map, key, value)
+
+  defp access(nil), do: nil
+  defp access(scope), do: AfyaFitWeb.API.JSON.AccessJSON.build(scope)
 end

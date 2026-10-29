@@ -190,8 +190,18 @@ defmodule AfyaFitWeb.Access do
   Puts the outcome of a blocked action on the socket as an error flash. The one
   place the wording for read-only, plan limits and refusals lives.
   """
+  @doc """
+  Records a plan block (limit or read-only) for support; any other error is
+  ignored. Call it where a block is shown to the user, not where a button's
+  state is merely computed.
+  """
+  @spec record_block(Scope.t(), term()) :: :ok
+  def record_block(%Scope{} = scope, error), do: AfyaFit.PlanBlocks.record(scope, error)
+
   @spec flash_denial(Phoenix.LiveView.Socket.t(), term()) :: Phoenix.LiveView.Socket.t()
   def flash_denial(socket, error) do
+    record_block(socket.assigns.current_scope, error)
+
     message =
       case denial(socket.assigns.current_scope, error) do
         {:read_only, _status} -> "Paused until payment clears."

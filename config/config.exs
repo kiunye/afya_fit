@@ -23,7 +23,9 @@ import Config
 
 config :afya_fit,
   ecto_repos: [AfyaFit.Repo],
-  generators: [timestamp_type: :utc_datetime, binary_id: true]
+  generators: [timestamp_type: :utc_datetime, binary_id: true],
+  # Who hears that a customer hit their plan; override with SUPPORT_EMAIL.
+  support_email: "kiunyearaya@gmail.com"
 
 # Configures the endpoint
 config :afya_fit, AfyaFitWeb.Endpoint,

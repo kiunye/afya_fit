@@ -6,6 +6,8 @@ defmodule AfyaFitWeb.API.FallbackController do
   """
   use AfyaFitWeb, :controller
 
+  alias AfyaFit.PlanBlocks
+
   def call(conn, {:error, %Ecto.Changeset{} = changeset}) do
     conn
     |> put_status(:unprocessable_entity)
@@ -27,14 +29,18 @@ defmodule AfyaFitWeb.API.FallbackController do
     |> render(:"403")
   end
 
-  def call(conn, {:error, {:upgrade_required, details}}) do
+  def call(conn, {:error, {:upgrade_required, details}} = error) do
+    PlanBlocks.record(conn.assigns[:current_scope], error)
+
     conn
     |> put_status(:payment_required)
     |> put_view(AfyaFitWeb.API.ErrorView)
     |> render(:"402", error: "upgrade_required", details: details)
   end
 
-  def call(conn, {:error, {:subscription_inactive, status}}) do
+  def call(conn, {:error, {:subscription_inactive, status}} = error) do
+    PlanBlocks.record(conn.assigns[:current_scope], error)
+
     conn
     |> put_status(:payment_required)
     |> put_view(AfyaFitWeb.API.ErrorView)
