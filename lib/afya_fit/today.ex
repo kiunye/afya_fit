@@ -11,6 +11,7 @@ defmodule AfyaFit.Today do
   import Ecto.Query, warn: false
 
   alias AfyaFit.Accounts.User
+  alias AfyaFit.Authorization
   alias AfyaFit.Authorization.{Entitlements, Scope}
   alias AfyaFit.Repo
   alias AfyaFit.Schedule
@@ -64,22 +65,7 @@ defmodule AfyaFit.Today do
   end
 
   defp reachable_client_ids(%Scope{} = scope) do
-    case Scope.role(scope) do
-      role when role in [:org_admin, :admin] ->
-        Repo.all(
-          from u in User,
-            where:
-              u.organization_id == ^scope.user.organization_id and u.role == "client" and
-                is_nil(u.deleted_at),
-            select: u.id
-        )
-
-      :trainer ->
-        MapSet.to_list(scope.client_ids)
-
-      _ ->
-        []
-    end
+    scope |> Authorization.visible(:client) |> select([u], u.id) |> Repo.all()
   end
 
   defp load_clients([]), do: %{}

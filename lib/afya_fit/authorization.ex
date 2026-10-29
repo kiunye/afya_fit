@@ -77,6 +77,13 @@ defmodule AfyaFit.Authorization do
     authorize(scope, action, subject, record, opts) == :ok
   end
 
+  @doc """
+  The query of every `type` record the requester may see. It states the same
+  attribute rules as `authorize/5`, so lists and single-record checks agree.
+  """
+  @spec visible(Scope.t(), atom()) :: Ecto.Query.t()
+  def visible(%Scope{} = scope, type), do: Policy.visible(type, scope)
+
   @doc "Resource types and actions the requester's role allows, ignoring attributes and tier."
   @spec permissions(Scope.t()) :: %{atom() => [atom()]}
   def permissions(%Scope{} = scope), do: scope |> Scope.role() |> Permissions.for_role()
