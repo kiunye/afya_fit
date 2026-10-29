@@ -78,7 +78,7 @@ defmodule AfyaFit.Authorization.Scope do
     new(user,
       organization: organization,
       owner_name: owner_name(user.organization_id),
-      tier: organization && organization.plan_type,
+      tier: effective_tier(organization, subscription),
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,
       period_end: subscription && subscription.current_period_end,
@@ -87,6 +87,16 @@ defmodule AfyaFit.Authorization.Scope do
       client_count: count_clients(user.organization_id)
     )
   end
+
+  @doc """
+  The plan an organization is entitled to. The subscription is the source of
+  truth because it is what the organization pays for and what billing updates;
+  the organization's own `plan_type` only applies while it has no subscription.
+  """
+  @spec effective_tier(struct() | nil, struct() | nil) :: String.t()
+  def effective_tier(_organization, %{plan_type: plan_type}), do: plan_type
+  def effective_tier(%{plan_type: plan_type}, nil), do: plan_type
+  def effective_tier(nil, nil), do: "free"
 
   @spec role(t()) :: role()
   def role(%__MODULE__{user: %User{role: role}}), do: Map.get(@roles, role, :none)

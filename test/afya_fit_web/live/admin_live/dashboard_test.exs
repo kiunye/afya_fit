@@ -25,6 +25,18 @@ defmodule AfyaFitWeb.AdminLive.DashboardTest do
     assert has_element?(view, "#organizations", "Afya HQ")
   end
 
+  test "the plan shown is the one the organisation pays for", %{
+    conn: conn,
+    org: org,
+    platform_admin: admin
+  } do
+    subscription(org, %{plan_type: "enterprise"})
+
+    {:ok, view, _} = conn |> log_in(admin) |> live(~p"/admin/dashboard")
+
+    assert has_element?(view, "#organizations", "Enterprise plan")
+  end
+
   test "everyone else gets the permission sign", %{conn: conn, org: org} do
     for role <- [:org_admin, :trainer, :client] do
       {:ok, view, _} = conn |> log_in(user(org, role)) |> live(~p"/admin/dashboard")

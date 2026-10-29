@@ -28,15 +28,21 @@ defmodule AfyaFit.Organizations do
       |> Repo.all()
       |> Enum.group_by(&elem(&1, 0))
 
-    from(o in Organization, where: is_nil(o.deleted_at), order_by: [asc: o.name])
+    from(o in Organization,
+      left_join: s in AfyaFit.Billing.Subscription,
+      on: s.organization_id == o.id,
+      where: is_nil(o.deleted_at),
+      order_by: [asc: o.name],
+      select: {o, s}
+    )
     |> Repo.all()
-    |> Enum.map(fn org ->
+    |> Enum.map(fn {org, subscription} ->
       roles = counts |> Map.get(org.id, []) |> Map.new(fn {_org, role, n} -> {role, n} end)
 
       %{
         id: org.id,
         name: org.name,
-        plan_type: org.plan_type,
+        plan_type: AfyaFit.Authorization.Scope.effective_tier(org, subscription),
         status: org.status,
         trainers: Map.get(roles, "trainer", 0) + Map.get(roles, "org_admin", 0),
         clients: Map.get(roles, "client", 0)

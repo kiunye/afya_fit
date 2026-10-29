@@ -32,6 +32,18 @@ defmodule AfyaFit.Authorization.ScopeLoadTest do
     assert %DateTime{} = scope.period_end
   end
 
+  test "the tier comes from the subscription, not the organization's own setting", %{
+    org: org,
+    trainer: trainer
+  } do
+    assert org.plan_type == "free"
+    assert Scope.load(trainer).tier == "free"
+
+    subscription(org, %{plan_type: "pro"})
+
+    assert Scope.load(trainer).tier == "pro"
+  end
+
   test "organization admins reach every client without links", %{org: org} do
     admin = user(org, :org_admin)
     client = user(org, :client)
