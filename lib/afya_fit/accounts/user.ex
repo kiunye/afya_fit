@@ -83,6 +83,21 @@ defmodule AfyaFit.Accounts.User do
     |> validate_inclusion(:role, ["trainer", "client", "admin"])
   end
 
+  @doc """
+  A changeset for adding a trainer to an organization. The role, organization
+  and an unusable password are set by the caller; the trainer chooses a
+  password from the emailed link.
+  """
+  def trainer_invite_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:email, :first_name, :last_name])
+    |> validate_required([:email, :first_name, :last_name])
+    |> validate_format(:email, ~r/^[^s]+@[^s]+$/, message: "must have the @ sign and no spaces")
+    |> validate_length(:email, max: 160)
+    |> unsafe_validate_unique(:email, AfyaFit.Repo)
+    |> unique_constraint(:email)
+  end
+
   defp validate_email(changeset) do
     changeset
     |> validate_required([:email])
