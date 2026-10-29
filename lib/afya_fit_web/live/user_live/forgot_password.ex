@@ -9,11 +9,9 @@ defmodule AfyaFitWeb.UserLive.ForgotPassword do
       <div class="mx-auto max-w-sm">
         <.header>
           Forgot your password?
-          <:subtitle>
-            We'll send a password reset link to your inbox
-          </:subtitle>
+          <:subtitle>We'll send a password reset link to your inbox</:subtitle>
         </.header>
-
+        
         <.form for={@form} id="reset_password_form" phx-submit="send_email" class="space-y-4">
           <.input field={@form[:email]} type="email" placeholder="Email" required />
           <div>
@@ -22,9 +20,8 @@ defmodule AfyaFitWeb.UserLive.ForgotPassword do
             </.button>
           </div>
         </.form>
-        <p class="mt-4 text-center text-sm">
-          <.link navigate={~p"/users/log_in"}>Log in</.link>
-        </p>
+        
+        <p class="mt-4 text-center text-sm"><.link navigate={~p"/users/log_in"}>Log in</.link></p>
       </div>
     </Layouts.app>
     """
@@ -51,7 +48,3 @@ defmodule AfyaFitWeb.UserLive.ForgotPassword do
      |> assign(form: to_form(%{}, as: "user"))}
   end
 end
-
-
-
-

@@ -8,7 +8,7 @@ defmodule AfyaFitWeb.UserLive.Settings do
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:settings}>
       <div class="max-w-2xl space-y-12 px-4 py-6 sm:px-[26px]">
         <.header>Settings</.header>
-
+        
         <div class="space-y-4">
           <.form for={@email_form} id="email_form" phx-submit="update_email">
             <.input field={@email_form[:email]} type="email" label="Email" required />
@@ -21,11 +21,9 @@ defmodule AfyaFitWeb.UserLive.Settings do
               value={@email_form_current_password}
               required
             />
-            <div>
-              <.button phx-disable-with="Changing...">Change Email</.button>
-            </div>
+            <div><.button phx-disable-with="Changing...">Change Email</.button></div>
           </.form>
-
+          
           <.form
             for={@password_form}
             id="password_form"
@@ -52,9 +50,7 @@ defmodule AfyaFitWeb.UserLive.Settings do
               label="Current password"
               required
             />
-            <div>
-              <.button phx-disable-with="Changing...">Change Password</.button>
-            </div>
+            <div><.button phx-disable-with="Changing...">Change Password</.button></div>
           </.form>
         </div>
       </div>
@@ -168,7 +164,3 @@ defmodule AfyaFitWeb.UserLive.Settings do
     assign(socket, password_form: to_form(Accounts.change_user_password(user), as: "user"))
   end
 end
-
-
-
-

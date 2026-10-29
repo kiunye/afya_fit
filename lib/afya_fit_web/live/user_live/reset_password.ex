@@ -8,7 +8,7 @@ defmodule AfyaFitWeb.UserLive.ResetPassword do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-sm">
         <.header>Reset password</.header>
-
+        
         <.form
           for={@form}
           id="reset_password_form"
@@ -25,9 +25,8 @@ defmodule AfyaFitWeb.UserLive.ResetPassword do
             <.button phx-disable-with="Resetting password..." class="w-full">Reset password</.button>
           </div>
         </.form>
-        <p class="mt-4 text-center text-sm">
-          <.link navigate={~p"/users/log_in"}>Log in</.link>
-        </p>
+        
+        <p class="mt-4 text-center text-sm"><.link navigate={~p"/users/log_in"}>Log in</.link></p>
       </div>
     </Layouts.app>
     """
@@ -83,7 +82,3 @@ defmodule AfyaFitWeb.UserLive.ResetPassword do
     assign(socket, form: form)
   end
 end
-
-
-
-
