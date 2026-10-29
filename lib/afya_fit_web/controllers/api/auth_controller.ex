@@ -2,6 +2,7 @@ defmodule AfyaFitWeb.API.AuthController do
   use AfyaFitWeb, :controller
 
   alias AfyaFit.Accounts
+  alias AfyaFit.Authorization.Scope
 
   action_fallback AfyaFitWeb.API.FallbackController
 
@@ -39,17 +40,17 @@ defmodule AfyaFitWeb.API.AuthController do
         conn
         |> put_status(:ok)
         |> put_view(AfyaFitWeb.API.AuthView)
-        |> render(:show, user: user, token: token)
+        |> render(:show, user: user, token: token, scope: Scope.load(user))
     end
   end
 
   def show(conn, _params) do
-    user = conn.assigns.current_user
+    scope = conn.assigns.current_scope
 
     conn
     |> put_status(:ok)
     |> put_view(AfyaFitWeb.API.AuthView)
-    |> render(:show, user: user, token: nil)
+    |> render(:show, user: scope.user, token: nil, scope: scope)
   end
 
   @doc """
@@ -91,7 +92,7 @@ defmodule AfyaFitWeb.API.AuthController do
         conn
         |> put_status(:created)
         |> put_view(AfyaFitWeb.API.AuthView)
-        |> render(:show, user: user, token: token)
+        |> render(:show, user: user, token: token, scope: Scope.load(user))
 
       {:error, changeset} ->
         conn

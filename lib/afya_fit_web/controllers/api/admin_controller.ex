@@ -60,7 +60,8 @@ defmodule AfyaFitWeb.API.AdminController do
       email: user.email,
       first_name: user.first_name,
       last_name: user.last_name,
-      role: user.role,
+      role: AfyaFit.Accounts.User.legacy_role(user),
+      account_role: user.role,
       phone: user.phone,
       inserted_at: user.inserted_at,
       updated_at: user.updated_at

@@ -84,6 +84,14 @@ defmodule AfyaFit.Accounts.User do
   end
 
   @doc """
+  The role API clients built before organization admins understand: an
+  `org_admin` is a trainer who owns the organization. Newer clients read
+  `account_role` (the real role) and `permissions` instead.
+  """
+  def legacy_role(%__MODULE__{role: "org_admin"}), do: "trainer"
+  def legacy_role(%__MODULE__{role: role}), do: role
+
+  @doc """
   A changeset for editing someone's profile details. It casts only the fields a
   trainer may change on a client; role, organization and credentials are never
   touched.
