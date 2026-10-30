@@ -7,11 +7,11 @@ defmodule AfyaFit.Workers.PaymentReconcileWorker do
   use Oban.Worker, queue: :default, max_attempts: 1
   use AfyaFit.Repo.Wrap, :job
 
-  alias AfyaFit.Billing.Checkout
+  alias AfyaFit.Billing.Reconciler
 
   @impl Oban.Worker
   def perform(_job) do
-    Enum.each(Checkout.stale_pending(), &Checkout.reconcile/1)
+    Enum.each(Reconciler.stale_pending(), &Reconciler.reconcile/1)
     :ok
   end
 end

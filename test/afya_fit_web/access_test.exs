@@ -118,4 +118,20 @@ defmodule AfyaFitWeb.AccessTest do
                )
     end
   end
+
+  describe "role_label/1" do
+    test "names a role as stored, or as an atom" do
+      assert Access.role_label("org_admin") == "Owner"
+      assert Access.role_label("trainer") == "Trainer"
+      assert Access.role_label("client") == "Client"
+      assert Access.role_label("admin") == "Platform"
+      assert Access.role_label(:org_admin) == "Owner"
+      assert Access.role_label("nonsense") == "User"
+    end
+
+    test "names a scope's role" do
+      assert Access.role_label(scope(:org_admin)) == "Owner"
+      assert Access.role_label(scope(:trainer)) == "Trainer"
+    end
+  end
 end

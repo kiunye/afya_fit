@@ -12,7 +12,8 @@ defmodule AfyaFit.Billing.Checkout do
 
   Nothing here trusts a browser or a webhook body on its own: Paystack events
   are signed (checked in the controller) and M-Pesa callbacks are confirmed with
-  Daraja before they count.
+  Daraja before they count (`AfyaFit.Billing.MpesaCallback`). Payments whose
+  webhook never came are caught by `AfyaFit.Billing.Reconciler`.
   """
 
   import Ecto.Query
@@ -23,8 +24,6 @@ defmodule AfyaFit.Billing.Checkout do
   alias AfyaFit.Organizations.Organization
 
   require Logger
-
-  @expire_after %{"paystack" => 24 * 3600, "daraja" => 15 * 60}
 
   ## Starting
 
@@ -174,7 +173,12 @@ defmodule AfyaFit.Billing.Checkout do
     end
   end
 
-  defp verify_card(payment) do
+  @doc """
+  Asks Paystack what became of a card payment and settles or fails it. A payment
+  Paystack still calls open comes back unchanged.
+  """
+  @spec verify_card(Payment.t()) :: {:ok, Payment.t()} | {:error, :gateway}
+  def verify_card(%Payment{} = payment) do
     case Payments.paystack().verify(payment.reference) do
       {:ok, %{status: "success"} = result} ->
         settle_if_matching(payment, result)
@@ -227,83 +231,6 @@ defmodule AfyaFit.Billing.Checkout do
   end
 
   defp settle_if_matching(payment, _result), do: {:ok, payment}
-
-  ## M-Pesa: the callback
-
-  @doc """
-  Daraja's callback for an STK push. `token` is the secret from the URL the
-  callback was sent to. Returns `:ok` whatever happens, because the answer to
-  Daraja is always "accepted"; nothing here is trusted until Daraja confirms it.
-  """
-  @spec mpesa_callback(String.t(), map()) :: :ok
-  def mpesa_callback(token, %{"Body" => %{"stkCallback" => callback}}) when is_binary(token) do
-    with %Payment{provider: "daraja", provider_reference: checkout_id} = payment <-
-           Repo.get_by(Payment, callback_token: token),
-         true <- checkout_id == callback["CheckoutRequestID"] do
-      handle_mpesa_result(payment, to_int(callback["ResultCode"]), callback)
-    end
-
-    :ok
-  end
-
-  def mpesa_callback(_token, _body), do: :ok
-
-  defp handle_mpesa_result(payment, 0, callback) do
-    items = callback |> get_in(["CallbackMetadata", "Item"]) |> List.wrap()
-    paid = items |> item("Amount") |> to_decimal()
-    receipt = item(items, "MpesaReceiptNumber")
-
-    cond do
-      is_nil(paid) or Decimal.compare(paid, payment.amount) == :lt ->
-        fail(payment, "amount did not match")
-
-      confirmed?(payment) ->
-        settle(payment, %{receipt: receipt, provider_payload: %{"callback" => callback}})
-
-      true ->
-        # Daraja has not confirmed it (yet); the reconciler will look again.
-        :unconfirmed
-    end
-  end
-
-  defp handle_mpesa_result(payment, _code, callback) do
-    fail(payment, callback["ResultDesc"] || "the payment was not completed")
-  end
-
-  defp confirmed?(payment) do
-    match?({:ok, %{result_code: 0}}, Payments.mpesa().stk_query(payment.provider_reference))
-  end
-
-  defp item(items, name) do
-    Enum.find_value(items, fn
-      %{"Name" => ^name, "Value" => value} -> value
-      _ -> nil
-    end)
-  end
-
-  defp to_decimal(nil), do: nil
-  defp to_decimal(value) when is_integer(value), do: Decimal.new(value)
-  defp to_decimal(value) when is_float(value), do: Decimal.from_float(value)
-
-  defp to_decimal(value) when is_binary(value) do
-    case Decimal.parse(value) do
-      {decimal, ""} -> decimal
-      _ -> nil
-    end
-  end
-
-  defp to_decimal(_value), do: nil
-
-  defp to_int(value) when is_integer(value), do: value
-
-  defp to_int(value) when is_binary(value) do
-    case Integer.parse(value) do
-      {int, ""} -> int
-      _ -> nil
-    end
-  end
-
-  defp to_int(_value), do: nil
 
   ## Settling
 
@@ -394,7 +321,9 @@ defmodule AfyaFit.Billing.Checkout do
   @spec fail(Payment.t(), String.t()) :: Payment.t()
   def fail(%Payment{} = payment, reason), do: finish(payment, "failed", reason)
 
-  defp expire(payment), do: finish(payment, "expired", "no answer from the provider")
+  @doc "Marks a pending payment expired: nobody answered. Money that arrives later still settles it."
+  @spec expire(Payment.t()) :: Payment.t()
+  def expire(%Payment{} = payment), do: finish(payment, "expired", "no answer from the provider")
 
   defp finish(%Payment{id: id} = payment, status, reason) do
     {count, rows} =
@@ -415,73 +344,5 @@ defmodule AfyaFit.Billing.Checkout do
 
   defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 
-  ## Reconciling
 
-  @doc """
-  Looks at a pending payment again: asks the provider what happened, and expires
-  it when the provider has gone quiet for too long. Used by the periodic job to
-  catch webhooks that never arrived.
-  """
-  @spec reconcile(Payment.t(), DateTime.t()) :: Payment.t()
-  def reconcile(payment, now \\ DateTime.utc_now())
-
-  def reconcile(%Payment{status: "pending"} = payment, now) do
-    age = DateTime.diff(now, payment.inserted_at)
-
-    case check_provider(payment) do
-      {:settled, settled} ->
-        settled
-
-      {:failed, failed} ->
-        failed
-
-      :open ->
-        if age > Map.fetch!(@expire_after, payment.provider), do: expire(payment), else: payment
-    end
-  end
-
-  def reconcile(%Payment{} = payment, _now), do: payment
-
-  defp check_provider(%Payment{provider: "daraja", provider_reference: checkout_id} = payment)
-       when is_binary(checkout_id) do
-    case Payments.mpesa().stk_query(checkout_id) do
-      {:ok, %{result_code: 0}} ->
-        {:ok, settled} = settle(payment)
-        {:settled, settled}
-
-      {:ok, %{result_code: code, description: description}} when is_integer(code) ->
-        {:failed, fail(payment, description || "the payment was not completed")}
-
-      _ ->
-        :open
-    end
-  end
-
-  defp check_provider(%Payment{provider: "paystack"} = payment) do
-    case Payments.paystack().verify(payment.reference) do
-      {:ok, %{status: "success"} = result} ->
-        {:ok, settled} = settle_if_matching(payment, result)
-        if settled.status == "succeeded", do: {:settled, settled}, else: {:failed, settled}
-
-      {:ok, %{status: status}} when status in ["failed", "reversed"] ->
-        {:failed, fail(payment, "the card payment #{status}")}
-
-      _ ->
-        :open
-    end
-  end
-
-  defp check_provider(_payment), do: :open
-
-  @doc "Pending payments old enough that their webhook should have arrived."
-  def stale_pending(older_than_seconds \\ 60) do
-    cutoff = DateTime.add(DateTime.utc_now(), -older_than_seconds, :second)
-
-    Repo.all(
-      from p in Payment,
-        where: p.status == "pending" and p.inserted_at < ^cutoff,
-        order_by: [asc: p.inserted_at],
-        limit: 200
-    )
-  end
 end

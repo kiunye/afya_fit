@@ -7,7 +7,6 @@ defmodule AfyaFitWeb.TimezonePagesTest do
   alias AfyaFit.Accounts.User
   alias AfyaFit.Authorization.Scope
   alias AfyaFit.{Repo, Schedule, Today}
-  alias AfyaFit.Workers.TaskReminderWorker
 
   setup do
     org = organization()
@@ -126,7 +125,7 @@ defmodule AfyaFitWeb.TimezonePagesTest do
     end
   end
 
-  describe "task reminders" do
+  describe "tasks due soon" do
     test "are due on the client's today and tomorrow, not UTC's" do
       client = %User{timezone: "Africa/Nairobi"}
       now = ~U[2026-10-30 21:30:00Z]
@@ -137,9 +136,9 @@ defmodule AfyaFitWeb.TimezonePagesTest do
       two_days = %{client: client, due_date: ~U[2026-11-01 21:30:00Z]}
       yesterday = %{client: client, due_date: ~U[2026-10-29 12:00:00Z]}
 
-      assert TaskReminderWorker.due_soon?(struct(AfyaFit.Tasks.Task, tomorrow), now)
-      refute TaskReminderWorker.due_soon?(struct(AfyaFit.Tasks.Task, two_days), now)
-      refute TaskReminderWorker.due_soon?(struct(AfyaFit.Tasks.Task, yesterday), now)
+      assert AfyaFit.Tasks.due_soon?(struct(AfyaFit.Tasks.Task, tomorrow), now)
+      refute AfyaFit.Tasks.due_soon?(struct(AfyaFit.Tasks.Task, two_days), now)
+      refute AfyaFit.Tasks.due_soon?(struct(AfyaFit.Tasks.Task, yesterday), now)
     end
   end
 end

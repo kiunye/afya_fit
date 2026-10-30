@@ -6,7 +6,7 @@ defmodule AfyaFitWeb.BillingLiveTest do
   import Phoenix.LiveViewTest
 
   alias AfyaFit.Billing
-  alias AfyaFit.Billing.{Checkout, Payment}
+  alias AfyaFit.Billing.{Checkout, MpesaCallback, Payment}
   alias AfyaFit.Repo
   alias AfyaFit.Test.FakeGateways
 
@@ -143,7 +143,7 @@ defmodule AfyaFitWeb.BillingLiveTest do
         {:ok, %{result_code: 0, description: "ok"}}
       )
 
-      Checkout.mpesa_callback(payment.callback_token, %{
+      MpesaCallback.handle(payment.callback_token, %{
         "Body" => %{
           "stkCallback" => %{
             "CheckoutRequestID" => payment.provider_reference,
@@ -171,7 +171,7 @@ defmodule AfyaFitWeb.BillingLiveTest do
 
       payment = Repo.get_by!(Payment, organization_id: org.id)
 
-      Checkout.mpesa_callback(payment.callback_token, %{
+      MpesaCallback.handle(payment.callback_token, %{
         "Body" => %{
           "stkCallback" => %{
             "CheckoutRequestID" => payment.provider_reference,

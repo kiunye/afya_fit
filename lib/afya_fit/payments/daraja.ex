@@ -58,16 +58,24 @@ defmodule AfyaFit.Payments.Daraja do
       "TransactionDesc" => "Afya Fit plan"
     }
 
-    with {:ok, %{"ResponseCode" => "0"} = response} <-
-           post("/mpesa/stkpush/v1/processrequest", body) do
-      {:ok,
-       %{
-         checkout_request_id: response["CheckoutRequestID"],
-         merchant_request_id: response["MerchantRequestID"]
-       }}
-    else
-      {:ok, response} -> {:error, response["errorMessage"] || response["ResponseDescription"]}
-      {:error, _} = error -> error
+    case post("/mpesa/stkpush/v1/processrequest", body) do
+      {:ok, %{"ResponseCode" => "0"} = response} ->
+        {:ok,
+         %{
+           checkout_request_id: response["CheckoutRequestID"],
+           merchant_request_id: response["MerchantRequestID"]
+         }}
+
+      # Accepted by HTTP, refused by Daraja.
+      {:ok, response} ->
+        {:error, response["ResponseDescription"] || :refused}
+
+      # Rejected before it was accepted: Daraja explains why in the body.
+      {:error, {:http, _status, %{"errorMessage" => message}}} ->
+        {:error, message}
+
+      {:error, _reason} = error ->
+        error
     end
   end
 
@@ -89,16 +97,17 @@ defmodule AfyaFit.Payments.Daraja do
 
     case post("/mpesa/stkpushquery/v1/query", body) do
       {:ok, %{"ResultCode" => code} = response} ->
-        {:ok, %{result_code: to_int(code), description: response["ResultDesc"]}}
-
-      # Daraja answers an unfinished request with an error body, not a result.
-      {:ok, %{"errorCode" => _} = response} ->
-        {:ok, %{result_code: nil, description: response["errorMessage"]}}
+        {:ok, %{result_code: result_code(code), description: response["ResultDesc"]}}
 
       {:ok, _other} ->
         {:ok, %{result_code: nil, description: nil}}
 
-      {:error, _} = error ->
+      # Daraja answers a request the customer has not finished with an error
+      # body (HTTP 500), not a result: that is "no answer yet", not a failure.
+      {:error, {:http, _status, %{"errorCode" => _} = body}} ->
+        {:ok, %{result_code: nil, description: body["errorMessage"]}}
+
+      {:error, _reason} = error ->
         error
     end
   end
@@ -121,12 +130,8 @@ defmodule AfyaFit.Payments.Daraja do
       {:ok, %Req.Response{status: status, body: body}} when status in 200..299 ->
         {:ok, body}
 
-      # Daraja explains a refused request in the body.
-      {:ok, %Req.Response{body: %{} = body}} ->
-        {:ok, body}
-
-      {:ok, %Req.Response{status: status}} ->
-        {:error, {:http, status}}
+      {:ok, %Req.Response{status: status, body: body}} ->
+        {:error, {:http, status, body}}
 
       {:error, reason} ->
         {:error, reason}
@@ -178,16 +183,19 @@ defmodule AfyaFit.Payments.Daraja do
 
   defp base_url, do: config(:base_url, @sandbox)
 
-  defp to_int(value) when is_integer(value), do: value
+  @doc """
+  Daraja sends result codes as numbers or as strings; `nil` when there is none.
+  """
+  def result_code(value) when is_integer(value), do: value
 
-  defp to_int(value) when is_binary(value) do
+  def result_code(value) when is_binary(value) do
     case Integer.parse(value) do
       {int, ""} -> int
       _ -> nil
     end
   end
 
-  defp to_int(_value), do: nil
+  def result_code(_value), do: nil
 
   defp present?(value), do: is_binary(value) and value != ""
 

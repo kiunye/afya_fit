@@ -72,9 +72,9 @@ defmodule AfyaFitWeb.Router do
       # Trainer routes
       live "/trainer/dashboard", TrainerLive.Dashboard, :index
       live "/trainer/clients", TrainerLive.Clients, :index
-      live "/trainer/clients/new", TrainerLive.Clients, :new
-      live "/trainer/clients/:id", TrainerLive.Clients, :show
-      live "/trainer/clients/:id/edit", TrainerLive.Clients, :edit
+      live "/trainer/clients/new", TrainerLive.ClientForm, :new
+      live "/trainer/clients/:id", TrainerLive.ClientShow, :show
+      live "/trainer/clients/:id/edit", TrainerLive.ClientForm, :edit
 
       # Workout plans
       live "/trainer/workouts", TrainerLive.Workouts, :index
