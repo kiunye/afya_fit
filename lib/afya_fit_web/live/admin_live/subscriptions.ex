@@ -95,7 +95,7 @@ defmodule AfyaFitWeb.AdminLive.Subscriptions do
               icon={:billing}
               draw={false}
               overdue={row.status in ["past_due", "expired"]}
-              time={Calendar.strftime(row.period_end, "%-d %b")}
+              time={local(row.period_end, @current_scope, "%-d %b")}
               time_label="Period ends"
             >
               <:title>{row.organization}</:title>

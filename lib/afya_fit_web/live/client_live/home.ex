@@ -87,7 +87,7 @@ defmodule AfyaFitWeb.ClientLive.Home do
               id={id}
               icon={:alert}
               draw={false}
-              time={task.due_date && Calendar.strftime(task.due_date, "%-d %b")}
+              time={local(task.due_date, @current_scope, "%-d %b")}
               time_label={task.due_date && "Due"}
             >
               <:title>{task.title}</:title>

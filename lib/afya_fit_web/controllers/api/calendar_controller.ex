@@ -29,8 +29,12 @@ defmodule AfyaFitWeb.API.CalendarController do
   def create(conn, %{"calendar_event" => event_params}) do
     scope = conn.assigns.current_scope
 
+    zone = AfyaFit.Timezone.zone(scope)
+
     attrs =
       event_params
+      |> localize_times(zone)
+      |> Map.put_new("timezone", zone)
       |> Map.put("organization_id", scope.user.organization_id)
       |> Map.put("user_id", scope.user.id)
 
@@ -53,7 +57,7 @@ defmodule AfyaFitWeb.API.CalendarController do
          {:ok, calendar_event} <-
            Schedule.update_calendar_event(
              calendar_event,
-             event_params
+             localize_times(event_params, AfyaFit.Timezone.zone(conn.assigns.current_scope))
            ) do
       render(conn, :show, calendar_event: calendar_event)
     end
@@ -85,6 +89,18 @@ defmodule AfyaFitWeb.API.CalendarController do
 
       render(conn, :index, calendar_events: events)
     end
+  end
+
+  # A time with an offset is an exact instant; one without is the user's wall-clock time.
+  defp localize_times(params, zone) do
+    Enum.reduce(["start_time", "end_time"], params, fn key, acc ->
+      with value when is_binary(value) <- acc[key],
+           {:ok, utc} <- AfyaFit.Timezone.parse(value, zone) do
+        Map.put(acc, key, DateTime.to_iso8601(utc))
+      else
+        _ -> acc
+      end
+    end)
   end
 
   defp own_events(scope) do

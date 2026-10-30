@@ -15,6 +15,7 @@ defmodule AfyaFit.Today do
   alias AfyaFit.Authorization.{Entitlements, Scope}
   alias AfyaFit.Repo
   alias AfyaFit.Schedule
+  alias AfyaFit.Timezone
   alias AfyaFit.Tasks.Task
   alias AfyaFit.Tracking.ProgressEntry
   alias AfyaFit.Workouts.ClientWorkout
@@ -45,12 +46,13 @@ defmodule AfyaFit.Today do
           client_count: non_neg_integer()
         }
   def build(%Scope{} = scope, now \\ DateTime.utc_now()) do
-    today = DateTime.to_date(now)
+    zone = Timezone.zone(scope)
+    today = Timezone.today(zone, now)
     client_ids = reachable_client_ids(scope)
     clients = load_clients(client_ids)
 
     sessions =
-      (events_today(scope, today) ++ workouts_today(clients, today))
+      (events_today(scope, today, zone) ++ workouts_today(clients, today))
       |> mark_states(now)
 
     %{
@@ -76,11 +78,11 @@ defmodule AfyaFit.Today do
   ## Sessions
 
   # Calendar events are a Pro feature; on Free the day is built from workouts.
-  defp events_today(scope, today) do
+  defp events_today(scope, today, zone) do
     if Entitlements.allows?(scope.tier, :calendar) do
       scope.user.id
       |> Schedule.list_calendar_events()
-      |> Enum.filter(&(DateTime.to_date(&1.start_time) == today))
+      |> Enum.filter(&(Timezone.local_date(&1.start_time, zone) == today))
       |> Enum.map(fn event ->
         %{
           kind: :event,
@@ -88,7 +90,7 @@ defmodule AfyaFit.Today do
           client_id: nil,
           title: event.title,
           detail: event.description,
-          time: DateTime.to_time(event.start_time),
+          time: event.start_time |> Timezone.to_local(zone) |> DateTime.to_time(),
           starts_at: event.start_time,
           state: :later
         }
