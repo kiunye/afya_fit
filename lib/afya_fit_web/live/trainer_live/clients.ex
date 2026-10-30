@@ -9,6 +9,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   alias AfyaFit.Accounts.User
   alias AfyaFit.Authorization
   alias AfyaFit.Authorization.Entitlements
+  alias AfyaFit.Authorization.Scope
   alias AfyaFit.Clients
   alias AfyaFitWeb.Access
 
@@ -24,6 +25,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
       |> assign(:form, nil)
       |> assign(:client, nil)
       |> assign(:status, nil)
+      |> assign(:confirm_archive, nil)
 
     {:ok, socket}
   end
@@ -48,6 +50,8 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     |> assign(:client_count, scope.client_count)
     |> assign(:client_limit, Entitlements.client_limit(scope.tier))
     |> assign(:add_state, add_state(scope))
+    |> assign(:can_archive?, Authorization.can?(scope, :delete, :client))
+    |> assign(:confirm_archive, nil)
     |> maybe_open_limit(params)
     |> assign(:empty?, clients == [])
     |> stream(:clients, clients, reset: true)
@@ -185,6 +189,23 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
         </.link>
       </nav>
       
+      <.sign
+        :if={@confirm_archive}
+        id="archive-confirm"
+        icon={:alert}
+        state={:next}
+        draw={false}
+      >
+        <:title>Archive {@confirm_archive.first_name} {@confirm_archive.last_name}?</:title>
+        They stop appearing in your list and free a place on your plan. Their plans and progress
+        are kept and they can still sign in, but only to view them. You can restore them later.
+        <:actions>
+          <.sign_action id="confirm-archive" primary phx-click="archive">Archive client</.sign_action>
+          
+          <.sign_action id="keep-client" phx-click="cancel_archive">Keep</.sign_action>
+        </:actions>
+      </.sign>
+      
       <div id="clients" phx-update="stream">
         <div
           id="clients-empty"
@@ -208,7 +229,27 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           <:title>{client.first_name} {client.last_name}</:title>
            {client.email}{if client.phone, do: " · #{client.phone}"}
           <:actions>
-            <.sign_action navigate={~p"/trainer/clients/#{client.id}"}>Open</.sign_action>
+            <.sign_action :if={@status != "archived"} navigate={~p"/trainer/clients/#{client.id}"}>
+              Open
+            </.sign_action>
+            
+            <.sign_action
+              :if={@can_archive? && @status != "archived"}
+              id={"archive-#{client.id}"}
+              phx-click="ask_archive"
+              phx-value-id={client.id}
+            >
+              Archive
+            </.sign_action>
+            
+            <.sign_action
+              :if={@status == "archived"}
+              id={"restore-#{client.id}"}
+              phx-click="restore"
+              phx-value-id={client.id}
+            >
+              Restore
+            </.sign_action>
           </:actions>
         </.sign>
       </div>
@@ -340,6 +381,18 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     """
   end
 
+  # The plan count and the list both change, so reload the scope and the page.
+  defp refresh(socket, message) do
+    scope = Scope.load(socket.assigns.current_scope.user)
+    status = socket.assigns.status
+    path = if status, do: ~p"/trainer/clients?status=#{status}", else: ~p"/trainer/clients"
+
+    socket
+    |> assign(:current_scope, scope)
+    |> put_flash(:info, message)
+    |> push_patch(to: path)
+  end
+
   defp limit_text(:infinity), do: "unlimited"
   defp limit_text(n), do: to_string(n)
 
@@ -356,6 +409,36 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   end
 
   def handle_event("close_limit", _params, socket), do: {:noreply, assign(socket, :limit, nil)}
+
+  def handle_event("ask_archive", %{"id" => id}, socket) do
+    case Clients.fetch_for(socket.assigns.current_scope, :delete, id) do
+      {:ok, client} -> {:noreply, assign(socket, :confirm_archive, client)}
+      error -> {:noreply, deny(socket, error)}
+    end
+  end
+
+  def handle_event("cancel_archive", _params, socket),
+    do: {:noreply, assign(socket, :confirm_archive, nil)}
+
+  def handle_event("archive", _params, %{assigns: %{confirm_archive: %User{} = client}} = socket) do
+    scope = socket.assigns.current_scope
+
+    with :ok <- Authorization.authorize(scope, :delete, client),
+         {:ok, _links} <- Clients.archive_client_links(client, scope) do
+      {:noreply, refresh(socket, "#{client.first_name} archived.")}
+    else
+      error -> {:noreply, socket |> assign(:confirm_archive, nil) |> deny(error)}
+    end
+  end
+
+  def handle_event("archive", _params, socket), do: {:noreply, socket}
+
+  def handle_event("restore", %{"id" => id}, socket) do
+    case Clients.restore_client(socket.assigns.current_scope, id) do
+      {:ok, _link} -> {:noreply, refresh(socket, "Client restored.")}
+      error -> {:noreply, deny(socket, error)}
+    end
+  end
 
   def handle_event("validate", %{"client" => client_params}, socket) do
     changeset =
