@@ -203,8 +203,6 @@ defmodule AfyaFitWeb.Router do
 
     # Billing & Subscriptions
     get "/subscriptions", SubscriptionController, :show
-    post "/subscriptions", SubscriptionController, :create
-    put "/subscriptions", SubscriptionController, :update
     delete "/subscriptions", SubscriptionController, :cancel
     get "/subscriptions/invoices", SubscriptionController, :invoices
     post "/payments/initialize", PaymentController, :initialize

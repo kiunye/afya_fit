@@ -47,18 +47,13 @@ defmodule AfyaFitWeb.BillingLive do
 
   defp load(socket) do
     scope = socket.assigns.current_scope
-    zone = AfyaFit.Timezone.zone(scope)
-
-    subscription =
-      scope.user.organization_id
-      |> Billing.get_subscription_by_organization()
-      |> localize_subscription(zone)
+    subscription = Billing.get_subscription_by_organization(scope.user.organization_id)
 
     invoices = if subscription, do: Billing.list_invoices(subscription.id), else: []
 
     socket
     |> assign(:subscription, subscription)
-    |> assign(:status, subscription |> status_of(scope) |> localize_status(zone))
+    |> assign(:status, status_of(subscription, scope))
     |> assign(:can_manage?, Authorization.can?(scope, :manage, :subscription))
     |> assign(:invoices_empty?, invoices == [])
     |> stream(:invoices, invoices, reset: true)
@@ -83,7 +78,7 @@ defmodule AfyaFitWeb.BillingLive do
             time_label="Plan"
           >
             <:title>{plan_name(@subscription, @current_scope)} plan</:title>
-             {period_text(@subscription)}
+             {period_text(@subscription, @current_scope)}
             <:actions :if={@can_manage?}>
               <.sign_action :if={upgrade?(@subscription)} id="upgrade" primary phx-click="upgrade">
                 Upgrade to Pro
@@ -108,7 +103,9 @@ defmodule AfyaFitWeb.BillingLive do
             time={status_word(@status)}
             time_label="Status"
           >
-            <:title><.attention_dot :if={@status.reason} /> {status_headline(@status)}</:title>
+            <:title>
+              <.attention_dot :if={@status.reason} /> {status_headline(@status, @current_scope)}
+            </:title>
              {status_detail(@status)}
             <:actions :if={@can_manage? && cancellable?(@subscription, @status)}>
               <.sign_action id="cancel-plan" phx-click="ask_cancel">Cancel plan</.sign_action>
@@ -125,7 +122,7 @@ defmodule AfyaFitWeb.BillingLive do
             <:title>
               Cancel {plan_name(@subscription, @current_scope)} at the end of this period?
             </:title>
-            You keep access until {period_end_text(@subscription)}. After that the account becomes
+            You keep access until {period_end_text(@subscription, @current_scope)}. After that the account becomes
             read-only; your data stays.
             <:actions>
               <.sign_action id="confirm-cancel" primary phx-click="cancel_subscription">
@@ -174,34 +171,16 @@ defmodule AfyaFitWeb.BillingLive do
   defp plan_name(nil, scope), do: String.capitalize(scope.tier)
   defp plan_name(subscription, _scope), do: String.capitalize(subscription.plan_type)
 
-  defp period_text(nil), do: "No paid plan. Upgrade to add clients and unlock more."
+  defp period_text(nil, _scope), do: "No paid plan. Upgrade to add clients and unlock more."
 
-  defp period_text(subscription) do
-    "Period #{Calendar.strftime(subscription.current_period_start, "%-d %b")} to #{period_end_text(subscription)}"
+  defp period_text(subscription, scope) do
+    "Period #{date(subscription.current_period_start, scope)} to #{period_end_text(subscription, scope)}"
   end
 
-  defp period_end_text(nil), do: ""
+  defp period_end_text(nil, _scope), do: ""
 
-  defp period_end_text(subscription),
-    do: Calendar.strftime(subscription.current_period_end, "%-d %b")
-
-  # Dates are shown in the viewer's zone; shifting the zone keeps the same instant.
-  defp localize_subscription(nil, _zone), do: nil
-
-  defp localize_subscription(subscription, zone) do
-    %{
-      subscription
-      | current_period_start: AfyaFit.Timezone.to_local(subscription.current_period_start, zone),
-        current_period_end: AfyaFit.Timezone.to_local(subscription.current_period_end, zone)
-    }
-  end
-
-  defp localize_status(%BillingStatus{} = status, zone) do
-    %{status | since: localize(status.since, zone), until: localize(status.until, zone)}
-  end
-
-  defp localize(nil, _zone), do: nil
-  defp localize(datetime, zone), do: AfyaFit.Timezone.to_local(datetime, zone)
+  defp period_end_text(subscription, scope),
+    do: date(subscription.current_period_end, scope)
 
   defp upgrade?(nil), do: true
   defp upgrade?(subscription), do: subscription.plan_type == "free"
@@ -223,19 +202,19 @@ defmodule AfyaFitWeb.BillingLive do
 
   defp summary(nil, _status, _scope), do: "Free plan."
 
-  defp summary(subscription, status, _scope) do
+  defp summary(subscription, status, scope) do
     case status.reason do
       nil ->
-        "#{plan_name(subscription, nil)} plan, renews #{period_end_text(subscription)}."
+        "#{plan_name(subscription, nil)} plan, renews #{period_end_text(subscription, scope)}."
 
       :grace ->
-        "Payment failed on #{date(status.since)}. Full access until #{date(status.until)}."
+        "Payment failed on #{date(status.since, scope)}. Full access until #{date(status.until, scope)}."
 
       :cancelling ->
-        "Cancelled. Access ends #{date(status.until)}."
+        "Cancelled. Access ends #{date(status.until, scope)}."
 
       :past_due ->
-        "Payment failed on #{date(status.since)}. Read-only until it clears."
+        "Payment failed on #{date(status.since, scope)}. Read-only until it clears."
 
       :cancelled ->
         "Cancelled. The account is read-only."
@@ -255,10 +234,10 @@ defmodule AfyaFitWeb.BillingLive do
   defp status_word(%{reason: :inactive}), do: "Inactive"
   defp status_word(_status), do: "Active"
 
-  defp status_headline(%{reason: reason} = status) when reason in [:grace, :past_due],
-    do: "Past due since #{date(status.since)}"
+  defp status_headline(%{reason: reason} = status, scope) when reason in [:grace, :past_due],
+    do: "Past due since #{date(status.since, scope)}"
 
-  defp status_headline(status), do: status_word(status)
+  defp status_headline(status, _scope), do: status_word(status)
 
   defp status_detail(%{reason: :grace}),
     do: "You get seven days of full access after a failed payment. Clients keep using the app."
@@ -280,7 +259,7 @@ defmodule AfyaFitWeb.BillingLive do
   defp cancellable?(subscription, status),
     do: is_nil(status.reason) and subscription.status == "active"
 
-  defp date(datetime), do: Calendar.strftime(datetime, "%-d %b")
+  defp date(datetime, scope), do: local(datetime, scope, "%-d %b")
 
   defp format_amount(%Decimal{} = amount),
     do: amount |> Decimal.round(2) |> Decimal.to_string(:normal)

@@ -4,6 +4,8 @@ defmodule AfyaFit.Billing do
   """
   import Ecto.Query, warn: false
   alias AfyaFit.Billing.{ClientSubscription, Invoice, Subscription}
+  alias AfyaFit.Organizations
+  alias AfyaFit.Organizations.Organization
   alias AfyaFit.Payments.PaystackClient
   alias AfyaFit.Repo
 
@@ -16,118 +18,64 @@ defmodule AfyaFit.Billing do
   end
 
   @doc """
-  Creates a subscription with Paystack integration.
+  Puts an organization on `plan` for `days` days and keeps its own `plan_type`
+  in step. The one place that decides what a subscription period looks like:
+  checkout, a platform admin's grant and anything else that changes a plan go
+  through here.
+
+  A new period starts now, unless `extend: true` and the organization is
+  already active on the same plan, in which case the days are added to the end
+  of the current one. The subscription comes back active and no longer
+  cancelling. Callers that need all-or-nothing wrap this in a transaction.
   """
-  def create_subscription(organization, plan_type, customer_email, customer_name) do
-    # Create Paystack customer
-    case PaystackClient.create_customer(customer_email, customer_name, "") do
-      {:ok, %Paystack.Response{success: true, data: customer_data}} ->
-        customer_code = customer_data["customer_code"]
+  def put_plan(%Organization{} = organization, plan, days, opts \\ [])
+      when plan in ~w(free pro enterprise) and is_integer(days) do
+    now = Keyword.get_lazy(opts, :now, fn -> DateTime.utc_now() |> DateTime.truncate(:second) end)
+    subscription = Repo.get_by(Subscription, organization_id: organization.id)
 
-        # Create subscription in database
-        now = DateTime.utc_now()
-        period_end = DateTime.add(now, 30, :day)
+    {period_start, base} =
+      if opts[:extend] && continuing?(subscription, plan, now),
+        do: {subscription.current_period_start, subscription.current_period_end},
+        else: {now, now}
 
-        attrs = %{
-          organization_id: organization.id,
-          plan_type: plan_type,
-          status: "active",
-          paystack_customer_code: customer_code,
-          current_period_start: now,
-          current_period_end: period_end
-        }
+    attrs = %{
+      organization_id: organization.id,
+      plan_type: plan,
+      status: "active",
+      current_period_start: period_start,
+      current_period_end: DateTime.add(base, days, :day),
+      cancel_at_period_end: false,
+      cancelled_at: nil
+    }
 
-        case Repo.insert(Subscription.changeset(%Subscription{}, attrs)) do
-          {:ok, subscription} ->
-            {:ok, subscription}
-
-          {:error, changeset} ->
-            {:error, changeset}
-        end
-
-      {:ok, %Paystack.Response{success: false, message: message}} ->
-        {:error, "Paystack error: #{message}"}
-
-      {:error, reason} ->
-        {:error, "Failed to create Paystack customer: #{inspect(reason)}"}
+    with {:ok, saved} <-
+           (subscription || %Subscription{})
+           |> Subscription.changeset(attrs)
+           |> Repo.insert_or_update(),
+         {:ok, _organization} <-
+           Organizations.update_organization(organization, %{plan_type: plan}) do
+      {:ok, saved}
     end
   end
 
-  @doc """
-  Updates subscription status from Paystack webhook.
-  """
-  def update_subscription_from_webhook(subscription_code, webhook_data) do
-    case Repo.get_by(Subscription, paystack_subscription_code: subscription_code) do
-      nil ->
-        {:error, :not_found}
+  defp continuing?(nil, _plan, _now), do: false
 
-      subscription ->
-        status = Map.get(webhook_data, "status", subscription.status)
-        current_period_start = parse_datetime(webhook_data["current_period_start"])
-        current_period_end = parse_datetime(webhook_data["current_period_end"])
-
-        attrs = %{
-          status: normalize_status(status),
-          paystack_subscription_code: subscription_code,
-          current_period_start: current_period_start || subscription.current_period_start,
-          current_period_end: current_period_end || subscription.current_period_end
-        }
-
-        subscription
-        |> Subscription.changeset(attrs)
-        |> Repo.update()
-    end
+  defp continuing?(subscription, plan, now) do
+    subscription.status == "active" and subscription.plan_type == plan and
+      DateTime.compare(subscription.current_period_end, now) == :gt
   end
 
   @doc """
-  Updates a subscription.
-  """
-  def update_subscription(subscription, attrs) do
-    subscription
-    |> Subscription.changeset(attrs)
-    |> Repo.update()
-  end
-
-  @doc """
-  Cancels a subscription.
+  Cancels a subscription at the end of the paid period.
   """
   def cancel_subscription(subscription) do
-    if subscription.paystack_subscription_code do
-      case PaystackClient.cancel_subscription(subscription.paystack_subscription_code) do
-        {:ok, %Paystack.Response{success: true}} ->
-          attrs = %{
-            status: "cancelled",
-            cancel_at_period_end: true,
-            cancelled_at: DateTime.utc_now()
-          }
-
-          subscription
-          |> Subscription.changeset(attrs)
-          |> Repo.update()
-
-        _ ->
-          # Still mark as cancelled locally even if Paystack call fails
-          attrs = %{
-            status: "cancelled",
-            cancel_at_period_end: true,
-            cancelled_at: DateTime.utc_now()
-          }
-
-          subscription
-          |> Subscription.changeset(attrs)
-          |> Repo.update()
-      end
-    else
-      attrs = %{
-        status: "cancelled",
-        cancel_at_period_end: true,
-        cancelled_at: DateTime.utc_now()
-      }
-
-      subscription
-      |> Subscription.changeset(attrs)
-      |> Repo.update()
-    end
+    subscription
+    |> Subscription.changeset(%{
+      status: "cancelled",
+      cancel_at_period_end: true,
+      cancelled_at: DateTime.utc_now()
+    })
+    |> Repo.update()
   end
 
   @doc """
@@ -220,6 +168,7 @@ defmodule AfyaFit.Billing do
 
         # Calculate period end based on plan type
         now = DateTime.utc_now()
+
         period_end =
           case plan_type do
             "monthly" -> DateTime.add(now, 30, :day)

@@ -17,9 +17,9 @@ defmodule AfyaFit.Billing.Checkout do
 
   import Ecto.Query
 
-  alias AfyaFit.{Authorization, Organizations, Payments, Repo, Shared}
+  alias AfyaFit.{Authorization, Billing, Payments, Repo, Shared}
   alias AfyaFit.Authorization.Scope
-  alias AfyaFit.Billing.{Invoice, Payment, Plans, Subscription}
+  alias AfyaFit.Billing.{Invoice, Payment, Plans}
   alias AfyaFit.Organizations.Organization
 
   require Logger
@@ -371,39 +371,17 @@ defmodule AfyaFit.Billing.Checkout do
   end
 
   # Paying for the plan you are already on adds a period to the end of the
-  # current one; paying for another plan, or after a lapse, starts a new period.
+  # current one; another plan, or a lapsed account, starts a new period.
   defp activate(payment, now) do
-    subscription = Repo.get_by(Subscription, organization_id: payment.organization_id)
-
-    extend? =
-      subscription != nil and subscription.status == "active" and
-        subscription.plan_type == payment.plan_type and
-        DateTime.compare(subscription.current_period_end, now) == :gt
-
-    {period_start, base} =
-      if extend?,
-        do: {subscription.current_period_start, subscription.current_period_end},
-        else: {now, now}
-
-    attrs = %{
-      organization_id: payment.organization_id,
-      plan_type: payment.plan_type,
-      status: "active",
-      current_period_start: period_start,
-      current_period_end: DateTime.add(base, Plans.period_days(), :day),
-      cancel_at_period_end: false,
-      cancelled_at: nil
-    }
-
-    {:ok, saved} =
-      (subscription || %Subscription{})
-      |> Subscription.changeset(attrs)
-      |> Repo.insert_or_update()
-
     organization = Repo.get!(Organization, payment.organization_id)
-    {:ok, _} = Organizations.update_organization(organization, %{plan_type: payment.plan_type})
 
-    saved
+    {:ok, subscription} =
+      Billing.put_plan(organization, payment.plan_type, Plans.period_days(),
+        extend: true,
+        now: now
+      )
+
+    subscription
   end
 
   defp invoice_number(payment, now) do

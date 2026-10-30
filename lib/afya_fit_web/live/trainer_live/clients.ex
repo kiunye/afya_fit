@@ -336,7 +336,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
         <.list>
           <:item title="Phone">{@client.phone || "Not provided"}</:item>
           
-          <:item title="Time zone">{@client.timezone}</:item>
+          <:item title="Time zone">{AfyaFit.Timezone.zone(@client)}</:item>
         </.list>
       </div>
     </.sign_group>

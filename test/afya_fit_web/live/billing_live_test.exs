@@ -28,6 +28,27 @@ defmodule AfyaFitWeb.BillingLiveTest do
     end
   end
 
+  describe "dates" do
+    test "are shown on the viewer's calendar", %{conn: conn, org: org, owner: owner} do
+      # 22:30 UTC on 1 November is already 2 November in Nairobi.
+      subscription(org, %{plan_type: "pro", current_period_end: ~U[2026-11-01 22:30:00Z]})
+      {:ok, _} = AfyaFit.Accounts.update_timezone(owner, "Africa/Nairobi")
+
+      {:ok, view, _} = conn |> log_in(AfyaFit.Repo.reload!(owner)) |> live(~p"/billing")
+
+      assert has_element?(view, "#plan", "2 Nov")
+      refute has_element?(view, "#plan", "1 Nov")
+    end
+
+    test "default to UTC", %{conn: conn, org: org, owner: owner} do
+      subscription(org, %{plan_type: "pro", current_period_end: ~U[2026-11-01 22:30:00Z]})
+
+      {:ok, view, _} = conn |> log_in(owner) |> live(~p"/billing")
+
+      assert has_element?(view, "#plan", "1 Nov")
+    end
+  end
+
   describe "paying" do
     defp open_methods(view, plan \\ "pro") do
       view |> element("#upgrade") |> render_click()

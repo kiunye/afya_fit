@@ -194,15 +194,11 @@ defmodule AfyaFit.Accounts do
   ## Time zone
 
   @doc """
-  Takes the zone the browser reports for someone still on the default `UTC`.
-  A zone they have chosen is never overwritten, and an unknown one is ignored.
-  A person who really wants UTC and whose browser says otherwise can pick it in
-  Settings, but is moved again the next time they sign in.
+  Takes the zone the browser reports for someone who has none yet. A zone they
+  have chosen, UTC included, is never overwritten, and an unknown one is ignored.
   """
-  def adopt_timezone(%User{timezone: "UTC"} = user, zone) when is_binary(zone) do
-    if zone != "UTC" and AfyaFit.Timezone.valid?(zone),
-      do: update_timezone(user, zone),
-      else: {:ok, user}
+  def adopt_timezone(%User{timezone: nil} = user, zone) when is_binary(zone) do
+    if AfyaFit.Timezone.valid?(zone), do: update_timezone(user, zone), else: {:ok, user}
   end
 
   def adopt_timezone(%User{} = user, _zone), do: {:ok, user}

@@ -4,8 +4,9 @@ defmodule AfyaFit.Payments do
 
       config :afya_fit, paystack_gateway: MyFake, mpesa_gateway: MyFake
 
-  The Paystack gateway needs `checkout/5` and `verify/1`; the M-Pesa gateway
-  needs `stk_push/1`, `stk_query/1` and `normalize_phone/1`. See
+  Every gateway answers `enabled?/0` (are its credentials set?). The Paystack
+  gateway also needs `checkout/5` and `verify/1`; the M-Pesa gateway needs
+  `stk_push/1`, `stk_query/1` and `normalize_phone/1`. See
   `AfyaFit.Payments.PaystackClient` and `AfyaFit.Payments.Daraja`.
   """
 
@@ -15,10 +16,8 @@ defmodule AfyaFit.Payments do
   def mpesa, do: Application.get_env(:afya_fit, :mpesa_gateway, Daraja)
 
   @doc "Whether card payments (Paystack) can be offered."
-  def paystack_enabled? do
-    paystack() != PaystackClient or is_binary(Application.get_env(:paystack, :secret_key))
-  end
+  def paystack_enabled?, do: paystack().enabled?()
 
   @doc "Whether M-Pesa can be offered."
-  def mpesa_enabled?, do: mpesa() != Daraja or Daraja.configured?()
+  def mpesa_enabled?, do: mpesa().enabled?()
 end

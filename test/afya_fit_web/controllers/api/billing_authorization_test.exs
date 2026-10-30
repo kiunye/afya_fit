@@ -40,7 +40,7 @@ defmodule AfyaFitWeb.API.BillingAuthorizationTest do
       assert conn |> authenticate(client) |> get(~p"/api/v1/subscriptions") |> json_response(403)
     end
 
-    test "trainers and clients cannot change, cancel or list invoices", %{
+    test "trainers and clients cannot cancel or list invoices", %{
       conn: conn,
       trainer: trainer,
       client: client
@@ -48,17 +48,39 @@ defmodule AfyaFitWeb.API.BillingAuthorizationTest do
       for user <- [trainer, client] do
         conn = authenticate(conn, user)
 
-        assert put(conn, ~p"/api/v1/subscriptions", %{
-                 "subscription" => %{"plan_type" => "enterprise"}
-               })
-               |> json_response(403)
-
         assert delete(conn, ~p"/api/v1/subscriptions") |> json_response(403)
         assert get(conn, ~p"/api/v1/subscriptions/invoices") |> json_response(403)
-
-        assert post(conn, ~p"/api/v1/subscriptions", %{"subscription" => %{}})
-               |> json_response(403)
       end
+    end
+
+    # A plan is bought through checkout. These used to let an owner pick any
+    # plan, paid or not.
+    test "nobody can set a plan through the API, the owner included", %{
+      conn: conn,
+      org: org,
+      org_admin: org_admin
+    } do
+      before = AfyaFit.Repo.get_by!(AfyaFit.Billing.Subscription, organization_id: org.id)
+      conn = authenticate(conn, org_admin)
+
+      for call <- [
+            fn ->
+              put(conn, ~p"/api/v1/subscriptions", %{
+                "subscription" => %{"plan_type" => "enterprise"}
+              })
+            end,
+            fn ->
+              post(conn, ~p"/api/v1/subscriptions", %{
+                "subscription" => %{"plan_type" => "enterprise"}
+              })
+            end
+          ] do
+        assert call.() |> json_response(404)
+      end
+
+      after_calls = AfyaFit.Repo.get_by!(AfyaFit.Billing.Subscription, organization_id: org.id)
+      assert after_calls.plan_type == before.plan_type
+      assert after_calls.current_period_end == before.current_period_end
     end
 
     test "an organization admin can still manage billing while read-only", %{

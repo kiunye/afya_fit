@@ -14,7 +14,7 @@ defmodule AfyaFit.Payments.Daraja do
   @token_key {__MODULE__, :token}
 
   @doc "Whether every credential is present."
-  def configured? do
+  def enabled? do
     Enum.all?([:consumer_key, :consumer_secret, :shortcode, :passkey], &present?(config(&1)))
   end
 

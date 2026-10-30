@@ -102,28 +102,14 @@ defmodule AfyaFit.Platform do
   def grant_plan(%Scope{} = scope, %Organization{} = organization, plan, days)
       when plan in @plans and days in @grant_days do
     with :ok <- Authorization.authorize(scope, :manage, :admin_panel) do
-      now = DateTime.utc_now() |> DateTime.truncate(:second)
-
-      attrs = %{
-        organization_id: organization.id,
-        plan_type: plan,
-        status: "active",
-        current_period_start: now,
-        current_period_end: DateTime.add(now, days, :day),
-        cancel_at_period_end: false,
-        cancelled_at: nil
-      }
-
       Repo.transaction(fn ->
-        subscription = Repo.get_by(Subscription, organization_id: organization.id)
-        changeset = Subscription.changeset(subscription || %Subscription{}, attrs)
+        case Billing.put_plan(organization, plan, days) do
+          {:ok, saved} ->
+            log(scope, organization, "platform.grant_plan", %{plan: plan, days: days})
+            saved
 
-        with {:ok, saved} <- Repo.insert_or_update(changeset),
-             {:ok, _} <- Organizations.update_organization(organization, %{plan_type: plan}) do
-          log(scope, organization, "platform.grant_plan", %{plan: plan, days: days})
-          saved
-        else
-          {:error, changeset} -> Repo.rollback(changeset)
+          {:error, changeset} ->
+            Repo.rollback(changeset)
         end
       end)
     end
