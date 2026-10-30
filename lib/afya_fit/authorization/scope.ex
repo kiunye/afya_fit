@@ -30,7 +30,8 @@ defmodule AfyaFit.Authorization.Scope do
             period_end: nil,
             cancel_at_period_end: false,
             client_ids: MapSet.new(),
-            client_count: 0
+            client_count: 0,
+            archived: false
 
   @type role :: :admin | :org_admin | :trainer | :client | :none
 
@@ -44,7 +45,8 @@ defmodule AfyaFit.Authorization.Scope do
           period_end: DateTime.t() | nil,
           cancel_at_period_end: boolean(),
           client_ids: MapSet.t(binary()),
-          client_count: non_neg_integer()
+          client_count: non_neg_integer(),
+          archived: boolean()
         }
 
   @doc """
@@ -84,7 +86,8 @@ defmodule AfyaFit.Authorization.Scope do
       period_end: subscription && subscription.current_period_end,
       cancel_at_period_end: (subscription && subscription.cancel_at_period_end) || false,
       client_ids: linked_client_ids(user),
-      client_count: count_clients(user.organization_id)
+      client_count: count_clients(user.organization_id),
+      archived: archived?(user)
     )
   end
 
@@ -150,13 +153,21 @@ defmodule AfyaFit.Authorization.Scope do
 
   defp linked_client_ids(_user), do: []
 
+  # Archived clients no longer take a place on the plan.
   defp count_clients(organization_id) do
     Repo.aggregate(
       from(u in User,
         where:
-          u.organization_id == ^organization_id and u.role == "client" and is_nil(u.deleted_at)
+          u.organization_id == ^organization_id and u.role == "client" and
+            is_nil(u.deleted_at) and u.id not in subquery(TrainerClient.archived_client_ids())
       ),
       :count
     )
   end
+
+  # A client whose coaching has ended can still sign in but only read their data.
+  defp archived?(%User{role: "client", id: id}),
+    do: Repo.exists?(from tc in TrainerClient.archived_client_ids(), where: tc.client_id == ^id)
+
+  defp archived?(_user), do: false
 end

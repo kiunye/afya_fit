@@ -20,7 +20,8 @@ defmodule AfyaFit.Authorization.ScopeLoadTest do
     assert scope.organization.id == org.id
     assert scope.tier == "free"
     assert MapSet.to_list(scope.client_ids) == [client.id]
-    assert scope.client_count == 2
+    # The archived client no longer takes a place on the plan.
+    assert scope.client_count == 1
   end
 
   test "reads subscription status and period end", %{org: org, trainer: trainer} do

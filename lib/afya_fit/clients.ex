@@ -66,13 +66,15 @@ defmodule AfyaFit.Clients do
     query =
       case Map.get(filters, :status) do
         nil ->
-          query
+          where(query, [u], u.id not in subquery(TrainerClient.archived_client_ids()))
 
-        "active" ->
-          # Only clients with active trainer relationships
+        "archived" ->
+          where(query, [u], u.id in subquery(TrainerClient.archived_client_ids()))
+
+        status when status in ["active", "paused"] ->
           query
           |> join(:inner, [u], tc in TrainerClient, on: tc.client_id == u.id)
-          |> where([u, tc], tc.status == "active")
+          |> where([u, tc], tc.status == ^status)
           |> distinct([u], true)
 
         _ ->
@@ -185,6 +187,41 @@ defmodule AfyaFit.Clients do
         archived
       end
     end)
+  end
+
+  @doc """
+  Takes an archived client back: a trainer restores their own link, an
+  organization admin the most recently archived one. Restoring adds a client
+  back to the plan, so the client limit and read-only billing apply.
+  """
+  def restore_client(%Scope{} = scope, client_id) do
+    with {:ok, client_id} <- Ecto.UUID.cast(client_id),
+         :ok <- Authorization.authorize(scope, :create, :client),
+         %TrainerClient{} = link <- archived_link(scope, client_id) do
+      update_trainer_client(link, %{status: "active", ended_at: nil})
+    else
+      nil -> {:error, :not_found}
+      :error -> {:error, :not_found}
+      error -> error
+    end
+  end
+
+  defp archived_link(%Scope{user: user} = scope, client_id) do
+    query =
+      from tc in TrainerClient,
+        join: c in assoc(tc, :client),
+        where:
+          tc.client_id == ^client_id and tc.status == "archived" and
+            c.organization_id == ^user.organization_id,
+        order_by: [desc: tc.ended_at],
+        limit: 1
+
+    query =
+      if Scope.role(scope) == :trainer,
+        do: where(query, [tc], tc.trainer_id == ^user.id),
+        else: query
+
+    Repo.one(query)
   end
 
   @doc """

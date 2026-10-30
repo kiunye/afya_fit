@@ -29,6 +29,15 @@ defmodule AfyaFitWeb.API.FallbackController do
     |> render(:"403")
   end
 
+  def call(conn, {:error, :archived}) do
+    conn
+    |> put_status(:forbidden)
+    |> json(%{
+      error: "archived",
+      message: "Your coaching has ended, so your data is read-only."
+    })
+  end
+
   def call(conn, {:error, {:upgrade_required, details}} = error) do
     PlanBlocks.record(conn.assigns[:current_scope], error)
 

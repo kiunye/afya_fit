@@ -174,6 +174,9 @@ defmodule AfyaFitWeb.Access do
       {:error, :forbidden} ->
         {:forbidden, forbidden_message(scope)}
 
+      {:error, :archived} ->
+        {:forbidden, "Your coaching has ended, so your data is read-only."}
+
       {:error, :not_found} ->
         {:not_found, "That page is not here, or it belongs to another organisation."}
 

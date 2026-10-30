@@ -53,6 +53,70 @@ defmodule AfyaFitWeb.TrainerLive.ClientsTest do
     end
   end
 
+  describe "archiving" do
+    test "asks first, then moves the client out of the list", ctx do
+      %{conn: conn, trainer: trainer, mine: mine} = ctx
+      {:ok, view, _} = conn |> log_in(trainer) |> live(~p"/trainer/clients")
+
+      view |> element("#archive-#{mine.id}") |> render_click()
+      assert has_element?(view, "#archive-confirm", "Archive Otieno Odhiambo?")
+
+      view |> element("#keep-client") |> render_click()
+      refute has_element?(view, "#archive-confirm")
+      assert has_element?(view, "#clients a[href='/trainer/clients/#{mine.id}']")
+
+      view |> element("#archive-#{mine.id}") |> render_click()
+      view |> element("#confirm-archive") |> render_click()
+
+      assert render(view) =~ "Otieno archived."
+      refute has_element?(view, "#clients a[href='/trainer/clients/#{mine.id}']")
+
+      assert Repo.get_by!(AfyaFit.Accounts.TrainerClient, client_id: mine.id).status ==
+               "archived"
+    end
+
+    test "archived clients can be restored from their filter", ctx do
+      %{conn: conn, trainer: trainer, mine: mine} = ctx
+
+      {:ok, _} =
+        AfyaFit.Clients.archive_client_links(mine, AfyaFit.Authorization.Scope.load(trainer))
+
+      {:ok, view, _} = conn |> log_in(trainer) |> live(~p"/trainer/clients?status=archived")
+      refute has_element?(view, "#archive-#{mine.id}")
+
+      view |> element("#restore-#{mine.id}") |> render_click()
+
+      assert render(view) =~ "Client restored."
+      refute has_element?(view, "#restore-#{mine.id}")
+
+      {:ok, view, _} = conn |> log_in(trainer) |> live(~p"/trainer/clients")
+      assert has_element?(view, "#clients a[href='/trainer/clients/#{mine.id}']")
+    end
+
+    test "someone else's client cannot be archived by id", ctx do
+      %{conn: conn, trainer: trainer, stranger: stranger} = ctx
+      {:ok, view, _} = conn |> log_in(trainer) |> live(~p"/trainer/clients")
+
+      render_hook(view, "ask_archive", %{"id" => stranger.id})
+
+      refute has_element?(view, "#archive-confirm")
+      assert has_element?(view, "#flash-error")
+    end
+
+    test "restoring into a full Free plan opens the limit dialog", %{conn: conn} do
+      org = organization(%{plan_type: "free"})
+      trainer = user(org, :trainer)
+      gone = user(org, :client)
+      link(trainer, gone, "archived")
+      for _ <- 1..3, do: link(trainer, user(org, :client))
+
+      {:ok, view, _} = conn |> log_in(trainer) |> live(~p"/trainer/clients?status=archived")
+      view |> element("#restore-#{gone.id}") |> render_click()
+
+      assert has_element?(view, "#limit-dialog")
+    end
+  end
+
   describe "the Free plan limit" do
     setup do
       org = organization(%{plan_type: "free"})

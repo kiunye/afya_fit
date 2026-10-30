@@ -22,6 +22,10 @@ defmodule AfyaFit.Authorization do
     4. billing state: read-only organizations cannot write
     5. tier entitlements and client limits (`Entitlements`)
 
+  A client whose coaching has ended (every link archived) can still read their
+  own data but not change it; that check sits between attribute rules and
+  billing and fails with `:archived`.
+
   Records that carry no `organization_id` of their own (progress entries,
   assigned workouts) must have their `client` preloaded.
   """
@@ -53,6 +57,7 @@ defmodule AfyaFit.Authorization do
 
   @type error ::
           :forbidden
+          | :archived
           | :not_found
           | {:upgrade_required, %{feature: atom(), required_tier: String.t() | nil}}
           | {:subscription_inactive, String.t()}
@@ -67,6 +72,7 @@ defmodule AfyaFit.Authorization do
     with :ok <- check_tenant(scope, role, record),
          :ok <- check_role(role, type, action),
          :ok <- Policy.check(type, scope, action, record),
+         :ok <- check_archived(scope, role, action),
          :ok <- check_billing(scope, role, type, action, now) do
       check_entitlement(scope, role, type, action)
     end
@@ -86,6 +92,12 @@ defmodule AfyaFit.Authorization do
 
   @doc "Resource types and actions the requester's role allows, ignoring attributes and tier."
   @spec permissions(Scope.t()) :: %{atom() => [atom()]}
+  def permissions(%Scope{archived: true} = scope) do
+    for {resource, actions} <- Permissions.for_role(Scope.role(scope)), into: %{} do
+      {resource, Enum.filter(actions, &Permissions.read_action?/1)}
+    end
+  end
+
   def permissions(%Scope{} = scope), do: scope |> Scope.role() |> Permissions.for_role()
 
   defp resolve(type, nil) when is_atom(type), do: {type, nil}
@@ -119,6 +131,12 @@ defmodule AfyaFit.Authorization do
   defp check_role(role, type, action) do
     if Permissions.allowed?(role, type, action), do: :ok, else: {:error, :forbidden}
   end
+
+  defp check_archived(%Scope{archived: true}, :client, action) do
+    if Permissions.read_action?(action), do: :ok, else: {:error, :archived}
+  end
+
+  defp check_archived(_scope, _role, _action), do: :ok
 
   defp check_billing(_scope, :admin, _type, _action, _now), do: :ok
   defp check_billing(_scope, :client, _type, _action, _now), do: :ok

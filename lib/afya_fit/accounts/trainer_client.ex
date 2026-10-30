@@ -1,6 +1,7 @@
 defmodule AfyaFit.Accounts.TrainerClient do
   use Ecto.Schema
   import Ecto.Changeset
+  import Ecto.Query, only: [from: 2]
 
   @moduledoc false
 
@@ -15,6 +16,21 @@ defmodule AfyaFit.Accounts.TrainerClient do
     field :notes, :string
 
     timestamps(type: :utc_datetime)
+  end
+
+  @doc "Ids of clients with a link that is still running (active or paused)."
+  def live_client_ids,
+    do: from(tc in __MODULE__, where: tc.status in ["active", "paused"], select: tc.client_id)
+
+  @doc """
+  Ids of clients whose coaching has ended: they have links, and every one is
+  archived. A client who was never linked is not archived.
+  """
+  def archived_client_ids do
+    from(tc in __MODULE__,
+      where: tc.status == "archived" and tc.client_id not in subquery(live_client_ids()),
+      select: tc.client_id
+    )
   end
 
   def changeset(trainer_client, attrs) do
