@@ -2,13 +2,14 @@ defmodule AfyaFitWeb.UserLive.Settings do
   use AfyaFitWeb, :live_view
 
   alias AfyaFit.Accounts
+  alias AfyaFit.Accounts.User
 
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:settings}>
       <div class="max-w-2xl space-y-12 px-4 py-6 sm:px-[26px]">
         <.header>Settings</.header>
-
+        
         <div class="space-y-4">
           <.form for={@email_form} id="email_form" phx-submit="update_email">
             <.input field={@email_form[:email]} type="email" label="Email" required />
@@ -21,11 +22,9 @@ defmodule AfyaFitWeb.UserLive.Settings do
               value={@email_form_current_password}
               required
             />
-            <div>
-              <.button phx-disable-with="Changing...">Change Email</.button>
-            </div>
+            <div><.button phx-disable-with="Changing...">Change Email</.button></div>
           </.form>
-
+          
           <.form
             for={@password_form}
             id="password_form"
@@ -52,9 +51,19 @@ defmodule AfyaFitWeb.UserLive.Settings do
               label="Current password"
               required
             />
-            <div>
-              <.button phx-disable-with="Changing...">Change Password</.button>
-            </div>
+            <div><.button phx-disable-with="Changing...">Change Password</.button></div>
+          </.form>
+        </div>
+        
+        <div class="space-y-4">
+          <.form for={@timezone_form} id="timezone_form" phx-submit="update_timezone">
+            <.input
+              field={@timezone_form[:timezone]}
+              type="select"
+              label="Time zone"
+              options={AfyaFit.Timezone.choices(@timezone_form[:timezone].value)}
+            />
+            <div><.button phx-disable-with="Saving...">Save time zone</.button></div>
           </.form>
         </div>
       </div>
@@ -72,6 +81,7 @@ defmodule AfyaFitWeb.UserLive.Settings do
       |> assign(:password_form_current_password, nil)
       |> assign_email_form(user)
       |> assign_password_form(user)
+      |> assign_timezone_form(user)
 
     {:ok, socket}
   end
@@ -160,6 +170,29 @@ defmodule AfyaFitWeb.UserLive.Settings do
     end
   end
 
+  def handle_event("update_timezone", %{"user" => %{"timezone" => zone}}, socket) do
+    scope = socket.assigns.current_scope
+
+    case Accounts.update_timezone(scope.user, zone) do
+      {:ok, user} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Time zone saved.")
+         |> assign(:current_scope, %{scope | user: user})
+         |> assign_timezone_form(user)}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, timezone_form: to_form(changeset, as: "user"))}
+    end
+  end
+
+  defp assign_timezone_form(socket, user) do
+    assign(socket,
+      timezone_form:
+        to_form(User.timezone_changeset(user, %{timezone: user.timezone}), as: "user")
+    )
+  end
+
   defp assign_email_form(socket, user) do
     assign(socket, email_form: to_form(Accounts.change_user_email(user), as: "user"))
   end
@@ -168,7 +201,3 @@ defmodule AfyaFitWeb.UserLive.Settings do
     assign(socket, password_form: to_form(Accounts.change_user_password(user), as: "user"))
   end
 end
-
-
-
-

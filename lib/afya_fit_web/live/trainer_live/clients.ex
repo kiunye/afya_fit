@@ -223,7 +223,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           :for={{id, client} <- @streams.clients}
           id={id}
           icon={:clients}
-          time={Calendar.strftime(client.inserted_at, "%-d %b")}
+          time={local(client.inserted_at, @current_scope, "%-d %b")}
           time_label="Added"
         >
           <:title>{client.first_name} {client.last_name}</:title>

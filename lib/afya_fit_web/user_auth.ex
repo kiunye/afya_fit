@@ -171,7 +171,7 @@ defmodule AfyaFitWeb.UserAuth do
   end
 
   def on_mount(:require_authenticated, _params, session, socket) do
-    socket = mount_scope(socket, session)
+    socket = socket |> mount_scope(session) |> adopt_browser_timezone()
 
     if socket.assigns.current_scope && socket.assigns.current_scope.user do
       {:cont, socket}
@@ -201,6 +201,20 @@ defmodule AfyaFitWeb.UserAuth do
 
   defp load_scope(nil), do: build_scope(nil)
   defp load_scope(token), do: token |> Accounts.get_user_by_session_token() |> build_scope()
+
+  # The first connected mount of someone still on UTC takes the browser's zone.
+  defp adopt_browser_timezone(socket) do
+    with true <- Phoenix.LiveView.connected?(socket),
+         %{user: %{} = user} = scope <- socket.assigns.current_scope,
+         zone when is_binary(zone) <- Phoenix.LiveView.get_connect_params(socket)["timezone"],
+         {:ok, %{timezone: new} = updated} <-
+           AfyaFit.RLS.unscoped(fn -> Accounts.adopt_timezone(user, zone) end),
+         true <- new != user.timezone do
+      Phoenix.Component.assign(socket, :current_scope, %{scope | user: updated})
+    else
+      _ -> socket
+    end
+  end
 
   defp mount_scope(socket, session) do
     Phoenix.Component.assign_new(socket, :current_scope, fn ->

@@ -17,7 +17,7 @@ defmodule AfyaFitWeb.UserLive.Register do
             instead.
           </:subtitle>
         </.header>
-        
+
         <.form
           for={@form}
           id="registration_form"
@@ -67,7 +67,7 @@ defmodule AfyaFitWeb.UserLive.Register do
               Enter your trainer's organization subdomain to join their account.
             </p>
           <% end %>
-          
+
           <div>
             <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
           </div>
@@ -84,10 +84,24 @@ defmodule AfyaFitWeb.UserLive.Register do
       socket
       |> assign(:trigger_submit, false)
       |> assign(:show_organization_fields, false)
+      |> assign(:browser_timezone, browser_timezone(socket))
       |> assign_form(changeset)
 
     {:ok, socket, temporary_assigns: [form: nil]}
   end
+
+  defp browser_timezone(socket) do
+    with true <- connected?(socket),
+         zone when is_binary(zone) <- get_connect_params(socket)["timezone"],
+         true <- AfyaFit.Timezone.valid?(zone) do
+      zone
+    else
+      _ -> nil
+    end
+  end
+
+  defp with_timezone(params, nil), do: params
+  defp with_timezone(params, zone), do: Map.put_new(params, "timezone", zone)
 
   def handle_event("validate", %{"user" => user_params}, socket) do
     role = user_params["role"]
@@ -107,6 +121,8 @@ defmodule AfyaFitWeb.UserLive.Register do
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
+    user_params = with_timezone(user_params, socket.assigns.browser_timezone)
+
     case Accounts.register_with_organization(user_params) do
       {:ok, user} ->
         {:ok, _} =

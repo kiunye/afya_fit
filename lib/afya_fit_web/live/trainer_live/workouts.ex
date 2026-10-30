@@ -175,7 +175,7 @@ defmodule AfyaFitWeb.TrainerLive.Workouts do
           :for={{id, plan} <- @streams.plans}
           id={id}
           icon={:workouts}
-          time={Calendar.strftime(plan.updated_at, "%-d %b")}
+          time={local(plan.updated_at, @current_scope, "%-d %b")}
           time_label="Updated"
         >
           <:title>{plan.name}</:title>

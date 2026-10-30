@@ -89,6 +89,7 @@ defmodule AfyaFitWeb do
       import Phoenix.HTML
       # Core UI components
       import AfyaFitWeb.CoreComponents
+      import AfyaFitWeb.TimeHelpers, only: [local: 3, local_today: 1]
 
       # Common modules used in templates
       alias AfyaFitWeb.Layouts

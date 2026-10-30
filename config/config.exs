@@ -21,6 +21,9 @@ end
 # General application configuration
 import Config
 
+# Time zone conversions (AfyaFit.Timezone) need a time zone database.
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 # Postgres row-level security. Off by default; see AfyaFit.Repo.
 config :afya_fit, AfyaFit.RLS, enforce: false, app_role: "afya_fit_app"
 

@@ -65,7 +65,7 @@ defmodule AfyaFitWeb.AdminLive.Organization do
             time_label="Clients"
           >
             <:title>{String.capitalize(@overview.tier)} plan</:title>
-            {subscription_text(@overview.subscription)}
+            {subscription_text(@overview.subscription, @current_scope)}
           </.sign>
 
           <.form
@@ -160,7 +160,7 @@ defmodule AfyaFitWeb.AdminLive.Organization do
               id={"activity-#{entry.id}"}
               icon={:alert}
               draw={false}
-              time={Calendar.strftime(entry.inserted_at, "%-d %b")}
+              time={local(entry.inserted_at, @current_scope, "%-d %b")}
               time_label="On"
             >
               <:title>{entry.action}</:title>
@@ -172,11 +172,11 @@ defmodule AfyaFitWeb.AdminLive.Organization do
     """
   end
 
-  defp subscription_text(nil), do: "No subscription."
+  defp subscription_text(nil, _scope), do: "No subscription."
 
-  defp subscription_text(subscription) do
+  defp subscription_text(subscription, scope) do
     "#{String.capitalize(subscription.status)} · period ends " <>
-      Calendar.strftime(subscription.current_period_end, "%-d %b %Y")
+      local(subscription.current_period_end, scope, "%-d %b %Y")
   end
 
   defp role_text("org_admin"), do: "Owner"

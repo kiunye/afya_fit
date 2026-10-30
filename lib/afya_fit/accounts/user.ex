@@ -81,6 +81,7 @@ defmodule AfyaFit.Accounts.User do
     |> validate_password(opts)
     |> validate_required([:email, :role, :first_name, :last_name, :organization_id])
     |> validate_inclusion(:role, ["trainer", "client", "admin"])
+    |> validate_timezone()
   end
 
   @doc """
@@ -104,6 +105,21 @@ defmodule AfyaFit.Accounts.User do
     |> validate_length(:email, max: 160)
     |> unsafe_validate_unique(:email, AfyaFit.Repo)
     |> unique_constraint(:email)
+    |> validate_timezone()
+  end
+
+  @doc "A changeset that changes only the user's time zone."
+  def timezone_changeset(user, attrs) do
+    user
+    |> cast(attrs, [:timezone])
+    |> validate_required([:timezone])
+    |> validate_timezone()
+  end
+
+  defp validate_timezone(changeset) do
+    validate_change(changeset, :timezone, fn :timezone, zone ->
+      if AfyaFit.Timezone.valid?(zone), do: [], else: [timezone: "is not a time zone we know"]
+    end)
   end
 
   @doc """

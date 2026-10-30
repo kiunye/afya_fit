@@ -49,7 +49,7 @@ defmodule AfyaFitWeb.TrainerLive.Dashboard do
 
       <div :if={!@denied} id="today">
         <.page_header>
-          Today · {Calendar.strftime(Date.utc_today(), "%a %-d %b")}
+          Today · {Calendar.strftime(local_today(@current_scope), "%a %-d %b")}
           <:subtitle>
             <b class="text-ink">{@counts.done} done, {@counts.remaining} to go.</b>
             {needs_sentence(@needs_count, @client_count)}
