@@ -8,8 +8,8 @@ defmodule AfyaFit.Workers.TaskReminderWorker do
 
   import Ecto.Query
   alias AfyaFit.Repo
+  alias AfyaFit.Tasks
   alias AfyaFit.Tasks.Task
-  alias AfyaFit.Timezone
   alias AfyaFit.Workers.EmailWorker
 
   @impl Oban.Worker
@@ -30,19 +30,10 @@ defmodule AfyaFit.Workers.TaskReminderWorker do
       |> Repo.all()
 
     candidates
-    |> Enum.filter(&due_soon?(&1, now))
+    |> Enum.filter(&Tasks.due_soon?(&1, now))
     |> Enum.each(&send_task_reminder/1)
 
     :ok
-  end
-
-  # Due today or tomorrow on the client's calendar.
-  @doc false
-  def due_soon?(%Task{client: client, due_date: due_date}, now) do
-    zone = Timezone.zone(client)
-    days_away = Date.diff(Timezone.local_date(due_date, zone), Timezone.today(zone, now))
-
-    days_away in 0..1
   end
 
   defp send_task_reminder(%Task{client: client} = task) when not is_nil(client) do

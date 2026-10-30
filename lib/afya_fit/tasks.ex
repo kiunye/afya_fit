@@ -8,6 +8,19 @@ defmodule AfyaFit.Tasks do
   alias AfyaFit.Repo
   alias AfyaFit.Tasks.{Task, TaskCompletion, TaskRecurrence}
 
+  @doc """
+  Whether the task is due today or tomorrow on its client's calendar. Needs the
+  client preloaded. "Today" is the client's day, not UTC's.
+  """
+  def due_soon?(%Task{client: client, due_date: due_date}, now) do
+    zone = AfyaFit.Timezone.zone(client)
+
+    due_date
+    |> AfyaFit.Timezone.local_date(zone)
+    |> Date.diff(AfyaFit.Timezone.today(zone, now))
+    |> Kernel.in(0..1)
+  end
+
   def list_tasks(client_id \\ nil) do
     query = Task
 

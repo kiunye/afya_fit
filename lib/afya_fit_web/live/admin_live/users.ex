@@ -44,13 +44,12 @@ defmodule AfyaFitWeb.AdminLive.Users do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:users}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
-
       <div :if={!@denied} id="users-page">
         <.page_header>
           Users
           <:subtitle>Search by name or email across every organisation.</:subtitle>
         </.page_header>
-
+        
         <.sign_group label="Search">
           <.form
             for={@form}
@@ -67,14 +66,15 @@ defmodule AfyaFitWeb.AdminLive.Users do
               phx-debounce="300"
             />
           </.form>
-
+          
           <div id="users" phx-update="stream">
             <div id="users-empty" class="hidden px-4 py-6 text-ink-2 only:block sm:px-[26px]">
               {if @searched?, do: "No one matches.", else: "Type to search."}
             </div>
+            
             <.sign :for={{id, person} <- @streams.users} id={id} icon={:team} draw={false}>
               <:title>{person.name}</:title>
-              {person.email} · {role_text(person.role)} · {person.organization}
+               {person.email} · {Access.role_label(person.role)} · {person.organization}
               <:actions>
                 <.sign_action navigate={~p"/admin/organizations/#{person.organization_id}"}>
                   Organisation
@@ -87,9 +87,6 @@ defmodule AfyaFitWeb.AdminLive.Users do
     </Layouts.app>
     """
   end
-
-  defp role_text("org_admin"), do: "Owner"
-  defp role_text(role), do: String.capitalize(role)
 
   @impl true
   def handle_event("search", %{"search" => %{"q" => query}}, socket),

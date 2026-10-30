@@ -70,6 +70,18 @@ defmodule AfyaFitWeb.Access do
   defp pro?(_scope, _key), do: false
 
   @doc """
+  What a role is called on screen. Takes a scope, or a role as stored (`"org_admin"`).
+  """
+  @spec role_label(Scope.t() | String.t() | atom()) :: String.t()
+  def role_label(%Scope{} = scope), do: scope |> Scope.role() |> role_label()
+  def role_label(role) when is_atom(role), do: role |> Atom.to_string() |> role_label()
+  def role_label("org_admin"), do: "Owner"
+  def role_label("trainer"), do: "Trainer"
+  def role_label("client"), do: "Client"
+  def role_label("admin"), do: "Platform"
+  def role_label(_role), do: "User"
+
+  @doc """
   Where a signed-in person starts: Today for coaches, Platform for platform
   admins, Home for clients. `nil` for visitors.
   """

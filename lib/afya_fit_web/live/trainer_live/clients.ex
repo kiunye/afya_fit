@@ -1,6 +1,8 @@
 defmodule AfyaFitWeb.TrainerLive.Clients do
   @moduledoc """
-  Clients: the list of people a trainer coaches, and the forms to add or edit one.
+  Clients: the list of people a trainer coaches, with filters, archiving and
+  restoring, and the plan limit. Adding, editing and viewing one are
+  `TrainerLive.ClientForm` and `TrainerLive.ClientShow`.
   """
   use AfyaFitWeb, :live_view
 
@@ -22,8 +24,6 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
       |> Access.guard(:list, :client)
       |> assign(:page_title, "Clients")
       |> assign(:limit, nil)
-      |> assign(:form, nil)
-      |> assign(:client, nil)
       |> assign(:status, nil)
       |> assign(:confirm_archive, nil)
 
@@ -31,62 +31,26 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
   end
 
   @impl true
-  def handle_params(params, _uri, socket) do
-    if socket.assigns.denied do
-      {:noreply, socket}
-    else
-      {:noreply, apply_action(socket, socket.assigns.live_action, params)}
-    end
-  end
+  def handle_params(_params, _uri, %{assigns: %{denied: denied}} = socket) when denied != nil,
+    do: {:noreply, socket}
 
-  defp apply_action(socket, :index, params) do
+  def handle_params(params, _uri, socket) do
     scope = socket.assigns.current_scope
     status = if params["status"] in @statuses, do: params["status"]
     filters = if status, do: %{status: status}, else: %{}
     clients = Clients.list_clients_for(scope, filters)
 
-    socket
-    |> assign(:status, status)
-    |> assign(:client_count, scope.client_count)
-    |> assign(:client_limit, Entitlements.client_limit(scope.tier))
-    |> assign(:add_state, add_state(scope))
-    |> assign(:can_archive?, Authorization.can?(scope, :delete, :client))
-    |> assign(:confirm_archive, nil)
-    |> maybe_open_limit(params)
-    |> assign(:empty?, clients == [])
-    |> stream(:clients, clients, reset: true)
-  end
-
-  defp apply_action(socket, :new, _params) do
-    scope = socket.assigns.current_scope
-
-    case Authorization.authorize(scope, :create, :client) do
-      :ok ->
-        assign(socket, :form, to_form(User.registration_changeset(%User{}, %{}), as: "client"))
-
-      error ->
-        socket |> deny(error) |> push_navigate(to: ~p"/trainer/clients?limit=1")
-    end
-  end
-
-  defp apply_action(socket, action, %{"id" => id}) when action in [:show, :edit] do
-    scope = socket.assigns.current_scope
-
-    with {:ok, client} <-
-           Clients.fetch_for(scope, if(action == :show, do: :read, else: :update), id) do
-      socket = assign(socket, :client, client)
-
-      if action == :edit,
-        do: assign(socket, :form, to_form(User.profile_changeset(client, %{}), as: "client")),
-        else:
-          assign(
-            socket,
-            :can_upgrade?,
-            Authorization.can?(socket.assigns.current_scope, :manage, :subscription)
-          )
-    else
-      error -> assign(socket, :denied, Access.denial(scope, error))
-    end
+    {:noreply,
+     socket
+     |> assign(:status, status)
+     |> assign(:client_count, scope.client_count)
+     |> assign(:client_limit, Entitlements.client_limit(scope.tier))
+     |> assign(:add_state, add_state(scope))
+     |> assign(:can_archive?, Authorization.can?(scope, :delete, :client))
+     |> assign(:confirm_archive, nil)
+     |> maybe_open_limit(params)
+     |> assign(:empty?, clients == [])
+     |> stream(:clients, clients, reset: true)}
   end
 
   # `?limit=1` reopens the limit dialog after a redirect from a blocked action.
@@ -130,11 +94,9 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:clients}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
       <div :if={!@denied}>
-        <.clients_index :if={@live_action == :index} {assigns} />
-        <.clients_form :if={@live_action in [:new, :edit]} {assigns} />
-        <.clients_show :if={@live_action == :show && @client} {assigns} />
+        <.clients_index {assigns} />
       </div>
-      
+
       <.limit_dialog
         :if={@limit}
         id="limit-dialog"
@@ -166,7 +128,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
 
     <.sign_group label="Your clients">
       <:actions><.add_client_action state={@add_state} /></:actions>
-      
+
       <nav aria-label="Filter" class="flex gap-2 px-4 pb-3 sm:px-[26px]">
         <.link
           :for={
@@ -188,7 +150,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           {label}
         </.link>
       </nav>
-      
+
       <.sign
         :if={@confirm_archive}
         id="archive-confirm"
@@ -201,11 +163,11 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
         are kept and they can still sign in, but only to view them. You can restore them later.
         <:actions>
           <.sign_action id="confirm-archive" primary phx-click="archive">Archive client</.sign_action>
-          
+
           <.sign_action id="keep-client" phx-click="cancel_archive">Keep</.sign_action>
         </:actions>
       </.sign>
-      
+
       <div id="clients" phx-update="stream">
         <div
           id="clients-empty"
@@ -218,7 +180,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
             Add your first client. They get a workout plan, a nutrition plan and a place to log progress.
           <% end %>
         </div>
-        
+
         <.sign
           :for={{id, client} <- @streams.clients}
           id={id}
@@ -227,12 +189,12 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
           time_label="Added"
         >
           <:title>{client.first_name} {client.last_name}</:title>
-           {client.email}{if client.phone, do: " · #{client.phone}"}
+          {client.email}{if client.phone, do: " · #{client.phone}"}
           <:actions>
             <.sign_action :if={@status != "archived"} navigate={~p"/trainer/clients/#{client.id}"}>
               Open
             </.sign_action>
-            
+
             <.sign_action
               :if={@can_archive? && @status != "archived"}
               id={"archive-#{client.id}"}
@@ -241,7 +203,7 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
             >
               Archive
             </.sign_action>
-            
+
             <.sign_action
               :if={@status == "archived"}
               id={"restore-#{client.id}"}
@@ -273,111 +235,6 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
       Paused until payment clears
       <.sign_action id="add-client" aria-disabled="true">Add client</.sign_action>
     </span>
-    """
-  end
-
-  defp clients_form(assigns) do
-    ~H"""
-    <.page_header>
-      {if @live_action == :new, do: "Add client", else: "Edit client"}
-      <:subtitle>
-        {if @live_action == :new,
-          do: "We email an invitation when you save.",
-          else: "#{@client.first_name} #{@client.last_name}"}
-      </:subtitle>
-    </.page_header>
-
-    <.form
-      for={@form}
-      id="client-form"
-      phx-submit={if @live_action == :new, do: "save", else: "update"}
-      phx-change="validate"
-      class="max-w-2xl px-4 py-6 sm:px-[26px]"
-    >
-      <div class="grid gap-x-6 sm:grid-cols-2">
-        <.input field={@form[:first_name]} type="text" label="First name" required />
-        <.input field={@form[:last_name]} type="text" label="Last name" required />
-      </div>
-       <.input field={@form[:email]} type="email" label="Email" required />
-      <.input
-        :if={@live_action == :new}
-        field={@form[:password]}
-        type="password"
-        label="Password"
-        required
-      /> <.input field={@form[:phone]} type="text" label="Phone" />
-      <div class="mt-6 flex flex-wrap gap-3">
-        <.button type="submit" variant="primary">
-          {if @live_action == :new, do: "Create client", else: "Save"}
-        </.button>
-        <.button navigate={
-          if @live_action == :new, do: ~p"/trainer/clients", else: ~p"/trainer/clients/#{@client.id}"
-        }>
-          Cancel
-        </.button>
-      </div>
-    </.form>
-    """
-  end
-
-  defp clients_show(assigns) do
-    ~H"""
-    <.page_header>
-      {@client.first_name} {@client.last_name}
-      <:subtitle>{@client.email}</:subtitle>
-      
-      <:actions>
-        <.sign_action navigate={~p"/trainer/clients/#{@client.id}/edit"}>Edit</.sign_action>
-      </:actions>
-    </.page_header>
-
-    <.sign_group label="Details">
-      <div class="px-4 sm:px-[26px]">
-        <.list>
-          <:item title="Phone">{@client.phone || "Not provided"}</:item>
-          
-          <:item title="Time zone">{AfyaFit.Timezone.zone(@client)}</:item>
-        </.list>
-      </div>
-    </.sign_group>
-
-    <.sign_group label="Plans and progress">
-      <.sign id="client-progress" icon={:progress} draw={false}>
-        <:title>Progress</:title>
-        Measurements and trends
-        <:actions>
-          <.sign_action navigate={~p"/trainer/progress/#{@client.id}"}>Open</.sign_action>
-        </:actions>
-      </.sign>
-      
-      <.sign id="client-workouts" icon={:workouts} draw={false}>
-        <:title>Workouts</:title>
-        Assign a plan from your library
-        <:actions>
-          <.sign_action navigate={~p"/trainer/workouts"}>Assign</.sign_action>
-        </:actions>
-      </.sign>
-      
-      <%= if Entitlements.allows?(@current_scope.tier, :nutrition_plans) do %>
-        <.sign id="client-nutrition" icon={:nutrition} draw={false}>
-          <:title>Nutrition</:title>
-          Meal plans with calories and macros
-          <:actions>
-            <.sign_action navigate={~p"/trainer/nutrition"}>Open</.sign_action>
-          </:actions>
-        </.sign>
-      <% else %>
-        <.closed_sign
-          id="client-nutrition"
-          icon={:nutrition}
-          title="Nutrition plans"
-          can_upgrade={@can_upgrade?}
-          owner_name={@current_scope.owner_name}
-        >
-          Meal plans with calories and macros.
-        </.closed_sign>
-      <% end %>
-    </.sign_group>
     """
   end
 
@@ -437,54 +294,6 @@ defmodule AfyaFitWeb.TrainerLive.Clients do
     case Clients.restore_client(socket.assigns.current_scope, id) do
       {:ok, _link} -> {:noreply, refresh(socket, "Client restored.")}
       error -> {:noreply, deny(socket, error)}
-    end
-  end
-
-  def handle_event("validate", %{"client" => client_params}, socket) do
-    changeset =
-      case socket.assigns.live_action do
-        :new -> User.registration_changeset(%User{}, client_params)
-        :edit -> User.profile_changeset(socket.assigns.client, client_params)
-      end
-      |> Map.put(:action, :validate)
-
-    {:noreply, assign(socket, :form, to_form(changeset, as: "client"))}
-  end
-
-  def handle_event("save", %{"client" => client_params}, socket) do
-    scope = socket.assigns.current_scope
-
-    with :ok <- Authorization.authorize(scope, :create, :client),
-         {:ok, _client} <- Clients.create_client(scope.user, client_params) do
-      {:noreply,
-       socket
-       |> put_flash(:info, "Client added.")
-       |> push_navigate(to: ~p"/trainer/clients")}
-    else
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, as: "client"))}
-
-      error ->
-        {:noreply, socket |> deny(error) |> push_patch(to: ~p"/trainer/clients")}
-    end
-  end
-
-  def handle_event("update", %{"client" => client_params}, socket) do
-    scope = socket.assigns.current_scope
-    client = socket.assigns.client
-
-    with :ok <- Authorization.authorize(scope, :update, client),
-         {:ok, _client} <- Clients.update_client(client, client_params) do
-      {:noreply,
-       socket
-       |> put_flash(:info, "Saved.")
-       |> push_navigate(to: ~p"/trainer/clients/#{client.id}")}
-    else
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, as: "client"))}
-
-      error ->
-        {:noreply, deny(socket, error)}
     end
   end
 end

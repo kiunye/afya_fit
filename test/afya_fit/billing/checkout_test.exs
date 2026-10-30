@@ -4,7 +4,17 @@ defmodule AfyaFit.Billing.CheckoutTest do
   import AfyaFitWeb.APIFixtures
 
   alias AfyaFit.Authorization.Scope
-  alias AfyaFit.Billing.{Checkout, Invoice, Payment, Plans, Subscription}
+
+  alias AfyaFit.Billing.{
+    Checkout,
+    Invoice,
+    MpesaCallback,
+    Payment,
+    Plans,
+    Reconciler,
+    Subscription
+  }
+
   alias AfyaFit.Organizations.Organization
   alias AfyaFit.Repo
   alias AfyaFit.Shared.ActivityLog
@@ -320,7 +330,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       payment = mpesa!(scope)
       confirm_mpesa(payment)
 
-      assert :ok = Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
+      assert :ok = MpesaCallback.handle(payment.callback_token, callback(payment, 0))
 
       assert %Payment{status: "succeeded", receipt: "NLJ7RT61SV"} = Repo.get!(Payment, payment.id)
       assert current_subscription(org).plan_type == "pro"
@@ -329,7 +339,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
     test "a success Daraja does not confirm waits for the reconciler", %{scope: scope} do
       payment = mpesa!(scope)
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0))
 
       assert Repo.get!(Payment, payment.id).status == "pending"
     end
@@ -343,7 +353,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
         %{"Name" => "MpesaReceiptNumber", "Value" => "X"}
       ]
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0, items))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0, items))
 
       assert Repo.get!(Payment, payment.id).status == "failed"
       assert nil == current_subscription(org)
@@ -352,7 +362,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
     test "a cancelled prompt fails the payment with Daraja's reason", %{scope: scope} do
       payment = mpesa!(scope)
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 1032))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 1032))
 
       assert %Payment{status: "failed", failure_reason: "Request cancelled by user"} =
                Repo.get!(Payment, payment.id)
@@ -363,8 +373,8 @@ defmodule AfyaFit.Billing.CheckoutTest do
       other = mpesa!(scope)
       confirm_mpesa(payment)
 
-      Checkout.mpesa_callback("not-the-token", callback(payment, 0))
-      Checkout.mpesa_callback(other.callback_token, callback(payment, 0))
+      MpesaCallback.handle("not-the-token", callback(payment, 0))
+      MpesaCallback.handle(other.callback_token, callback(payment, 0))
 
       assert Repo.get!(Payment, payment.id).status == "pending"
       assert Repo.get!(Payment, other.id).status == "pending"
@@ -373,8 +383,8 @@ defmodule AfyaFit.Billing.CheckoutTest do
     test "rubbish is accepted and ignored", %{scope: scope} do
       payment = mpesa!(scope)
 
-      assert :ok = Checkout.mpesa_callback(payment.callback_token, %{"nonsense" => true})
-      assert :ok = Checkout.mpesa_callback("x", %{})
+      assert :ok = MpesaCallback.handle(payment.callback_token, %{"nonsense" => true})
+      assert :ok = MpesaCallback.handle("x", %{})
       assert Repo.get!(Payment, payment.id).status == "pending"
     end
 
@@ -382,8 +392,8 @@ defmodule AfyaFit.Billing.CheckoutTest do
       payment = mpesa!(scope)
       confirm_mpesa(payment)
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0))
 
       assert Repo.aggregate(Invoice, :count) == 1
     end
@@ -391,9 +401,9 @@ defmodule AfyaFit.Billing.CheckoutTest do
     test "a failure arriving after success changes nothing", %{scope: scope} do
       payment = mpesa!(scope)
       confirm_mpesa(payment)
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0))
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 1032))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 1032))
 
       assert Repo.get!(Payment, payment.id).status == "succeeded"
     end
@@ -460,7 +470,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       Checkout.subscribe(payment)
       confirm_mpesa(payment)
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 0))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 0))
 
       assert_receive {:payment_updated, %Payment{status: "succeeded"}}
     end
@@ -469,7 +479,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       payment = mpesa!(scope)
       Checkout.subscribe(payment)
 
-      Checkout.mpesa_callback(payment.callback_token, callback(payment, 1032))
+      MpesaCallback.handle(payment.callback_token, callback(payment, 1032))
 
       assert_receive {:payment_updated, %Payment{status: "failed"}}
     end
@@ -495,7 +505,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       payment = mpesa!(scope) |> aged(120)
       confirm_mpesa(payment)
 
-      assert %Payment{status: "succeeded"} = Checkout.reconcile(payment)
+      assert %Payment{status: "succeeded"} = Reconciler.reconcile(payment)
       assert current_subscription(org).plan_type == "pro"
     end
 
@@ -503,33 +513,33 @@ defmodule AfyaFit.Billing.CheckoutTest do
       payment = mpesa!(scope) |> aged(120)
       confirm_mpesa(payment, 1037)
 
-      assert %Payment{status: "failed"} = Checkout.reconcile(payment)
+      assert %Payment{status: "failed"} = Reconciler.reconcile(payment)
     end
 
     test "leaves an unanswered one pending, then expires it", %{scope: scope} do
       payment = mpesa!(scope)
 
-      assert %Payment{status: "pending"} = Checkout.reconcile(aged(payment, 120))
-      assert %Payment{status: "expired"} = Checkout.reconcile(aged(payment, 20 * 60))
+      assert %Payment{status: "pending"} = Reconciler.reconcile(aged(payment, 120))
+      assert %Payment{status: "expired"} = Reconciler.reconcile(aged(payment, 20 * 60))
     end
 
     test "settles a card payment Paystack reports as paid", %{scope: scope} do
       payment = card!(scope) |> aged(120)
       paid_card(payment)
 
-      assert %Payment{status: "succeeded"} = Checkout.reconcile(payment)
+      assert %Payment{status: "succeeded"} = Reconciler.reconcile(payment)
     end
 
     test "a card payment is given a day before it expires", %{scope: scope} do
       payment = card!(scope)
 
-      assert %Payment{status: "pending"} = Checkout.reconcile(aged(payment, 3600))
-      assert %Payment{status: "expired"} = Checkout.reconcile(aged(payment, 25 * 3600))
+      assert %Payment{status: "pending"} = Reconciler.reconcile(aged(payment, 3600))
+      assert %Payment{status: "expired"} = Reconciler.reconcile(aged(payment, 25 * 3600))
     end
 
     test "money that arrives after expiry still counts", %{org: org, scope: scope} do
       payment = card!(scope)
-      expired = Checkout.reconcile(aged(payment, 25 * 3600))
+      expired = Reconciler.reconcile(aged(payment, 25 * 3600))
       assert expired.status == "expired"
       paid_card(payment)
 
@@ -542,7 +552,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       paid_card(payment)
       {:ok, done} = Checkout.confirm_card(scope, payment.reference)
 
-      assert ^done = Checkout.reconcile(done)
+      assert ^done = Reconciler.reconcile(done)
     end
 
     test "stale_pending/1 lists only old pending payments", %{scope: scope} do
@@ -551,7 +561,7 @@ defmodule AfyaFit.Billing.CheckoutTest do
       finished = mpesa!(scope) |> aged(300)
       Checkout.fail(finished, "x")
 
-      assert [%Payment{id: id}] = Checkout.stale_pending()
+      assert [%Payment{id: id}] = Reconciler.stale_pending()
       assert id == old.id
     end
   end

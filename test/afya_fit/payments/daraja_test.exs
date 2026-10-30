@@ -68,6 +68,15 @@ defmodule AfyaFit.Payments.DarajaTest do
     end
   end
 
+  describe "result_code/1" do
+    test "reads numbers and numeric strings, and nothing else" do
+      assert Daraja.result_code(0) == 0
+      assert Daraja.result_code("1032") == 1032
+      assert Daraja.result_code("12x") == nil
+      assert Daraja.result_code(nil) == nil
+    end
+  end
+
   describe "enabled?/0" do
     test "needs every credential" do
       assert Daraja.enabled?()
@@ -153,6 +162,14 @@ defmodule AfyaFit.Payments.DarajaTest do
       end)
 
       assert {:error, "Bad Request - Invalid PhoneNumber"} = Daraja.stk_push(@request)
+    end
+
+    test "an error with no explanation keeps its status and body" do
+      stub(fn conn ->
+        conn |> Plug.Conn.put_status(502) |> Plug.Conn.send_resp(502, "Bad Gateway")
+      end)
+
+      assert {:error, {:http, 502, "Bad Gateway"}} = Daraja.stk_push(@request)
     end
 
     test "no access token is an error" do

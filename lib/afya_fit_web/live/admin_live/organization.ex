@@ -43,18 +43,16 @@ defmodule AfyaFitWeb.AdminLive.Organization do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:platform}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
-
       <div :if={!@denied} id="organization">
         <.page_header>
           {@overview.organization.name}
-          <:subtitle>
-            {@overview.organization.subdomain} · {@overview.organization.status}
-          </:subtitle>
+          <:subtitle>{@overview.organization.subdomain} · {@overview.organization.status}</:subtitle>
+          
           <:actions>
             <.sign_action navigate={~p"/admin/dashboard"}>All organisations</.sign_action>
           </:actions>
         </.page_header>
-
+        
         <.sign_group label="Plan">
           <.sign
             id="plan"
@@ -65,9 +63,9 @@ defmodule AfyaFitWeb.AdminLive.Organization do
             time_label="Clients"
           >
             <:title>{String.capitalize(@overview.tier)} plan</:title>
-            {subscription_text(@overview.subscription, @current_scope)}
+             {subscription_text(@overview.subscription, @current_scope)}
           </.sign>
-
+          
           <.form
             :if={@can_manage?}
             for={@grant_form}
@@ -86,11 +84,10 @@ defmodule AfyaFitWeb.AdminLive.Organization do
               type="select"
               label="For"
               options={for days <- Platform.grant_days(), do: {"#{days} days", to_string(days)}}
-            />
-            <.button type="submit" variant="primary">Grant</.button>
+            /> <.button type="submit" variant="primary">Grant</.button>
           </.form>
         </.sign_group>
-
+        
         <.sign_group :if={@can_manage?} label="Status">
           <.sign
             :if={@overview.organization.status == "active" && !@confirm_suspend?}
@@ -104,7 +101,7 @@ defmodule AfyaFitWeb.AdminLive.Organization do
               <.sign_action id="ask-suspend" phx-click="ask_suspend">Suspend</.sign_action>
             </:actions>
           </.sign>
-
+          
           <.sign
             :if={@confirm_suspend?}
             id="suspend-confirm"
@@ -116,13 +113,12 @@ defmodule AfyaFitWeb.AdminLive.Organization do
             Their trainers and clients can still sign in and read everything, but nothing can be
             changed. This is recorded in their activity log.
             <:actions>
-              <.sign_action id="confirm-suspend" primary phx-click="suspend">
-                Suspend
-              </.sign_action>
+              <.sign_action id="confirm-suspend" primary phx-click="suspend">Suspend</.sign_action>
+              
               <.sign_action id="keep-active" phx-click="cancel_suspend">Keep active</.sign_action>
             </:actions>
           </.sign>
-
+          
           <.sign
             :if={@overview.organization.status != "active"}
             id="status"
@@ -137,7 +133,7 @@ defmodule AfyaFitWeb.AdminLive.Organization do
             </:actions>
           </.sign>
         </.sign_group>
-
+        
         <.sign_group label="Team">
           <.sign
             :for={member <- @overview.team}
@@ -146,15 +142,16 @@ defmodule AfyaFitWeb.AdminLive.Organization do
             draw={false}
           >
             <:title>{member.first_name} {member.last_name}</:title>
-            {member.email} · {role_text(member.role)}
+             {member.email} · {Access.role_label(member.role)}
           </.sign>
         </.sign_group>
-
+        
         <.sign_group label="Recent activity">
           <div id="activity">
             <div :if={@overview.activity == []} class="px-4 py-6 text-ink-2 sm:px-[26px]">
               Nothing yet.
             </div>
+            
             <.sign
               :for={entry <- @overview.activity}
               id={"activity-#{entry.id}"}
@@ -178,9 +175,6 @@ defmodule AfyaFitWeb.AdminLive.Organization do
     "#{String.capitalize(subscription.status)} · period ends " <>
       local(subscription.current_period_end, scope, "%-d %b %Y")
   end
-
-  defp role_text("org_admin"), do: "Owner"
-  defp role_text(role), do: String.capitalize(role)
 
   @impl true
   def handle_event("ask_suspend", _params, socket),
