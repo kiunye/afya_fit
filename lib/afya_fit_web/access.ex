@@ -45,10 +45,12 @@ defmodule AfyaFitWeb.Access do
       {:progress, "Progress", :progress, ~p"/trainer/progress", :more, [:trainer, :org_admin],
        {:list, :progress_entry}},
       {:team, "Team", :team, ~p"/team", :more, [:org_admin], {:list, :trainer}},
-      {:billing, "Billing", :billing, ~p"/billing", :more, [:org_admin, :admin],
-       {:read, :subscription}},
+      {:billing, "Billing", :billing, ~p"/billing", :more, [:org_admin], {:read, :subscription}},
       {:platform, "Platform", :platform, ~p"/admin/dashboard", :tab, [:admin],
-       {:access, :admin_panel}}
+       {:access, :admin_panel}},
+      {:subscriptions, "Subscriptions", :billing, ~p"/admin/subscriptions", :tab, [:admin],
+       {:access, :admin_panel}},
+      {:users, "Users", :team, ~p"/admin/users", :more, [:admin], {:access, :admin_panel}}
     ]
 
     for {key, label, icon, path, phone, roles, permission} <- items,

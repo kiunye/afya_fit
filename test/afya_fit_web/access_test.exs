@@ -21,8 +21,8 @@ defmodule AfyaFitWeb.AccessTest do
       assert keys(scope(:client)) == [:home]
     end
 
-    test "platform admins get Platform and Billing" do
-      assert keys(scope(:admin)) == [:billing, :platform]
+    test "platform admins get Platform, Subscriptions and Users" do
+      assert keys(scope(:admin)) == [:platform, :subscriptions, :users]
     end
 
     test "Nutrition is tagged Pro on the Free plan but stays visible" do

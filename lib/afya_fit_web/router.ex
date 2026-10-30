@@ -101,6 +101,9 @@ defmodule AfyaFitWeb.Router do
 
       # Admin routes
       live "/admin/dashboard", AdminLive.Dashboard, :index
+      live "/admin/organizations/:id", AdminLive.Organization, :show
+      live "/admin/subscriptions", AdminLive.Subscriptions, :index
+      live "/admin/users", AdminLive.Users, :index
     end
   end
 
