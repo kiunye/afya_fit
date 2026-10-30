@@ -113,6 +113,7 @@ defmodule AfyaFitWeb.Router do
     pipe_through :webhook
 
     post "/paystack", PaystackWebhookController, :webhook
+    post "/mpesa/:token", MpesaWebhookController, :callback
   end
 
   ## API routes

@@ -48,6 +48,60 @@ defmodule AfyaFit.Payments.PaystackClient do
   end
 
   @doc """
+  Starts a hosted checkout (card, or M-Pesa where Paystack offers it) and
+  returns the page to send the customer to. `amount` is whole shillings. When
+  the customer is done Paystack sends them to `callback_url`.
+  """
+  @spec checkout(String.t(), integer(), String.t(), map(), String.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def checkout(email, amount, reference, metadata, callback_url) do
+    attrs = %{
+      email: email,
+      amount: Integer.to_string(amount * 100),
+      currency: "KES",
+      reference: reference,
+      metadata: metadata,
+      callback_url: callback_url
+    }
+
+    case Paystack.Transaction.initialize(attrs) do
+      {:ok, %Paystack.Response{success: true, data: %{"authorization_url" => url}}} ->
+        {:ok, url}
+
+      {:ok, %Paystack.Response{message: message}} ->
+        {:error, message}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  What Paystack says about a transaction: its `status` (`"success"`,
+  `"failed"`, `"abandoned"`...), the `amount` in shillings and the currency.
+  """
+  @spec verify(String.t()) ::
+          {:ok, %{status: String.t(), amount: Decimal.t(), currency: String.t()}}
+          | {:error, term()}
+  def verify(reference) do
+    case Paystack.Transaction.verify(reference) do
+      {:ok, %Paystack.Response{success: true, data: data}} ->
+        {:ok,
+         %{
+           status: data["status"],
+           amount: data["amount"] |> Decimal.new() |> Decimal.div(100),
+           currency: data["currency"]
+         }}
+
+      {:ok, %Paystack.Response{message: message}} ->
+        {:error, message}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  @doc """
   Verifies a payment transaction.
 
   Returns `{:ok, Paystack.Response{}}` with transaction details.

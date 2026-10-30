@@ -145,6 +145,21 @@ defmodule AfyaFit.PlatformTest do
     end
   end
 
+  describe "monthly_income/0" do
+    test "adds up active paid subscriptions at today's prices", %{org: org} do
+      subscription(org, %{status: "active", plan_type: "pro"})
+      subscription(organization(), %{status: "active", plan_type: "enterprise"})
+      subscription(organization(), %{status: "past_due", plan_type: "pro"})
+      subscription(organization(), %{status: "active", plan_type: "free"})
+
+      assert Platform.monthly_income() == 1500 + 5000
+    end
+
+    test "is zero with nothing paid" do
+      assert Platform.monthly_income() == 0
+    end
+  end
+
   describe "search_users/1" do
     test "finds people by email or name across organizations", %{org: org} do
       brian = user(org, :trainer, %{email: "brian@example.com", first_name: "Brian"})

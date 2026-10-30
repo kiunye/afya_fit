@@ -44,6 +44,7 @@ defmodule AfyaFitWeb.Endpoint do
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
+    body_reader: {AfyaFitWeb.CacheBodyReader, :read_body, []},
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 

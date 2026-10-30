@@ -36,6 +36,26 @@ if config_env() != :test and System.get_env("RLS_ENFORCE") in ["true", "1"] do
     app_role: System.get_env("RLS_APP_ROLE") || "afya_fit_app"
 end
 
+# M-Pesa through Daraja. Without credentials M-Pesa is simply not offered at
+# checkout. Use the sandbox URL (the default) until the production app is live,
+# and set the callback host with PHX_HOST: Daraja must reach it over HTTPS.
+config :afya_fit, AfyaFit.Payments.Daraja,
+  base_url: System.get_env("DARAJA_BASE_URL") || "https://sandbox.safaricom.co.ke",
+  consumer_key: System.get_env("DARAJA_CONSUMER_KEY"),
+  consumer_secret: System.get_env("DARAJA_CONSUMER_SECRET"),
+  shortcode: System.get_env("DARAJA_SHORTCODE"),
+  passkey: System.get_env("DARAJA_PASSKEY"),
+  transaction_type: System.get_env("DARAJA_TRANSACTION_TYPE") || "CustomerPayBillOnline"
+
+# Optional price overrides, in whole Kenyan shillings a month.
+plan_prices =
+  for {plan, var} <- [{"pro", "PLAN_PRICE_PRO"}, {"enterprise", "PLAN_PRICE_ENTERPRISE"}],
+      value = System.get_env(var),
+      into: %{},
+      do: {plan, String.to_integer(value)}
+
+if plan_prices != %{}, do: config(:afya_fit, :plan_prices, plan_prices)
+
 if config_env() in [:dev, :test] do
   # Development and test database configuration
   # Read from Docker secrets first, then environment variables

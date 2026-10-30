@@ -7,7 +7,10 @@ defmodule AfyaFitWeb.BillingLive do
 
   import AfyaFitWeb.SignComponents
 
-  alias AfyaFit.{Authorization, Billing}
+  import AfyaFitWeb.CheckoutComponents
+
+  alias AfyaFit.{Authorization, Billing, Payments}
+  alias AfyaFit.Billing.{Checkout, Plans}
   alias AfyaFit.Authorization.BillingStatus
   alias AfyaFitWeb.Access
 
@@ -18,6 +21,8 @@ defmodule AfyaFitWeb.BillingLive do
       |> Access.guard(:read, :subscription)
       |> assign(:page_title, "Billing")
       |> assign(:confirm_cancel?, false)
+      |> assign(:checkout, nil)
+      |> assign(:mpesa_form, to_form(%{"phone" => ""}, as: :mpesa))
 
     if socket.assigns.denied do
       {:ok, socket}
@@ -25,6 +30,20 @@ defmodule AfyaFitWeb.BillingLive do
       {:ok, load(socket)}
     end
   end
+
+  # Paystack sends the customer back with `?reference=...`; ask it what happened.
+  @impl true
+  def handle_params(%{"reference" => reference}, _uri, %{assigns: %{denied: nil}} = socket) do
+    socket =
+      case Checkout.confirm_card(socket.assigns.current_scope, reference) do
+        {:ok, payment} -> finished(socket, payment)
+        {:error, _reason} -> put_flash(socket, :error, "We could not find that payment.")
+      end
+
+    {:noreply, push_patch(socket, to: ~p"/billing")}
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   defp load(socket) do
     scope = socket.assigns.current_scope
@@ -118,6 +137,13 @@ defmodule AfyaFitWeb.BillingLive do
           </.sign>
         </.sign_group>
         
+        <.checkout_panel
+          :if={@checkout && @can_manage?}
+          checkout={@checkout}
+          mpesa_form={@mpesa_form}
+          card?={Payments.paystack_enabled?()}
+          mpesa?={Payments.mpesa_enabled?()}
+        />
         <.sign_group label="Invoices">
           <div id="invoices" phx-update="stream">
             <div
@@ -289,15 +315,80 @@ defmodule AfyaFitWeb.BillingLive do
     end
   end
 
-  # Starting a payment is not wired to Paystack from the web yet.
-  def handle_event(event, _params, socket) when event in ["upgrade", "update_payment"] do
-    {:noreply,
-     put_flash(
-       socket,
-       :info,
-       "Online payment is being set up. Contact support to change your plan."
-     )}
+  def handle_event("upgrade", _params, socket),
+    do: {:noreply, assign(socket, :checkout, %{step: :plans, plan: nil, payment: nil})}
+
+  # Fixing a failed payment means paying for the plan the account is already on.
+  def handle_event("update_payment", _params, socket) do
+    plan = socket.assigns.subscription && socket.assigns.subscription.plan_type
+
+    checkout =
+      if Plans.paid?(plan),
+        do: %{step: :method, plan: plan, payment: nil},
+        else: %{step: :plans, plan: nil, payment: nil}
+
+    {:noreply, assign(socket, :checkout, checkout)}
   end
+
+  def handle_event("choose_plan", %{"plan" => plan}, socket) do
+    if Plans.paid?(plan),
+      do: {:noreply, assign(socket, :checkout, %{step: :method, plan: plan, payment: nil})},
+      else: {:noreply, socket}
+  end
+
+  def handle_event("close_checkout", _params, socket),
+    do: {:noreply, assign(socket, :checkout, nil)}
+
+  def handle_event("pay_card", _params, %{assigns: %{checkout: %{plan: plan}}} = socket) do
+    case Checkout.start_card(socket.assigns.current_scope, plan, url(~p"/billing")) do
+      {:ok, _payment, checkout_url} -> {:noreply, redirect(socket, external: checkout_url)}
+      {:error, reason} -> {:noreply, put_flash(socket, :error, payment_error(reason))}
+    end
+  end
+
+  def handle_event(
+        "pay_mpesa",
+        %{"mpesa" => %{"phone" => phone}},
+        %{assigns: %{checkout: %{plan: plan}}} = socket
+      ) do
+    callback = fn token -> url(~p"/webhooks/mpesa/#{token}") end
+
+    case Checkout.start_mpesa(socket.assigns.current_scope, plan, phone, callback) do
+      {:ok, payment} ->
+        if connected?(socket), do: Checkout.subscribe(payment)
+        {:noreply, assign(socket, :checkout, %{step: :waiting, plan: plan, payment: payment})}
+
+      {:error, reason} ->
+        {:noreply, put_flash(socket, :error, payment_error(reason))}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["pay_card", "pay_mpesa"],
+    do: {:noreply, socket}
+
+  @impl true
+  def handle_info({:payment_updated, payment}, socket), do: {:noreply, finished(socket, payment)}
+
+  # A payment ended: say how, and refresh the page when it went through.
+  defp finished(socket, %{status: "succeeded"} = payment) do
+    socket
+    |> assign(:checkout, nil)
+    |> put_flash(:info, "Paid. The #{String.capitalize(payment.plan_type)} plan is active.")
+    |> reload_scope()
+    |> load()
+  end
+
+  defp finished(socket, %{status: status} = payment) when status in ["failed", "expired"] do
+    socket
+    |> assign(:checkout, %{step: :method, plan: payment.plan_type, payment: nil})
+    |> put_flash(:error, "The payment did not go through. Nothing was charged. Try again.")
+  end
+
+  defp finished(socket, _pending), do: socket
+
+  defp payment_error(:invalid_phone), do: "Enter a Kenyan mobile number like 0712 345 678."
+  defp payment_error(:gateway), do: "We could not reach the payment provider. Try again."
+  defp payment_error(_other), do: "That did not start. Nothing was charged."
 
   # The scope carries the billing state, so refresh it after a change.
   defp reload_scope(socket) do

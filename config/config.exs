@@ -99,7 +99,9 @@ config :afya_fit, Oban,
        # Send task reminders daily at 8 AM
        {"0 8 * * *", AfyaFit.Workers.TaskReminderWorker},
        # Check subscription renewals daily at 9 AM
-       {"0 9 * * *", AfyaFit.Workers.SubscriptionReminderWorker}
+       {"0 9 * * *", AfyaFit.Workers.SubscriptionReminderWorker},
+       # Settle payments whose webhook never arrived
+       {"*/5 * * * *", AfyaFit.Workers.PaymentReconcileWorker}
      ]}
   ]
 
