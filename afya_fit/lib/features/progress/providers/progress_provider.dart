@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:afya_fit/core/providers/api_provider.dart';
 import 'package:afya_fit/features/progress/data/repositories/progress_repository.dart';
+import 'package:afya_fit/core/access/access.dart';
 import 'package:afya_fit/core/access/access_provider.dart';
 
 part 'progress_provider.g.dart';
@@ -16,17 +17,20 @@ Future<List<Map<String, dynamic>>> progressEntries(
   String clientId,
 ) async {
   final repository = ref.read(progressRepositoryProvider);
-  final access = await ref.watch(accessProvider.future);
+  final access = ref.watch(accessProvider);
 
   // Clients (or no client chosen) read their own entries.
-  if (clientId.isEmpty || access.isClient) {
+  if (clientId.isEmpty || access.role == AccessRole.client) {
     return repository.getMyProgress();
   }
   return repository.getProgressEntries(clientId);
 }
 
 @riverpod
-Future<Map<String, dynamic>> progressAnalytics(Ref ref, String clientId) async {
+Future<Map<String, dynamic>> progressAnalytics(
+  Ref ref,
+  String clientId,
+) async {
   final repository = ref.read(progressRepositoryProvider);
   return repository.getAnalytics(clientId);
 }

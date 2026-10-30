@@ -1,4 +1,5 @@
 import 'package:afya_fit/core/access/access.dart';
+import 'package:afya_fit/core/access/plan_block.dart';
 
 enum GateOutcome { allowed, forbidden, readOnly, upgrade }
 
@@ -41,7 +42,7 @@ Gate checkGate(
   }
 
   if (countsAgainstClientLimit && access.atClientLimit) {
-    return const Gate(GateOutcome.upgrade, feature: 'clients');
+    return const Gate(GateOutcome.upgrade, feature: PlanBlock.clientsFeature);
   }
 
   return const Gate(GateOutcome.allowed);

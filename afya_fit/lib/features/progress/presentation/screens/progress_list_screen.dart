@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:afya_fit/core/access/access.dart';
 import 'package:afya_fit/core/access/access_provider.dart';
 import 'package:afya_fit/core/access/api_errors.dart';
 import 'package:afya_fit/features/progress/providers/progress_provider.dart';
@@ -9,17 +10,20 @@ import 'package:intl/intl.dart';
 class ProgressListScreen extends HookConsumerWidget {
   final String clientId;
 
-  const ProgressListScreen({super.key, required this.clientId});
+  const ProgressListScreen({
+    super.key,
+    required this.clientId,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Use empty string for clientId if not provided (for customers viewing their own progress)
-    final progressAsync = ref.watch(
-      progressEntriesProvider(clientId.isEmpty ? '' : clientId),
-    );
+    final progressAsync = ref.watch(progressEntriesProvider(clientId.isEmpty ? '' : clientId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Progress Tracking')),
+      appBar: AppBar(
+        title: const Text('Progress Tracking'),
+      ),
       body: progressAsync.when(
         data: (entries) {
           if (entries.isEmpty) {
@@ -39,12 +43,12 @@ class ProgressListScreen extends HookConsumerWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    clientId.isEmpty
+                    clientId.isEmpty 
                         ? 'Start tracking your progress'
                         : 'Start tracking your client\'s progress',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),
@@ -106,10 +110,9 @@ class ProgressListScreen extends HookConsumerWidget {
   }
 
   bool _showsAddButton(WidgetRef ref) {
-    final access = ref.watch(accessProvider).value;
+    final access = ref.watch(accessProvider);
     return clientId.isEmpty &&
-        access != null &&
-        access.isClient &&
+        access.role == AccessRole.client &&
         access.can('progress_entry', 'create');
   }
 }
@@ -145,16 +148,16 @@ class _ProgressCard extends StatelessWidget {
             if (date != null)
               Text(
                 DateFormat('MMM dd, yyyy').format(date),
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               )
             else
               Text(
                 'Progress Entry',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
             const SizedBox(height: 12),
             Row(
@@ -182,7 +185,10 @@ class _ProgressCard extends StatelessWidget {
             ),
             if (notes != null && notes.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text(notes, style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                notes,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ],
           ],
         ),
@@ -209,22 +215,26 @@ class _MetricItem extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, size: 16, color: Theme.of(context).colorScheme.primary),
+            Icon(
+              icon,
+              size: 16,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(width: 4),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
           ],
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
         ),
       ],
     );

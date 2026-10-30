@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:afya_fit/core/access/access.dart';
+import 'package:afya_fit/core/access/plan_block.dart';
 import 'package:afya_fit/core/access/support_mail.dart';
 
 void main() {
@@ -12,9 +13,8 @@ void main() {
 
   group('supportMailto', () {
     final uri = supportMailto(
-      feature: 'nutrition_plans',
+      block: const PlanBlock('nutrition_plans', requiredTier: 'pro'),
       access: access,
-      requiredTier: 'pro',
       accountEmail: 'brian@example.com',
     );
 
@@ -50,19 +50,14 @@ void main() {
 
   test('leaves out what it does not know', () {
     final text = Uri.decodeComponent(
-      supportMailto(feature: 'clients', access: Access.none).query,
+      supportMailto(
+        block: const PlanBlock('clients'),
+        access: Access.none,
+      ).query,
     );
 
     expect(text, contains('Organisation: unknown'));
     expect(text, isNot(contains('Needs:')));
     expect(text, isNot(contains('Account:')));
-  });
-
-  test('featureLabel speaks plainly', () {
-    expect(featureLabel('clients'), 'more clients');
-    expect(featureLabel('progress_photos'), 'progress photos');
-    expect(featureLabel('read_only'), 'editing');
-    expect(featureLabel('something_new'), 'this feature');
-    expect(featureLabel(null), 'this feature');
   });
 }

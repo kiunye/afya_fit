@@ -14,7 +14,9 @@ class ClientListScreen extends HookConsumerWidget {
     final clientsAsync = ref.watch(clientsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Clients')),
+      appBar: AppBar(
+        title: const Text('Clients'),
+      ),
       body: clientsAsync.when(
         data: (clients) {
           if (clients.isEmpty) {
@@ -36,8 +38,8 @@ class ClientListScreen extends HookConsumerWidget {
                   Text(
                     'Add your first client to get started',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),
@@ -59,9 +61,7 @@ class ClientListScreen extends HookConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ClientDetailScreen(
-                          clientId: client['id'] as String,
-                        ),
+                        builder: (_) => ClientDetailScreen(clientId: client['id'] as String),
                       ),
                     );
                   },
@@ -87,8 +87,7 @@ class ClientListScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton:
-          ref.watch(accessProvider).value?.can('client', 'create') == true
+      floatingActionButton: ref.watch(accessProvider).can('client', 'create')
           ? FloatingActionButton(
               onPressed: () => runGated(
                 context,
@@ -99,7 +98,9 @@ class ClientListScreen extends HookConsumerWidget {
                 onAllowed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const ClientFormScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const ClientFormScreen(),
+                    ),
                   );
                 },
               ),
@@ -114,7 +115,10 @@ class _ClientCard extends StatelessWidget {
   final Map<String, dynamic> client;
   final VoidCallback onTap;
 
-  const _ClientCard({required this.client, required this.onTap});
+  const _ClientCard({
+    required this.client,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -151,23 +155,23 @@ class _ClientCard extends StatelessWidget {
                     Text(
                       '$firstName $lastName',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       email,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
                     ),
                     if (phone != null && phone.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         phone,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
                       ),
                     ],
                   ],
@@ -184,3 +188,4 @@ class _ClientCard extends StatelessWidget {
     );
   }
 }
+

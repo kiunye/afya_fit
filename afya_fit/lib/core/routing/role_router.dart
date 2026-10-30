@@ -6,24 +6,17 @@ import 'package:afya_fit/features/dashboard/presentation/screens/dashboard_scree
 import 'package:afya_fit/features/admin/presentation/screens/admin_trainers_screen.dart';
 import 'package:afya_fit/features/admin/presentation/screens/admin_clients_screen.dart';
 
-enum HomeKind { coach, client, platform }
-
 /// Picks the home screen from what the user can do, not from a role name, so a
 /// new kind of coach (such as an organization owner) needs no change here.
 class RoleRouter {
-  static HomeKind homeKindFor(Access access) {
-    if (access.isPlatformAdmin) return HomeKind.platform;
-    if (access.isClient) return HomeKind.client;
-    return HomeKind.coach;
-  }
-
   static Widget getHomeScreen(Access access) {
-    switch (homeKindFor(access)) {
-      case HomeKind.platform:
+    switch (access.role) {
+      case AccessRole.platform:
         return const AdminDashboardScreen();
-      case HomeKind.client:
+      case AccessRole.client:
         return const CustomerDashboardScreen();
-      case HomeKind.coach:
+      case AccessRole.coach:
+      case AccessRole.none:
         return const DashboardScreen();
     }
   }
@@ -62,24 +55,24 @@ class CustomerDashboardScreen extends HookConsumerWidget {
               Text(
                 'Welcome back!',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Here's your fitness journey overview.",
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 24),
 
               // Quick Actions
               Text(
                 'Quick Actions',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -204,24 +197,24 @@ class AdminDashboardScreen extends HookConsumerWidget {
               Text(
                 'Admin Dashboard',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Manage your organization: trainers and clients.",
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
               ),
               const SizedBox(height: 24),
 
               // Quick Actions
               Text(
                 'Quick Actions',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 12),
               Wrap(
@@ -271,3 +264,4 @@ class AdminDashboardScreen extends HookConsumerWidget {
     );
   }
 }
+
