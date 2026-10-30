@@ -130,6 +130,22 @@ defmodule AfyaFit.Platform do
   end
 
   @doc """
+  What the active paid subscriptions bring in a month, in whole shillings, at
+  the current prices.
+  """
+  def monthly_income do
+    Repo.all(
+      from s in Subscription,
+        where: s.status == "active" and s.plan_type in ^AfyaFit.Billing.Plans.paid_plans(),
+        group_by: s.plan_type,
+        select: {s.plan_type, count(s.id)}
+    )
+    |> Enum.reduce(0, fn {plan, count}, total ->
+      total + AfyaFit.Billing.Plans.price(plan) * count
+    end)
+  end
+
+  @doc """
   Subscriptions across organizations, soonest period end first. `filter` is one
   of `subscription_filters/0`; anything else lists them all.
   """

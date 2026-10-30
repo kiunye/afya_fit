@@ -2,14 +2,33 @@ defmodule AfyaFitWeb.PaystackWebhookController do
   use AfyaFitWeb, :controller
 
   alias AfyaFit.Billing
+  alias AfyaFit.Billing.Checkout
 
   @doc """
   Handles Paystack webhook events.
   """
   def webhook(conn, params) do
-    # Verify webhook signature (implement based on Paystack docs)
-    # For now, we'll process the webhook
+    if valid_signature?(conn) do
+      process(conn, params)
+    else
+      conn |> put_status(:unauthorized) |> json(%{error: "invalid signature"})
+    end
+  end
 
+  # Paystack signs the raw request body with the account's secret key
+  # (HMAC-SHA512, hex) and sends it in `x-paystack-signature`.
+  defp valid_signature?(conn) do
+    with secret when is_binary(secret) <- Application.get_env(:paystack, :secret_key),
+         raw when is_binary(raw) <- conn.assigns[:raw_body],
+         [signature] <- get_req_header(conn, "x-paystack-signature") do
+      expected = :crypto.mac(:hmac, :sha512, secret, raw) |> Base.encode16(case: :lower)
+      Plug.Crypto.secure_compare(expected, String.downcase(signature))
+    else
+      _ -> false
+    end
+  end
+
+  defp process(conn, params) do
     case params do
       %{"event" => "charge.success", "data" => data} ->
         handle_charge_success(conn, data)
@@ -33,14 +52,14 @@ defmodule AfyaFitWeb.PaystackWebhookController do
     end
   end
 
-  defp handle_charge_success(conn, _data) do
-    # Find subscription by customer code or transaction reference
-    # Create invoice if needed
-    # Update subscription status
+  defp handle_charge_success(conn, data) do
+    case Checkout.paystack_charge_success(data) do
+      {:ok, _payment} ->
+        conn |> put_status(:ok) |> json(%{status: "processed"})
 
-    conn
-    |> put_status(:ok)
-    |> json(%{status: "processed"})
+      :unknown ->
+        conn |> put_status(:ok) |> json(%{status: "ignored"})
+    end
   end
 
   defp handle_subscription_create(conn, data) do

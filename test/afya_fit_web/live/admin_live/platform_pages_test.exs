@@ -121,6 +121,17 @@ defmodule AfyaFitWeb.AdminLive.PlatformPagesTest do
       refute has_element?(view, "#subscriptions", "Cancelling Gym")
     end
 
+    test "shows what the active plans bring in", %{conn: conn, admin: admin} do
+      AfyaFit.Repo.update_all(AfyaFit.Billing.Subscription, set: [status: "active"])
+
+      {:ok, view, _} = conn |> log_in(admin) |> live(~p"/admin/subscriptions")
+
+      income = AfyaFit.Billing.Plans.format(AfyaFit.Platform.monthly_income())
+      assert income != "KES 0"
+      assert has_element?(view, "#subscriptions-page", "Expected each month")
+      assert has_element?(view, "#subscriptions-page", income)
+    end
+
     test "everyone else gets the permission sign", %{conn: conn, owner: owner} do
       {:ok, view, _} = conn |> log_in(owner) |> live(~p"/admin/subscriptions")
       assert has_element?(view, "#denied")

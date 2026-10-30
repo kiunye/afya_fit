@@ -44,6 +44,7 @@ defmodule AfyaFitWeb.AdminLive.Subscriptions do
        socket
        |> assign(:status, status)
        |> assign(:count, length(rows))
+       |> assign(:income, Platform.monthly_income())
        |> assign(:by_plan, Enum.frequencies_by(rows, & &1.plan_type))
        |> assign(:empty?, rows == [])
        |> stream(:subscriptions, rows, reset: true)}
@@ -55,18 +56,16 @@ defmodule AfyaFitWeb.AdminLive.Subscriptions do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:subscriptions}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
-
       <div :if={!@denied} id="subscriptions-page">
         <.page_header>
           Subscriptions
           <:subtitle>
             <b class="text-ink">
               {@count} {if @count == 1, do: "subscription", else: "subscriptions"}.
-            </b>
-            {plan_summary(@by_plan)}
+            </b> {plan_summary(@by_plan)} Expected each month: <b class="text-ink">{AfyaFit.Billing.Plans.format(@income)}</b>.
           </:subtitle>
         </.page_header>
-
+        
         <.sign_group label="Subscriptions">
           <nav aria-label="Filter" class="flex flex-wrap gap-2 px-4 pb-3 sm:px-[26px]">
             <.link
@@ -84,11 +83,12 @@ defmodule AfyaFitWeb.AdminLive.Subscriptions do
               {label}
             </.link>
           </nav>
-
+          
           <div id="subscriptions" phx-update="stream">
             <div id="subscriptions-empty" class="hidden px-4 py-6 text-ink-2 only:block sm:px-[26px]">
               No subscriptions here.
             </div>
+            
             <.sign
               :for={{id, row} <- @streams.subscriptions}
               id={id}
@@ -99,7 +99,7 @@ defmodule AfyaFitWeb.AdminLive.Subscriptions do
               time_label="Period ends"
             >
               <:title>{row.organization}</:title>
-              {String.capitalize(row.plan_type)} plan · {status_text(row)}
+               {String.capitalize(row.plan_type)} plan · {status_text(row)}
               <:actions>
                 <.sign_action navigate={~p"/admin/organizations/#{row.organization_id}"}>
                   Open

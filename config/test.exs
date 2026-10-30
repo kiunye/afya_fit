@@ -10,6 +10,14 @@ config :afya_fit, Oban, testing: :manual
 
 # `RLS_ENFORCE=true mix test` runs the suite as the non-owner role. Tests switch
 # role inside the sandbox transaction, so migrations still run as the owner.
+# Payments talk to fakes; the Daraja client's own tests plug in Req.Test.
+config :afya_fit,
+  paystack_gateway: AfyaFit.Test.FakePaystack,
+  mpesa_gateway: AfyaFit.Test.FakeMpesa
+
+config :afya_fit, AfyaFit.Payments.Daraja,
+  req_options: [plug: {Req.Test, AfyaFit.Payments.Daraja}]
+
 config :afya_fit, AfyaFit.RLS,
   enforce: System.get_env("RLS_ENFORCE") == "true",
   app_role: "afya_fit_app",
