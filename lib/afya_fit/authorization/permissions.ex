@@ -29,7 +29,7 @@ defmodule AfyaFit.Authorization.Permissions do
       task: [:list, :read],
       calendar_event: [:list, :read],
       subscription: [:read, :manage],
-      admin_panel: [:access]
+      admin_panel: [:access, :manage]
     },
     org_admin:
       Map.merge(@trainer, %{

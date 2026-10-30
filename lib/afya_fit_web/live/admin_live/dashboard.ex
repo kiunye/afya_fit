@@ -33,7 +33,6 @@ defmodule AfyaFitWeb.AdminLive.Dashboard do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} active={:platform}>
       <.denied_sign :if={@denied} kind={elem(@denied, 0)} message={elem(@denied, 1)} />
-
       <div :if={!@denied} id="platform">
         <.page_header>
           Platform
@@ -41,15 +40,16 @@ defmodule AfyaFitWeb.AdminLive.Dashboard do
             <b class="text-ink">
               {@count} {if @count == 1, do: "organisation", else: "organisations"}.
             </b>
-            Read-only overview.
+            Open one to suspend it or grant a plan.
           </:subtitle>
         </.page_header>
-
+        
         <.sign_group label="Organisations">
           <div id="organizations" phx-update="stream">
             <div id="organizations-empty" class="hidden px-4 py-6 text-ink-2 only:block sm:px-[26px]">
               No organisations yet.
             </div>
+            
             <.sign
               :for={{id, org} <- @streams.organizations}
               id={id}
@@ -60,9 +60,12 @@ defmodule AfyaFitWeb.AdminLive.Dashboard do
               overdue={org.status != "active"}
             >
               <:title>{org.name}</:title>
-              {String.capitalize(org.plan_type)} plan · {org.trainers} {if org.trainers == 1,
+               {String.capitalize(org.plan_type)} plan · {org.trainers} {if org.trainers == 1,
                 do: "trainer",
                 else: "trainers"} · {org.status}
+              <:actions>
+                <.sign_action navigate={~p"/admin/organizations/#{org.id}"}>Open</.sign_action>
+              </:actions>
             </.sign>
           </div>
         </.sign_group>
