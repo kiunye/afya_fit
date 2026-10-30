@@ -29,9 +29,15 @@ class Billing {
     );
   }
 
+  bool get isReadOnly => state == 'read_only';
+  bool get inGrace => reason == 'grace';
+
   static DateTime? _date(Object? value) =>
       value is String ? DateTime.tryParse(value)?.toLocal() : null;
 }
+
+/// Who is using the app, worked out from what the server lets them do.
+enum AccessRole { platform, coach, client, none }
 
 /// What the signed-in user can do, as decided by the server.
 ///
@@ -109,24 +115,23 @@ class Access {
 
   bool featureOn(String feature) => features[feature] ?? false;
 
-  /// A trainer or organization owner (anyone who can list clients).
-  bool get isCoach => can('client', 'list');
-
-  /// A client using their own data.
-  bool get isClient => !isCoach && can('client_workout', 'list');
-
-  bool get isPlatformAdmin => can('admin_panel', 'access');
+  /// Decides the home screen, never a write: those go through [can].
+  AccessRole get role {
+    if (can('admin_panel', 'access')) return AccessRole.platform;
+    if (can('client', 'list')) return AccessRole.coach;
+    if (can('client_workout', 'list')) return AccessRole.client;
+    return AccessRole.none;
+  }
 
   bool get canManageBilling => can('subscription', 'manage');
 
   /// Coaches cannot write while the organization is read-only. Clients keep
   /// using their own data.
-  bool get readOnly => isCoach && billing.state == 'read_only';
-
-  bool get inGrace => isCoach && billing.reason == 'grace';
+  bool get readOnly => role == AccessRole.coach && billing.isReadOnly;
 
   bool get atClientLimit => clientLimit != null && clientCount >= clientLimit!;
 
-  /// Whether to show the account banner: only coaches, and not platform admins.
-  bool get showsBanner => isCoach && !isPlatformAdmin && (readOnly || inGrace);
+  /// Whether to show the account banner: coaches in the grace period or read-only.
+  bool get showsBanner =>
+      readOnly || (role == AccessRole.coach && billing.inGrace);
 }

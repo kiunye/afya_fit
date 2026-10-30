@@ -14,7 +14,9 @@ class NutritionListScreen extends HookConsumerWidget {
     final nutritionAsync = ref.watch(nutritionPlansProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nutrition Plans')),
+      appBar: AppBar(
+        title: const Text('Nutrition Plans'),
+      ),
       body: nutritionAsync.when(
         data: (plans) {
           if (plans.isEmpty) {
@@ -36,8 +38,8 @@ class NutritionListScreen extends HookConsumerWidget {
                   Text(
                     'Create your first nutrition plan to get started',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
                 ],
               ),
@@ -75,9 +77,7 @@ class NutritionListScreen extends HookConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton:
-          ref.watch(accessProvider).value?.can('nutrition_plan', 'create') ==
-              true
+      floatingActionButton: ref.watch(accessProvider).can('nutrition_plan', 'create')
           ? FloatingActionButton(
               onPressed: () => runGated(
                 context,
@@ -119,8 +119,7 @@ class _NutritionCard extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  NutritionDetailScreen(nutritionPlanId: plan['id'] as String),
+              builder: (_) => NutritionDetailScreen(nutritionPlanId: plan['id'] as String),
             ),
           );
         },
@@ -137,8 +136,8 @@ class _NutritionCard extends StatelessWidget {
                     child: Text(
                       name,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
                   ),
                   if (dailyCalories > 0)

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:afya_fit/core/access/access.dart';
 import 'package:afya_fit/core/access/access_gate.dart';
 import 'package:afya_fit/core/access/access_provider.dart';
+import 'package:afya_fit/core/access/plan_block.dart';
 import 'package:afya_fit/core/access/upgrade_sheet.dart';
 import 'package:afya_fit/core/api/api_client.dart';
 import 'package:afya_fit/features/auth/providers/user_provider.dart';
@@ -18,7 +18,7 @@ Future<void> showApiError(
   if (error is ApiException && error.isPaymentRequired) {
     ref.invalidate(sessionProvider);
     if (context.mounted) {
-      await showUpgradeSheet(context, UpgradeDetails.fromException(error));
+      await showUpgradeSheet(context, PlanBlock.fromException(error));
     }
     return;
   }
@@ -41,7 +41,7 @@ Future<void> runGated(
   String? feature,
   bool countsAgainstClientLimit = false,
 }) async {
-  final access = ref.read(accessProvider).value ?? Access.none;
+  final access = ref.read(accessProvider);
   final gate = checkGate(
     access,
     resource,
@@ -56,13 +56,10 @@ Future<void> runGated(
     case GateOutcome.upgrade:
       await showUpgradeSheet(
         context,
-        UpgradeDetails(feature: gate.feature ?? 'unknown', requiredTier: 'pro'),
+        PlanBlock(gate.feature ?? 'unknown', requiredTier: 'pro'),
       );
     case GateOutcome.readOnly:
-      await showUpgradeSheet(
-        context,
-        const UpgradeDetails(feature: 'read_only', readOnly: true),
-      );
+      await showUpgradeSheet(context, const PlanBlock.readOnly());
     case GateOutcome.forbidden:
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

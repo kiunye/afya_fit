@@ -12,7 +12,7 @@ class AccessShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final access = ref.watch(accessProvider).value ?? Access.none;
+    final access = ref.watch(accessProvider);
     if (!access.showsBanner) return child;
 
     return Column(

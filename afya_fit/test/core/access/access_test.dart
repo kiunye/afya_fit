@@ -75,10 +75,8 @@ void main() {
           ),
         );
 
-        expect(coach.isCoach, isTrue);
-        expect(coach.isClient, isFalse);
-        expect(client.isCoach, isFalse);
-        expect(client.isClient, isTrue);
+        expect(coach.role, AccessRole.coach);
+        expect(client.role, AccessRole.client);
       },
     );
 
@@ -92,7 +90,7 @@ void main() {
         ),
       );
 
-      expect(admin.isPlatformAdmin, isTrue);
+      expect(admin.role, AccessRole.platform);
       expect(admin.showsBanner, isFalse);
     });
 
@@ -118,7 +116,7 @@ void main() {
       );
 
       expect(access.readOnly, isTrue);
-      expect(access.inGrace, isFalse);
+      expect(access.billing.inGrace, isFalse);
       expect(access.showsBanner, isTrue);
     });
 
@@ -135,7 +133,7 @@ void main() {
       );
 
       expect(access.readOnly, isFalse);
-      expect(access.inGrace, isTrue);
+      expect(access.billing.inGrace, isTrue);
       expect(access.showsBanner, isTrue);
       expect(access.billing.until, isNotNull);
     });
@@ -172,7 +170,7 @@ void main() {
 
   test('Access.none allows nothing', () {
     expect(Access.none.can('client', 'list'), isFalse);
-    expect(Access.none.isCoach, isFalse);
+    expect(Access.none.role, AccessRole.none);
     expect(Access.none.showsBanner, isFalse);
   });
 }

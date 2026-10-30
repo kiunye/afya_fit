@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:afya_fit/core/access/access.dart';
 import 'package:afya_fit/core/access/access_banner.dart';
 import 'package:afya_fit/core/access/access_provider.dart';
+import 'package:afya_fit/core/access/plan_block.dart';
 import 'package:afya_fit/core/access/upgrade_sheet.dart';
 import 'package:afya_fit/core/api/api_client.dart';
 import 'package:afya_fit/core/routing/role_router.dart';
+import 'package:afya_fit/features/dashboard/presentation/screens/dashboard_screen.dart';
 import 'package:afya_fit/features/auth/data/models/session.dart';
 import 'package:afya_fit/features/auth/providers/user_provider.dart';
 import 'package:flutter/material.dart';
@@ -42,7 +44,9 @@ void main() {
   group('bannerMessage', () {
     test('read-only names the reason and who can fix it', () {
       final text = bannerMessage(
-        coach(billing: const Billing(state: 'read_only', reason: 'cancelled')),
+        coach(
+          billing: const Billing(state: 'read_only', reason: 'cancelled'),
+        ),
       );
 
       expect(text, contains('subscription was cancelled'));
@@ -93,7 +97,9 @@ void main() {
       expect(find.byKey(const Key('access-banner-text')), findsNothing);
     });
 
-    testWidgets('shows the banner above the app when read-only', (tester) async {
+    testWidgets('shows the banner above the app when read-only', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         host(
           const AccessShell(child: Text('home')),
@@ -116,13 +122,13 @@ void main() {
   group('UpgradeSheet', () {
     Future<List<Uri>> openContact(
       WidgetTester tester,
-      UpgradeDetails details,
+      PlanBlock block,
       Access access,
     ) async {
       final opened = <Uri>[];
       await tester.pumpWidget(
         host(
-          UpgradeSheet(details: details),
+          UpgradeSheet(block: block),
           overrides: [
             accessProvider.overrideWith((ref) => access),
             sessionProvider.overrideWith((ref) async => null as Session?),
@@ -142,7 +148,7 @@ void main() {
     testWidgets('Contact us opens a mailto naming the feature', (tester) async {
       final opened = await openContact(
         tester,
-        const UpgradeDetails(feature: 'nutrition_plans', requiredTier: 'pro'),
+        const PlanBlock('nutrition_plans', requiredTier: 'pro'),
         coach(),
       );
 
@@ -155,22 +161,14 @@ void main() {
     });
 
     testWidgets('non-owners are told who to ask', (tester) async {
-      await openContact(
-        tester,
-        const UpgradeDetails(feature: 'clients'),
-        coach(),
-      );
+      await openContact(tester, const PlanBlock('clients'), coach());
 
       expect(find.byKey(const Key('ask-owner')), findsOneWidget);
       expect(find.textContaining('Wanjiru Njoroge'), findsWidgets);
     });
 
     testWidgets('owners are not sent to someone else', (tester) async {
-      await openContact(
-        tester,
-        const UpgradeDetails(feature: 'clients'),
-        coach(owner: true),
-      );
+      await openContact(tester, const PlanBlock('clients'), coach(owner: true));
 
       expect(find.byKey(const Key('ask-owner')), findsNothing);
     });
@@ -180,7 +178,7 @@ void main() {
     ) async {
       await tester.pumpWidget(
         host(
-          const UpgradeSheet(details: UpgradeDetails(feature: 'clients')),
+          const UpgradeSheet(block: PlanBlock('clients')),
           overrides: [
             accessProvider.overrideWith((ref) => coach()),
             sessionProvider.overrideWith((ref) async => null as Session?),
@@ -196,9 +194,9 @@ void main() {
     });
   });
 
-  group('UpgradeDetails.fromException', () {
+  group('PlanBlock.fromException', () {
     test('reads the feature and tier of an upgrade_required body', () {
-      final details = UpgradeDetails.fromException(
+      final details = PlanBlock.fromException(
         ApiException(
           statusCode: 402,
           message: 'upgrade_required',
@@ -212,11 +210,11 @@ void main() {
 
       expect(details.feature, 'nutrition_plans');
       expect(details.requiredTier, 'pro');
-      expect(details.readOnly, isFalse);
+      expect(details.isReadOnly, isFalse);
     });
 
     test('subscription_inactive means read-only', () {
-      final details = UpgradeDetails.fromException(
+      final details = PlanBlock.fromException(
         ApiException(
           statusCode: 402,
           message: 'subscription_inactive',
@@ -224,11 +222,11 @@ void main() {
         ),
       );
 
-      expect(details.readOnly, isTrue);
+      expect(details.isReadOnly, isTrue);
     });
 
     test('a body that is not JSON still gives a usable prompt', () {
-      final details = UpgradeDetails.fromException(
+      final details = PlanBlock.fromException(
         ApiException(statusCode: 402, message: 'An error occurred'),
       );
 
@@ -236,32 +234,23 @@ void main() {
     });
   });
 
-  group('RoleRouter.homeKindFor', () {
-    test('picks the home screen from permissions', () {
-      expect(RoleRouter.homeKindFor(coach()), HomeKind.coach);
-      expect(
-        RoleRouter.homeKindFor(
-          const Access(
-            tier: 'free',
-            permissions: {
-              'client_workout': {'list'},
-            },
-          ),
-        ),
-        HomeKind.client,
-      );
-      expect(
-        RoleRouter.homeKindFor(
-          const Access(
-            tier: 'free',
-            permissions: {
-              'admin_panel': {'access'},
-            },
-          ),
-        ),
-        HomeKind.platform,
-      );
-    });
+  test('the home screen follows what the user can do', () {
+    const client = Access(
+      tier: 'free',
+      permissions: {
+        'client_workout': {'list'},
+      },
+    );
+    const admin = Access(
+      tier: 'free',
+      permissions: {
+        'admin_panel': {'access'},
+      },
+    );
+
+    expect(RoleRouter.getHomeScreen(coach()), isA<DashboardScreen>());
+    expect(RoleRouter.getHomeScreen(client), isA<CustomerDashboardScreen>());
+    expect(RoleRouter.getHomeScreen(admin), isA<AdminDashboardScreen>());
   });
 
   group('ApiClient keeps the error body', () {
@@ -297,9 +286,7 @@ void main() {
 
       await expectLater(
         client.get('/clients'),
-        throwsA(
-          isA<ApiException>().having((e) => e.body, 'body', isNull),
-        ),
+        throwsA(isA<ApiException>().having((e) => e.body, 'body', isNull)),
       );
     });
   });
