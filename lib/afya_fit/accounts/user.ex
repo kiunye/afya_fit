@@ -15,7 +15,8 @@ defmodule AfyaFit.Accounts.User do
     field :last_name, :string
     field :phone, :string
     field :avatar_url, :string
-    field :timezone, :string, default: "UTC"
+    # nil until the user or their browser says; `AfyaFit.Timezone.zone/1` shows UTC meanwhile
+    field :timezone, :string
     field :email_verified, :boolean, default: false
     field :email_verified_at, :utc_datetime
     field :last_login_at, :utc_datetime
@@ -37,7 +38,7 @@ defmodule AfyaFit.Accounts.User do
           last_name: String.t() | nil,
           phone: String.t() | nil,
           avatar_url: String.t() | nil,
-          timezone: String.t(),
+          timezone: String.t() | nil,
           email_verified: boolean(),
           email_verified_at: DateTime.t() | nil,
           last_login_at: DateTime.t() | nil,

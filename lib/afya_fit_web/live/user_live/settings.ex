@@ -189,7 +189,9 @@ defmodule AfyaFitWeb.UserLive.Settings do
   defp assign_timezone_form(socket, user) do
     assign(socket,
       timezone_form:
-        to_form(User.timezone_changeset(user, %{timezone: user.timezone}), as: "user")
+        to_form(User.timezone_changeset(user, %{timezone: AfyaFit.Timezone.zone(user)}),
+          as: "user"
+        )
     )
   end
 

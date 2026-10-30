@@ -6,6 +6,9 @@ defmodule AfyaFit.Payments.PaystackClient do
   Uses the official Paystack library from Hex: https://hex.pm/packages/paystack
   """
 
+  @doc "Whether the secret key is set, so checkout can be offered."
+  def enabled?, do: is_binary(Application.get_env(:paystack, :secret_key))
+
   @doc """
   Creates a Paystack customer.
 

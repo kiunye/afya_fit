@@ -26,6 +26,8 @@ defmodule AfyaFit.Test.FakePaystack do
   @moduledoc false
   alias AfyaFit.Test.FakeGateways
 
+  def enabled?, do: true
+
   def checkout("gateway-down@example.com", _amount, _reference, _metadata, _callback),
     do: {:error, "Paystack is down"}
 
@@ -52,6 +54,8 @@ defmodule AfyaFit.Test.FakeMpesa do
   alias AfyaFit.Test.FakeGateways
 
   defdelegate normalize_phone(phone), to: Daraja
+
+  def enabled?, do: true
 
   def stk_push(%{phone: "254799999999"}), do: {:error, "Daraja is down"}
 

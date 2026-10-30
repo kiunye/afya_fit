@@ -68,13 +68,13 @@ defmodule AfyaFit.Payments.DarajaTest do
     end
   end
 
-  describe "configured?/0" do
+  describe "enabled?/0" do
     test "needs every credential" do
-      assert Daraja.configured?()
+      assert Daraja.enabled?()
 
       current = Application.get_env(:afya_fit, Daraja)
       Application.put_env(:afya_fit, Daraja, Keyword.put(current, :passkey, nil))
-      refute Daraja.configured?()
+      refute Daraja.enabled?()
     end
   end
 

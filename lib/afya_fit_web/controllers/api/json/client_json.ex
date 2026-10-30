@@ -19,7 +19,7 @@ defmodule AfyaFitWeb.API.JSON.ClientJSON do
       last_name: client.last_name,
       phone: client.phone,
       avatar_url: client.avatar_url,
-      timezone: client.timezone,
+      timezone: AfyaFit.Timezone.zone(client),
       email_verified: client.email_verified,
       organization_id: client.organization_id,
       inserted_at: client.inserted_at,

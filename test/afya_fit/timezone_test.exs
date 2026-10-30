@@ -103,7 +103,10 @@ defmodule AfyaFit.TimezoneTest do
       %{user: user(organization(), :trainer)}
     end
 
-    test "someone still on UTC takes the zone the browser reports", %{user: user} do
+    test "someone with no zone yet takes the one the browser reports", %{user: user} do
+      assert user.timezone == nil
+      assert Timezone.zone(user) == "UTC"
+
       assert {:ok, %User{timezone: "Africa/Nairobi"}} =
                Accounts.adopt_timezone(user, "Africa/Nairobi")
     end
@@ -115,10 +118,15 @@ defmodule AfyaFit.TimezoneTest do
                Accounts.adopt_timezone(chosen, "Africa/Nairobi")
     end
 
-    test "unknown zones and UTC change nothing", %{user: user} do
-      assert {:ok, %User{timezone: "UTC"}} = Accounts.adopt_timezone(user, "Mars/Olympus")
-      assert {:ok, %User{timezone: "UTC"}} = Accounts.adopt_timezone(user, "UTC")
-      assert {:ok, %User{timezone: "UTC"}} = Accounts.adopt_timezone(user, nil)
+    test "choosing UTC is a choice too, and is kept", %{user: user} do
+      {:ok, chosen} = Accounts.update_timezone(user, "UTC")
+
+      assert {:ok, %User{timezone: "UTC"}} = Accounts.adopt_timezone(chosen, "Africa/Nairobi")
+    end
+
+    test "an unknown zone, or none, changes nothing", %{user: user} do
+      assert {:ok, %User{timezone: nil}} = Accounts.adopt_timezone(user, "Mars/Olympus")
+      assert {:ok, %User{timezone: nil}} = Accounts.adopt_timezone(user, nil)
     end
   end
 

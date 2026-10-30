@@ -23,7 +23,7 @@ defmodule AfyaFitWeb.API.JSON.UserJSON do
       avatar_url: user.avatar_url,
       role: AfyaFit.Accounts.User.legacy_role(user),
       account_role: user.role,
-      timezone: user.timezone,
+      timezone: AfyaFit.Timezone.zone(user),
       email_verified: user.email_verified,
       organization_id: user.organization_id,
       inserted_at: user.inserted_at,
