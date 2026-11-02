@@ -13,6 +13,44 @@ defmodule AfyaFit.Authorization.BillingStatusTest do
     assert %{state: :active, reason: nil} = build(%{subscription_status: "active"})
   end
 
+  describe "a paid period that ended without being renewed" do
+    test "gets the grace period, then goes read-only" do
+      in_grace = %{
+        subscription_status: "active",
+        tier: "pro",
+        period_end: ~U[2026-01-10 00:00:00Z]
+      }
+
+      lapsed = %{subscription_status: "active", tier: "pro", period_end: ~U[2026-01-01 00:00:00Z]}
+
+      assert %{state: :active, reason: :grace, since: ~U[2026-01-10 00:00:00Z]} = build(in_grace)
+      assert %{state: :read_only, reason: :past_due} = build(lapsed)
+    end
+
+    test "is healthy while the period runs, or when there is no period" do
+      running = %{
+        subscription_status: "active",
+        tier: "pro",
+        period_end: ~U[2026-02-01 00:00:00Z]
+      }
+
+      assert %{state: :active, reason: nil} = build(running)
+      assert %{state: :active, reason: nil} = build(%{subscription_status: "active", tier: "pro"})
+    end
+
+    test "never applies to the Free plan, which has nothing to pay for" do
+      free = %{subscription_status: "active", tier: "free", period_end: ~U[2025-01-01 00:00:00Z]}
+
+      assert %{state: :active, reason: nil} = build(free)
+    end
+
+    test "applies when the plan is not stated" do
+      source = %{subscription_status: "active", period_end: ~U[2025-01-01 00:00:00Z]}
+
+      assert %{state: :read_only, reason: :past_due} = build(source)
+    end
+  end
+
   describe "past_due" do
     test "keeps full access for 7 days after the period ended, and says until when" do
       status = build(%{subscription_status: "past_due", period_end: ~U[2026-01-10 00:00:00Z]})

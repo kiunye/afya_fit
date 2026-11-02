@@ -61,7 +61,7 @@ defmodule AfyaFitWeb.AccessTest do
       assert %{state: :grace, action: :update_payment, message: message} =
                Access.banner(scope, @now)
 
-      assert message =~ "Payment failed on 25 Oct"
+      assert message =~ "Payment overdue since 25 Oct"
       assert message =~ "until 1 Nov"
     end
 

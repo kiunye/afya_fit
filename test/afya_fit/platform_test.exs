@@ -160,6 +160,34 @@ defmodule AfyaFit.PlatformTest do
     end
   end
 
+  describe "a paid period that has ended" do
+    setup do
+      past = DateTime.add(DateTime.utc_now(), -3, :day) |> DateTime.truncate(:second)
+      lapsed = organization(%{name: "Lapsed Gym"})
+      free = organization(%{name: "Free Granted"})
+      subscription(lapsed, %{status: "active", plan_type: "pro", current_period_end: past})
+      subscription(free, %{status: "active", plan_type: "free", current_period_end: past})
+      %{lapsed: lapsed}
+    end
+
+    test "is listed as past due, not active" do
+      past_due = Platform.list_subscriptions("past_due")
+      active = Platform.list_subscriptions("active")
+
+      assert "Lapsed Gym" in Enum.map(past_due, & &1.organization)
+      refute "Lapsed Gym" in Enum.map(active, & &1.organization)
+      assert Enum.find(past_due, &(&1.organization == "Lapsed Gym")).status == "past_due"
+    end
+
+    test "a Free grant never lapses" do
+      assert "Free Granted" in Enum.map(Platform.list_subscriptions("active"), & &1.organization)
+    end
+
+    test "brings in nothing" do
+      assert Platform.monthly_income() == 0
+    end
+  end
+
   describe "search_users/1" do
     test "finds people by email or name across organizations", %{org: org} do
       brian = user(org, :trainer, %{email: "brian@example.com", first_name: "Brian"})
