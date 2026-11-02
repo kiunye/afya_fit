@@ -134,6 +134,17 @@ if config_env() in [:dev, :test] do
 
   # Tests set the key themselves.
   if config_env() == :dev, do: config(:paystack, secret_key: paystack_secret_key)
+
+  # Without provider credentials, development uses the payment simulator
+  # (AfyaFit.Dev.PaymentSimulator): card via a local page, M-Pesa answered by a
+  # timer. Setting the credentials switches that provider to the real one.
+  if config_env() == :dev do
+    if is_nil(paystack_secret_key),
+      do: config(:afya_fit, paystack_gateway: AfyaFit.Dev.SimulatedPaystack)
+
+    if is_nil(System.get_env("DARAJA_CONSUMER_KEY")),
+      do: config(:afya_fit, mpesa_gateway: AfyaFit.Dev.SimulatedMpesa)
+  end
 end
 
 if config_env() in [:prod, :staging] do
