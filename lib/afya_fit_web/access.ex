@@ -14,50 +14,123 @@ defmodule AfyaFitWeb.Access do
 
   alias AfyaFit.Authorization
   alias AfyaFit.Authorization.{BillingStatus, Entitlements, Scope}
-
-  @type nav_item :: %{
-          key: atom(),
-          label: String.t(),
-          icon: atom(),
-          path: String.t(),
-          pro: boolean(),
-          phone: :tab | :more
-        }
+  alias AfyaFitWeb.NavItem
 
   @doc """
   Navigation items for the scope, in order. `pro` marks a feature the plan
   does not include yet: it stays visible so it can be discovered. Items the
   role may not use are not listed at all.
   """
-  @spec nav_items(Scope.t()) :: [nav_item()]
+  @spec nav_items(Scope.t()) :: [NavItem.t()]
   def nav_items(%Scope{} = scope) do
     role = Scope.role(scope)
 
-    items = [
-      {:today, "Today", :today, ~p"/trainer/dashboard", :tab, [:trainer, :org_admin], nil},
-      {:home, "Home", :home, ~p"/home", :tab, [:client], nil},
-      {:clients, "Clients", :clients, ~p"/trainer/clients", :tab, [:trainer, :org_admin],
-       {:list, :client}},
-      {:workouts, "Workouts", :workouts, ~p"/trainer/workouts", :tab, [:trainer, :org_admin],
-       {:list, :workout_plan}},
-      {:nutrition, "Nutrition", :nutrition, ~p"/trainer/nutrition", :tab, [:trainer, :org_admin],
-       {:list, :nutrition_plan}},
-      {:progress, "Progress", :progress, ~p"/trainer/progress", :more, [:trainer, :org_admin],
-       {:list, :progress_entry}},
-      {:team, "Team", :team, ~p"/team", :more, [:org_admin], {:list, :trainer}},
-      {:billing, "Billing", :billing, ~p"/billing", :more, [:org_admin], {:read, :subscription}},
-      {:platform, "Platform", :platform, ~p"/admin/dashboard", :tab, [:admin],
-       {:access, :admin_panel}},
-      {:subscriptions, "Subscriptions", :billing, ~p"/admin/subscriptions", :tab, [:admin],
-       {:access, :admin_panel}},
-      {:users, "Users", :team, ~p"/admin/users", :more, [:admin], {:access, :admin_panel}}
-    ]
-
-    for {key, label, icon, path, phone, roles, permission} <- items,
-        role in roles,
-        permitted?(scope, permission) do
-      %{key: key, label: label, icon: icon, path: path, pro: pro?(scope, key), phone: phone}
+    for item <- catalogue(),
+        role in item.roles,
+        permitted?(scope, item.permission) do
+      %{item | pro: pro?(scope, item.key)}
     end
+  end
+
+  # Every place in the app, in the order it is shown.
+  defp catalogue do
+    coach = [:trainer, :org_admin]
+
+    [
+      %NavItem{
+        key: :today,
+        label: "Today",
+        icon: :today,
+        path: ~p"/trainer/dashboard",
+        roles: coach,
+        phone: :tab
+      },
+      %NavItem{
+        key: :home,
+        label: "Home",
+        icon: :home,
+        path: ~p"/home",
+        roles: [:client],
+        phone: :tab
+      },
+      %NavItem{
+        key: :clients,
+        label: "Clients",
+        icon: :clients,
+        path: ~p"/trainer/clients",
+        roles: coach,
+        permission: {:list, :client},
+        phone: :tab
+      },
+      %NavItem{
+        key: :workouts,
+        label: "Workouts",
+        icon: :workouts,
+        path: ~p"/trainer/workouts",
+        roles: coach,
+        permission: {:list, :workout_plan},
+        phone: :tab
+      },
+      %NavItem{
+        key: :nutrition,
+        label: "Nutrition",
+        icon: :nutrition,
+        path: ~p"/trainer/nutrition",
+        roles: coach,
+        permission: {:list, :nutrition_plan},
+        phone: :tab
+      },
+      %NavItem{
+        key: :progress,
+        label: "Progress",
+        icon: :progress,
+        path: ~p"/trainer/progress",
+        roles: coach,
+        permission: {:list, :progress_entry}
+      },
+      %NavItem{
+        key: :team,
+        label: "Team",
+        icon: :team,
+        path: ~p"/team",
+        roles: [:org_admin],
+        permission: {:list, :trainer}
+      },
+      %NavItem{
+        key: :billing,
+        label: "Billing",
+        icon: :billing,
+        path: ~p"/billing",
+        roles: [:org_admin],
+        permission: {:read, :subscription}
+      },
+      %NavItem{
+        key: :platform,
+        label: "Platform",
+        icon: :platform,
+        path: ~p"/admin/dashboard",
+        roles: [:admin],
+        permission: {:access, :admin_panel},
+        phone: :tab
+      },
+      %NavItem{
+        key: :subscriptions,
+        label: "Subscriptions",
+        icon: :billing,
+        path: ~p"/admin/subscriptions",
+        roles: [:admin],
+        permission: {:access, :admin_panel},
+        phone: :tab
+      },
+      %NavItem{
+        key: :users,
+        label: "Users",
+        icon: :team,
+        path: ~p"/admin/users",
+        roles: [:admin],
+        permission: {:access, :admin_panel}
+      }
+    ]
   end
 
   defp permitted?(_scope, nil), do: true
