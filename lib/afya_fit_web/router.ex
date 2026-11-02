@@ -230,6 +230,10 @@ defmodule AfyaFitWeb.Router do
       pipe_through :browser
 
       live_dashboard "/dashboard", metrics: AfyaFitWeb.Telemetry
+
+      # The stand-in for Paystack's checkout page (see AfyaFit.Dev.PaymentSimulator)
+      get "/pay/:reference", AfyaFitWeb.DevPaymentController, :show
+      post "/pay/:reference/:outcome", AfyaFitWeb.DevPaymentController, :decide
       forward "/mailbox", Plug.Swoosh.MailboxPreview
     end
   end
