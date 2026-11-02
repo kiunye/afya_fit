@@ -31,7 +31,7 @@ class AccessShell extends ConsumerWidget {
   }
 }
 
-/// "Read-only until payment clears" or "Payment failed, full access until ...".
+/// "Read-only until payment clears" or "Payment overdue, full access until ...".
 /// Owners are told to update payment; everyone else is told who can.
 class AccessBanner extends StatelessWidget {
   const AccessBanner({super.key, required this.access});
@@ -99,8 +99,8 @@ String bannerMessage(Access access) {
     };
   } else {
     lead = billing.since == null
-        ? 'Payment failed.'
-        : 'Payment failed on ${date(billing.since)}.';
+        ? 'Payment overdue.'
+        : 'Payment overdue since ${date(billing.since)}.';
   }
 
   final detail = access.readOnly

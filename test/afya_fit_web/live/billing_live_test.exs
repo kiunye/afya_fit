@@ -28,6 +28,28 @@ defmodule AfyaFitWeb.BillingLiveTest do
     end
   end
 
+  describe "a paid period that ended" do
+    test "says the payment is overdue and offers to fix it", %{conn: conn, org: org, owner: owner} do
+      past = DateTime.add(DateTime.utc_now(), -2, :day) |> DateTime.truncate(:second)
+      subscription(org, %{status: "active", plan_type: "pro", current_period_end: past})
+
+      {:ok, view, _} = conn |> log_in(owner) |> live(~p"/billing")
+
+      assert has_element?(view, "#status", "Past due")
+      assert has_element?(view, "#update-payment")
+      assert render(view) =~ "Payment overdue since"
+    end
+
+    test "turns read-only for coaches after the grace period", %{org: org, owner: owner} do
+      past = DateTime.add(DateTime.utc_now(), -10, :day) |> DateTime.truncate(:second)
+      subscription(org, %{status: "active", plan_type: "pro", current_period_end: past})
+      scope = AfyaFit.Authorization.Scope.load(owner)
+
+      refute AfyaFit.Authorization.can?(scope, :create, :workout_plan)
+      assert AfyaFit.Authorization.can?(scope, :list, :workout_plan)
+    end
+  end
+
   describe "dates" do
     test "are shown on the viewer's calendar", %{conn: conn, org: org, owner: owner} do
       # 22:30 UTC on 1 November is already 2 November in Nairobi.

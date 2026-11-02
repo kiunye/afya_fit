@@ -31,8 +31,14 @@ defmodule AfyaFit.Authorization.BillingStatus do
 
   @doc """
   Builds the status from any map carrying `:subscription_status`,
-  `:organization_status`, `:period_end` and `:cancel_at_period_end` (a scope, or
-  fields taken from a subscription). Missing keys mean "nothing wrong".
+  `:organization_status`, `:period_end`, `:cancel_at_period_end` and `:tier` (a
+  scope, or fields taken from a subscription). Missing keys mean "nothing wrong".
+
+  A paid subscription still marked `active` whose period has ended is overdue:
+  nobody paid for what comes next, so it gets the same grace period as a failed
+  payment and then goes read-only. This is worked out here rather than by a job
+  that flips the status, so it is true the moment the period ends. The Free plan
+  has nothing to pay for, so it never lapses.
   """
   @spec build(map(), DateTime.t()) :: t()
   def build(source, now) do
@@ -51,10 +57,20 @@ defmodule AfyaFit.Authorization.BillingStatus do
       Map.get(source, :subscription_status) == "past_due" ->
         past_due(period_end, now)
 
+      lapsed?(source, period_end, now) ->
+        past_due(period_end, now)
+
       true ->
         %__MODULE__{state: :active}
     end
   end
+
+  defp lapsed?(source, %DateTime{} = period_end, now) do
+    Map.get(source, :subscription_status) == "active" and Map.get(source, :tier) != "free" and
+      DateTime.compare(period_end, now) == :lt
+  end
+
+  defp lapsed?(_source, _period_end, _now), do: false
 
   @doc "True when the organization may write."
   @spec writable?(t()) :: boolean()

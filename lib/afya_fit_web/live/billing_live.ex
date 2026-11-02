@@ -192,6 +192,7 @@ defmodule AfyaFitWeb.BillingLive do
     BillingStatus.build(
       %{
         subscription_status: subscription.status,
+        tier: subscription.plan_type,
         period_end: subscription.current_period_end,
         cancel_at_period_end: subscription.cancel_at_period_end,
         organization_status: scope.organization_status
@@ -208,13 +209,13 @@ defmodule AfyaFitWeb.BillingLive do
         "#{plan_name(subscription, nil)} plan, renews #{period_end_text(subscription, scope)}."
 
       :grace ->
-        "Payment failed on #{date(status.since, scope)}. Full access until #{date(status.until, scope)}."
+        "Payment overdue since #{date(status.since, scope)}. Full access until #{date(status.until, scope)}."
 
       :cancelling ->
         "Cancelled. Access ends #{date(status.until, scope)}."
 
       :past_due ->
-        "Payment failed on #{date(status.since, scope)}. Read-only until it clears."
+        "Payment overdue since #{date(status.since, scope)}. Read-only until it clears."
 
       :cancelled ->
         "Cancelled. The account is read-only."

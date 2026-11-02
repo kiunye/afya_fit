@@ -11,6 +11,20 @@ defmodule AfyaFit.Platform do
 
   import Ecto.Query
 
+  # A paid subscription still marked active past its period end is overdue; see
+  # `AfyaFit.Authorization.BillingStatus`. Done in SQL so lists and totals agree.
+  defmacrop effective_status(subscription) do
+    quote do
+      fragment(
+        "CASE WHEN ? = 'active' AND ? <> 'free' AND ? < now() THEN 'past_due' ELSE ? END",
+        unquote(subscription).status,
+        unquote(subscription).plan_type,
+        unquote(subscription).current_period_end,
+        unquote(subscription).status
+      )
+    end
+  end
+
   alias AfyaFit.Accounts.{TrainerClient, User}
   alias AfyaFit.{Authorization, Billing, Organizations, Repo, Shared}
   alias AfyaFit.Authorization.Scope
@@ -122,7 +136,8 @@ defmodule AfyaFit.Platform do
   def monthly_income do
     Repo.all(
       from s in Subscription,
-        where: s.status == "active" and s.plan_type in ^AfyaFit.Billing.Plans.paid_plans(),
+        where:
+          effective_status(s) == "active" and s.plan_type in ^AfyaFit.Billing.Plans.paid_plans(),
         group_by: s.plan_type,
         select: {s.plan_type, count(s.id)}
     )
@@ -147,7 +162,7 @@ defmodule AfyaFit.Platform do
           organization_id: o.id,
           organization: o.name,
           plan_type: s.plan_type,
-          status: s.status,
+          status: effective_status(s),
           cancel_at_period_end: s.cancel_at_period_end,
           period_end: s.current_period_end
         }
@@ -164,7 +179,7 @@ defmodule AfyaFit.Platform do
     do: where(query, [s], s.status == "cancelled" and not s.cancel_at_period_end)
 
   defp filter_subscriptions(query, status) when status in @subscription_filters,
-    do: where(query, [s], s.status == ^status)
+    do: where(query, [s], effective_status(s) == ^status)
 
   defp filter_subscriptions(query, _other), do: query
 

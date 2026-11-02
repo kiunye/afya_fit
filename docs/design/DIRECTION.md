@@ -173,7 +173,7 @@ Realistic data is Nairobi-based and uneven. Organisation: Njoroge Strength (Free
 
 ### 6.8 Billing (org admin; platform admin read)
 
-- Title "Billing". Sentence by state: "Pro plan, renews 12 Nov." / "Payment failed on 14 Oct. Read-only until it clears." / "Cancelled. Access ends 12 Nov." / "Free plan."
+- Title "Billing". Sentence by state: "Pro plan, renews 12 Nov." / "Payment overdue since 14 Oct. Read-only until it clears." / "Cancelled. Access ends 12 Nov." / "Free plan."
 - Group "Plan": rows Plan, Status (word plus orange dot only when not Active), Period ("12 Oct to 12 Nov"), Next charge. Actions by state: "Upgrade to Pro", "Update payment", "Cancel plan", "Reactivate".
 - Group "Invoices": table (Number, Date, Amount KES, Status, right-aligned amounts). Empty: "No invoices yet."
 - Cancel confirm: "Cancel Pro at the end of this period (12 Nov)? You keep access until then. After that the account becomes read-only; your data stays."

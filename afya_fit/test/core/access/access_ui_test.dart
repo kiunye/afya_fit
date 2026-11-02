@@ -78,7 +78,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('Payment failed on 9 Oct'));
+      expect(text, contains('Payment overdue since 9 Oct'));
       expect(text, contains('full access until 16 Oct'));
     });
   });

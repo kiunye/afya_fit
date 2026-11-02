@@ -126,7 +126,7 @@ defmodule AfyaFitWeb.Access do
   defp banner_for(_status, _scope), do: nil
 
   defp grace_message(%{since: since, until: until}) do
-    "Payment failed on #{short_date(since)}. You keep full access until #{short_date(until)}."
+    "Payment overdue since #{short_date(since)}. You keep full access until #{short_date(until)}."
   end
 
   defp read_only_message(status) do
