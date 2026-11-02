@@ -64,6 +64,11 @@ defmodule AfyaFit.Authorization.Scope do
   @doc """
   Builds a scope for `user`, loading the organization, its subscription and the
   clients the user is allowed to reach.
+
+  A client's scope is cheaper: the organisation-wide client count and the
+  owner's name are only used on coaches' screens, so a client gets `0` and
+  `nil`. The one thing a client's links tell us is whether coaching has ended
+  (`archived`), and that is read in the same query that finds them.
   """
   @spec load(User.t()) :: t()
   def load(%User{} = user) do
@@ -77,17 +82,19 @@ defmodule AfyaFit.Authorization.Scope do
           limit: 1
       )
 
+    {client_ids, archived} = links(user)
+
     new(user,
       organization: organization,
-      owner_name: owner_name(user.organization_id),
+      owner_name: coach_only(user, fn -> owner_name(user.organization_id) end),
       tier: effective_tier(organization, subscription),
       organization_status: organization && organization.status,
       subscription_status: subscription && subscription.status,
       period_end: subscription && subscription.current_period_end,
       cancel_at_period_end: (subscription && subscription.cancel_at_period_end) || false,
-      client_ids: linked_client_ids(user),
-      client_count: count_clients(user.organization_id),
-      archived: archived?(user)
+      client_ids: client_ids,
+      client_count: coach_only(user, fn -> count_clients(user.organization_id) end, 0),
+      archived: archived
     )
   end
 
@@ -143,15 +150,30 @@ defmodule AfyaFit.Authorization.Scope do
     end
   end
 
-  defp linked_client_ids(%User{role: "trainer", id: trainer_id}) do
-    from(tc in TrainerClient,
-      where: tc.trainer_id == ^trainer_id and tc.status in ["active", "paused"],
-      select: tc.client_id
-    )
-    |> Repo.all()
+  # The clients a trainer reaches, or, for a client, whether coaching has ended.
+  defp links(%User{role: "trainer", id: trainer_id}) do
+    ids =
+      from(tc in TrainerClient,
+        where: tc.trainer_id == ^trainer_id and tc.status in ["active", "paused"],
+        select: tc.client_id
+      )
+      |> Repo.all()
+
+    {ids, false}
   end
 
-  defp linked_client_ids(_user), do: []
+  defp links(%User{role: "client", id: client_id}) do
+    statuses =
+      Repo.all(from tc in TrainerClient, where: tc.client_id == ^client_id, select: tc.status)
+
+    {[], TrainerClient.ended?(statuses)}
+  end
+
+  defp links(_user), do: {[], false}
+
+  defp coach_only(user, fun, default \\ nil)
+  defp coach_only(%User{role: "client"}, _fun, default), do: default
+  defp coach_only(_user, fun, _default), do: fun.()
 
   # Archived clients no longer take a place on the plan.
   defp count_clients(organization_id) do
@@ -164,10 +186,4 @@ defmodule AfyaFit.Authorization.Scope do
       :count
     )
   end
-
-  # A client whose coaching has ended can still sign in but only read their data.
-  defp archived?(%User{role: "client", id: id}),
-    do: Repo.exists?(from tc in TrainerClient.archived_client_ids(), where: tc.client_id == ^id)
-
-  defp archived?(_user), do: false
 end

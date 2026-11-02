@@ -33,6 +33,14 @@ defmodule AfyaFit.Accounts.TrainerClient do
     )
   end
 
+  @doc """
+  Whether a client's coaching has ended, from the statuses of all their links:
+  they have links and every one is archived. The same rule as
+  `archived_client_ids/0`, for a client whose links are already in hand.
+  """
+  @spec ended?([String.t()]) :: boolean()
+  def ended?(statuses), do: statuses != [] and Enum.all?(statuses, &(&1 == "archived"))
+
   def changeset(trainer_client, attrs) do
     trainer_client
     |> cast(attrs, [:trainer_id, :client_id, :status, :started_at, :ended_at, :notes])

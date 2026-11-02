@@ -134,4 +134,35 @@ defmodule AfyaFitWeb.AccessTest do
       assert Access.role_label(scope(:trainer)) == "Trainer"
     end
   end
+
+  describe "the navigation catalogue" do
+    test "gives structs, with the plan tag only where the person lacks the feature" do
+      items = Access.nav_items(scope(:trainer, tier: "free"))
+
+      assert Enum.all?(items, &match?(%AfyaFitWeb.NavItem{}, &1))
+      assert Enum.find(items, &(&1.key == :nutrition)).pro
+      refute Enum.any?(items, &(&1.pro and &1.key != :nutrition))
+    end
+
+    test "keys are unique and every path is a route" do
+      items =
+        for role <- [:org_admin, :trainer, :client, :admin],
+            i <- Access.nav_items(scope(role)),
+            do: i
+
+      keys_per_role =
+        for role <- [:org_admin, :trainer, :client, :admin],
+            do: Enum.map(Access.nav_items(scope(role)), & &1.key)
+
+      assert Enum.all?(keys_per_role, &(&1 == Enum.uniq(&1)))
+      assert Enum.all?(items, &String.starts_with?(&1.path, "/"))
+    end
+
+    test "no more than five bottom tabs on a phone, whatever the role" do
+      for role <- [:org_admin, :trainer, :client, :admin] do
+        tabs = scope(role) |> Access.nav_items() |> Enum.filter(&(&1.phone == :tab))
+        assert length(tabs) <= 5, "#{role} has #{length(tabs)} tabs"
+      end
+    end
+  end
 end
